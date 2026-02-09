@@ -77,7 +77,12 @@ function PostDetail() {
   });
 
   if (postLoading) {
-    return <div className="text-center py-12">로딩 중...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <div className="w-8 h-8 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
+        <p className="text-sm text-ink-400">로딩 중...</p>
+      </div>
+    );
   }
 
   const post = postData?.data;
@@ -139,32 +144,43 @@ function PostDetail() {
   const isAdmin = user?.is_admin;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+    <div className="max-w-4xl mx-auto animate-fade-up">
+      {/* Back Navigation */}
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 transition-colors mb-6 group"
+      >
+        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+        목록으로
+      </Link>
+
+      <article className="card overflow-hidden">
         {/* Post Header */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-start justify-between mb-2">
+        <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-5 border-b border-ink-100">
+          <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <h1 className="text-2xl font-bold text-gray-900">{post?.title}</h1>
-                {post?.category_name && (
-                  <span className="px-2 py-1 text-sm font-medium rounded bg-gray-100 text-gray-700">
-                    {post.category_name}
-                  </span>
-                )}
-              </div>
+              {post?.category_name && (
+                <span className="badge-default text-[11px] mb-3 inline-block">
+                  {post.category_name}
+                </span>
+              )}
+              <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink-950 tracking-tight leading-snug">
+                {post?.title}
+              </h1>
             </div>
             {(isAuthor || isAdmin) && (
-              <div className="flex space-x-2">
+              <div className="flex items-center gap-1 flex-shrink-0">
                 <Link
                   to={`/posts/${id}/edit`}
-                  className="text-blue-600 hover:text-blue-800"
+                  className="btn-ghost text-sm"
                 >
                   수정
                 </Link>
                 <button
                   onClick={handleDelete}
-                  className="text-red-600 hover:text-red-800"
+                  className="btn-ghost text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
                   삭제
                 </button>
@@ -172,68 +188,87 @@ function PostDetail() {
             )}
           </div>
 
-          <div className="flex items-center justify-between text-sm text-gray-500">
-            <div className="flex items-center space-x-4">
-              <span>{post?.author_username}</span>
-              <span>조회 {post?.views}</span>
-              <span>{new Date(post?.created_at).toLocaleString('ko-KR')}</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-ink-200 flex items-center justify-center">
+                <span className="text-xs font-bold text-ink-600">
+                  {(post?.author_username || '?')[0].toUpperCase()}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-ink-800">{post?.author_username}</p>
+                <div className="flex items-center gap-2 text-xs text-ink-400">
+                  <span>{new Date(post?.created_at).toLocaleString('ko-KR')}</span>
+                  <span className="w-0.5 h-0.5 rounded-full bg-ink-300" />
+                  <span>조회 {post?.views}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleLikeToggle}
-                disabled={likeMutation.isLoading || unlikeMutation.isLoading}
-                className={`flex items-center gap-1 px-3 py-1 rounded-full transition ${
-                  post?.is_liked
-                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                <span>{post?.is_liked ? '❤️' : '🤍'}</span>
-                <span className="font-medium">{post?.likes_count}</span>
-              </button>
-            </div>
+
+            <button
+              onClick={handleLikeToggle}
+              disabled={likeMutation.isLoading || unlikeMutation.isLoading}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 active:scale-95 ${
+                post?.is_liked
+                  ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100'
+                  : 'bg-paper-200 text-ink-500 border border-ink-200 hover:bg-paper-300 hover:text-ink-700'
+              }`}
+            >
+              <svg className="w-4 h-4" fill={post?.is_liked ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+              </svg>
+              <span>{post?.likes_count || 0}</span>
+            </button>
           </div>
         </div>
 
         {/* Post Content */}
-        <div className="px-6 py-6">
-          <div className="prose max-w-none whitespace-pre-wrap">
+        <div className="px-6 sm:px-8 py-8">
+          <div className="prose prose-ink max-w-none whitespace-pre-wrap text-ink-800 leading-relaxed">
             {post?.content}
           </div>
         </div>
 
         {/* Files Section */}
         {(files.length > 0 || isAuthor) && (
-          <div className="px-6 py-4 border-t border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">첨부파일</h3>
+          <div className="px-6 sm:px-8 py-5 border-t border-ink-100 bg-paper-50">
+            <h3 className="text-sm font-semibold text-ink-700 mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4 text-ink-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+              </svg>
+              첨부파일 ({files.length})
+            </h3>
 
-            {/* File List */}
             {files.length > 0 && (
-              <div className="mb-4 space-y-2">
+              <div className="space-y-1.5 mb-4">
                 {files.map((file) => (
                   <div
                     key={file.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-md"
+                    className="flex items-center justify-between px-3 py-2.5 bg-white rounded-lg border border-ink-100 group hover:border-ink-200 transition-colors"
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-600">📎</span>
-                      <span className="text-gray-900">{file.original_filename}</span>
-                      <span className="text-sm text-gray-500">
-                        ({(file.file_size / 1024).toFixed(1)} KB)
-                      </span>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded bg-ink-100 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-ink-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm text-ink-800 truncate">{file.original_filename}</p>
+                        <p className="text-xs text-ink-400">{(file.file_size / 1024).toFixed(1)} KB</p>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <a
                         href={filesAPI.downloadFile(file.id)}
                         download
-                        className="text-blue-600 hover:text-blue-800 text-sm"
+                        className="text-xs font-medium text-accent hover:text-accent-dark transition-colors"
                       >
                         다운로드
                       </a>
                       {(isAuthor || isAdmin) && (
                         <button
                           onClick={() => handleFileDelete(file.id)}
-                          className="text-red-600 hover:text-red-800 text-sm"
+                          className="text-xs text-ink-400 hover:text-red-600 transition-colors"
                         >
                           삭제
                         </button>
@@ -244,18 +279,21 @@ function PostDetail() {
               </div>
             )}
 
-            {/* File Upload (only for author) */}
             {isAuthor && (
               <div className="flex items-center gap-2">
                 <input
                   type="file"
                   onChange={(e) => setSelectedFile(e.target.files[0])}
-                  className="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  className="flex-1 text-sm text-ink-500
+                    file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0
+                    file:text-sm file:font-medium
+                    file:bg-ink-100 file:text-ink-700
+                    hover:file:bg-ink-200 file:transition-colors file:cursor-pointer"
                 />
                 <button
                   onClick={handleFileUpload}
                   disabled={!selectedFile || uploading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary text-sm"
                 >
                   {uploading ? '업로드 중...' : '업로드'}
                 </button>
@@ -265,9 +303,12 @@ function PostDetail() {
         )}
 
         {/* Comments Section */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
-            댓글 {commentsData?.data?.length || 0}
+        <div className="px-6 sm:px-8 py-6 border-t border-ink-100">
+          <h2 className="text-sm font-semibold text-ink-700 mb-5 flex items-center gap-2">
+            <svg className="w-4 h-4 text-ink-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+            </svg>
+            댓글 {commentsData?.data?.length || 0}개
           </h2>
 
           {/* Comment Form */}
@@ -277,14 +318,14 @@ function PostDetail() {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="댓글을 입력하세요..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                className="input-field resize-none"
                 rows="3"
               />
               <div className="mt-2 flex justify-end">
                 <button
                   type="submit"
-                  disabled={createCommentMutation.isLoading}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  disabled={createCommentMutation.isLoading || !comment.trim()}
+                  className="btn-primary text-sm"
                 >
                   {createCommentMutation.isLoading ? '작성 중...' : '댓글 작성'}
                 </button>
@@ -294,17 +335,27 @@ function PostDetail() {
 
           {/* Comments List */}
           {commentsLoading ? (
-            <p className="text-gray-500">댓글 로딩 중...</p>
+            <div className="flex justify-center py-6">
+              <div className="w-6 h-6 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
+            </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
+              {commentsData?.data?.length === 0 && (
+                <p className="text-center py-8 text-sm text-ink-400">아직 댓글이 없습니다</p>
+              )}
               {commentsData?.data?.map((comment) => (
-                <div key={comment.id} className="bg-white p-4 rounded-md">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2 text-sm">
-                      <span className="font-medium text-gray-900">
+                <div key={comment.id} className="group px-4 py-3.5 bg-paper-50 rounded-xl hover:bg-paper-100 transition-colors">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-ink-200 flex items-center justify-center">
+                        <span className="text-[10px] font-bold text-ink-600">
+                          {(comment.author_username || '?')[0].toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="text-sm font-semibold text-ink-800">
                         {comment.author_username}
                       </span>
-                      <span className="text-gray-500">
+                      <span className="text-xs text-ink-400">
                         {new Date(comment.created_at).toLocaleString('ko-KR')}
                       </span>
                     </div>
@@ -315,28 +366,21 @@ function PostDetail() {
                             deleteCommentMutation.mutate(comment.id);
                           }
                         }}
-                        className="text-red-600 hover:text-red-800 text-sm"
+                        className="text-xs text-ink-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"
                       >
                         삭제
                       </button>
                     )}
                   </div>
-                  <p className="text-gray-700 whitespace-pre-wrap">{comment.content}</p>
+                  <p className="text-sm text-ink-700 whitespace-pre-wrap pl-8 leading-relaxed">
+                    {comment.content}
+                  </p>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
-
-      <div className="mt-6">
-        <Link
-          to="/"
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-        >
-          목록으로
-        </Link>
-      </div>
+      </article>
     </div>
   );
 }

@@ -35,16 +35,22 @@ function PostList() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">로딩 중...</p>
+      <div className="flex flex-col items-center justify-center py-24 gap-3">
+        <div className="w-8 h-8 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
+        <p className="text-sm text-ink-400">불러오는 중...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <p className="text-red-500">게시글을 불러오는데 실패했습니다.</p>
+      <div className="text-center py-24">
+        <div className="inline-flex items-center gap-2 px-4 py-3 bg-red-50 text-red-700 rounded-xl text-sm">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          게시글을 불러오는데 실패했습니다.
+        </div>
       </div>
     );
   }
@@ -55,152 +61,221 @@ function PostList() {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div>
-      <div className="mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">게시판</h1>
-          <p className="text-gray-600">전체 {total}개</p>
-        </div>
-
-        {/* Search and Filter */}
-        <div className="flex gap-4 mb-4">
-          <form onSubmit={handleSearch} className="flex-1 flex gap-2">
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="제목 또는 내용으로 검색..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-            >
-              검색
-            </button>
-          </form>
-
-          <select
-            value={categoryId || ''}
-            onChange={handleCategoryChange}
-            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">전체 카테고리</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Active Filters Display */}
-        {(search || categoryId) && (
-          <div className="flex gap-2 items-center text-sm">
-            <span className="text-gray-600">필터:</span>
-            {search && (
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full flex items-center gap-2">
-                검색: {search}
-                <button
-                  onClick={() => {
-                    setSearch('');
-                    setSearchInput('');
-                    setPage(1);
-                  }}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  ×
-                </button>
-              </span>
-            )}
-            {categoryId && (
-              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full flex items-center gap-2">
-                {categories.find((c) => c.id === categoryId)?.name}
-                <button
-                  onClick={() => {
-                    setCategoryId(null);
-                    setPage(1);
-                  }}
-                  className="text-green-600 hover:text-green-800"
-                >
-                  ×
-                </button>
-              </span>
-            )}
+    <div className="animate-fade-up">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-end justify-between mb-6">
+          <div>
+            <h1 className="font-display text-3xl font-bold text-ink-950 tracking-tight">
+              게시판
+            </h1>
+            <p className="mt-1 text-sm text-ink-500">
+              전체 <span className="font-semibold text-ink-700">{total}</span>개의 게시글
+            </p>
           </div>
+        </div>
+
+        {/* Search & Filter Bar */}
+        <div className="card p-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+              <div className="relative flex-1">
+                <svg
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400"
+                  fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="제목 또는 내용으로 검색..."
+                  className="input-field pl-10"
+                />
+              </div>
+              <button type="submit" className="btn-primary whitespace-nowrap">
+                검색
+              </button>
+            </form>
+
+            <select
+              value={categoryId || ''}
+              onChange={handleCategoryChange}
+              className="input-field sm:w-48"
+            >
+              <option value="">전체 카테고리</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Active Filters */}
+          {(search || categoryId) && (
+            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-ink-100">
+              {search && (
+                <span className="badge-accent flex items-center gap-1.5">
+                  검색: {search}
+                  <button
+                    onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }}
+                    className="text-accent hover:text-accent-dark ml-0.5"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              )}
+              {categoryId && (
+                <span className="badge-default flex items-center gap-1.5">
+                  {categories.find((c) => c.id === categoryId)?.name}
+                  <button
+                    onClick={() => { setCategoryId(null); setPage(1); }}
+                    className="text-ink-500 hover:text-ink-800 ml-0.5"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Posts List */}
+      <div className="space-y-2">
+        {posts.length === 0 ? (
+          <div className="card px-6 py-16 text-center">
+            <div className="text-ink-300 mb-3">
+              <svg className="w-12 h-12 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+              </svg>
+            </div>
+            <p className="text-ink-500 font-medium">게시글이 없습니다</p>
+            <p className="text-ink-400 text-sm mt-1">첫 번째 게시글을 작성해보세요</p>
+          </div>
+        ) : (
+          posts.map((post, index) => (
+            <Link
+              key={post.id}
+              to={`/posts/${post.id}`}
+              className={`card-hover block opacity-0 animate-fade-up stagger-${Math.min(index + 1, 8)}`}
+            >
+              <div className="px-5 py-4 flex items-center gap-4">
+                {/* Post Number */}
+                <div className="hidden sm:flex w-10 h-10 rounded-lg bg-paper-200 items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-ink-400 font-mono">
+                    {post.id}
+                  </span>
+                </div>
+
+                {/* Post Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="text-[15px] font-semibold text-ink-900 truncate">
+                      {post.title}
+                    </h2>
+                    {post.category_name && (
+                      <span className="badge-default text-[11px] flex-shrink-0">
+                        {post.category_name}
+                      </span>
+                    )}
+                    {post.comment_count > 0 && (
+                      <span className="text-xs text-accent font-semibold flex-shrink-0">
+                        [{post.comment_count}]
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-ink-400">
+                    <span className="font-medium text-ink-600">{post.author_username}</span>
+                    <span>{new Date(post.created_at).toLocaleDateString('ko-KR')}</span>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="hidden sm:flex items-center gap-3 flex-shrink-0">
+                  <div className="flex items-center gap-1 text-xs text-ink-400">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>{post.views}</span>
+                  </div>
+                  {post.likes_count > 0 && (
+                    <div className="flex items-center gap-1 text-xs text-accent">
+                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+                      </svg>
+                      <span className="font-semibold">{post.likes_count}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Arrow */}
+                <svg className="w-4 h-4 text-ink-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </div>
+            </Link>
+          ))
         )}
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {posts.length === 0 ? (
-            <li className="px-6 py-12 text-center text-gray-500">
-              게시글이 없습니다.
-            </li>
-          ) : (
-            posts.map((post) => (
-              <li key={post.id}>
-                <Link
-                  to={`/posts/${post.id}`}
-                  className="block hover:bg-gray-50 transition"
-                >
-                  <div className="px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-1">
-                        <h2 className="text-lg font-medium text-gray-900 truncate">
-                          {post.title}
-                        </h2>
-                        {post.category_name && (
-                          <span className="px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-700">
-                            {post.category_name}
-                          </span>
-                        )}
-                      </div>
-                      <div className="ml-2 flex-shrink-0 flex gap-2">
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                          조회 {post.views}
-                        </span>
-                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
-                          ❤️ {post.likes_count}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex items-center text-sm text-gray-500">
-                        <span>{post.author_username}</span>
-                        <span className="mx-2">·</span>
-                        <span>댓글 {post.comment_count}</span>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {new Date(post.created_at).toLocaleDateString('ko-KR')}
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </li>
-            ))
-          )}
-        </ul>
-      </div>
-
+      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-6 flex justify-center space-x-2">
+        <div className="mt-8 flex justify-center items-center gap-1">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-ghost text-sm disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            이전
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
           </button>
-          <span className="px-4 py-2 text-sm text-gray-700">
-            {page} / {totalPages}
-          </span>
+
+          <div className="flex items-center gap-1 mx-2">
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+              .reduce((acc, p, idx, arr) => {
+                if (idx > 0 && p - arr[idx - 1] > 1) {
+                  acc.push('...');
+                }
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((item, idx) =>
+                item === '...' ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-ink-400 text-sm">...</span>
+                ) : (
+                  <button
+                    key={item}
+                    onClick={() => setPage(item)}
+                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      page === item
+                        ? 'bg-ink-950 text-paper-50 shadow-soft'
+                        : 'text-ink-600 hover:bg-ink-100'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                )
+              )}
+          </div>
+
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-ghost text-sm disabled:opacity-30 disabled:cursor-not-allowed"
           >
-            다음
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
           </button>
         </div>
       )}

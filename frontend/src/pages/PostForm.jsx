@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { postsAPI } from '../services/api'
 import useCategoriesStore from '../stores/categoriesStore'
@@ -79,17 +79,31 @@ function PostForm() {
   const isLoading = createMutation.isLoading || updateMutation.isLoading
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {isEdit ? '게시글 수정' : '게시글 작성'}
+    <div className="max-w-4xl mx-auto animate-fade-up">
+      {/* Back Navigation */}
+      <Link
+        to={isEdit ? `/posts/${id}` : '/'}
+        className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 transition-colors mb-6 group"
+      >
+        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+        {isEdit ? '게시글로 돌아가기' : '목록으로'}
+      </Link>
+
+      <div className="card overflow-hidden">
+        <div className="px-6 sm:px-8 py-5 border-b border-ink-100">
+          <h1 className="font-display text-xl font-bold text-ink-950 tracking-tight">
+            {isEdit ? '게시글 수정' : '새 게시글 작성'}
           </h1>
+          <p className="text-sm text-ink-400 mt-1">
+            {isEdit ? '내용을 수정하고 저장하세요' : '새로운 글을 작성하세요'}
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="title" className="block text-sm font-semibold text-ink-700 mb-2">
               제목
             </label>
             <input
@@ -98,20 +112,20 @@ function PostForm() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="제목을 입력하세요"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="input-field text-lg font-medium"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="category" className="block text-sm font-semibold text-ink-700 mb-2">
               카테고리
             </label>
             <select
               id="category"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="input-field"
             >
               <option value="">카테고리 선택 (선택사항)</option>
               {categories.map((category) => (
@@ -123,7 +137,7 @@ function PostForm() {
           </div>
 
           <div>
-            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="content" className="block text-sm font-semibold text-ink-700 mb-2">
               내용
             </label>
             <textarea
@@ -131,26 +145,26 @@ function PostForm() {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="내용을 입력하세요"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="input-field resize-y leading-relaxed"
               rows="15"
               required
             />
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end gap-3 pt-4 border-t border-ink-100">
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="btn-secondary"
             >
               취소
             </button>
             <button
               type="submit"
               disabled={isLoading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+              className="btn-accent"
             >
-              {isLoading ? '저장 중...' : isEdit ? '수정' : '작성'}
+              {isLoading ? '저장 중...' : isEdit ? '수정 완료' : '작성 완료'}
             </button>
           </div>
         </form>
