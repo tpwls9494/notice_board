@@ -13,13 +13,22 @@ COPY frontend/ ./
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
+# Build the frontend
 RUN npm run build
+
+# Verify build output
+RUN ls -la /app/dist && \
+    test -f /app/dist/index.html || (echo "ERROR: index.html not found in dist!" && exit 1)
 
 # Nginx stage
 FROM nginx:alpine
 
 # Copy built frontend files
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
+
+# Verify files were copied
+RUN ls -la /usr/share/nginx/html && \
+    test -f /usr/share/nginx/html/index.html || (echo "ERROR: index.html not copied!" && exit 1)
 
 # Copy nginx configuration
 COPY nginx/nginx.prod.conf /etc/nginx/nginx.conf

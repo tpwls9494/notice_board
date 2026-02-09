@@ -9,5 +9,10 @@ export default defineConfig({
     watch: {
       usePolling: true
     }
+  },
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    sourcemap: false
   }
 })
