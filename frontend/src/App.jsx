@@ -7,12 +7,6 @@ import Register from './pages/Register'
 import PostList from './pages/PostList'
 import PostDetail from './pages/PostDetail'
 import PostForm from './pages/PostForm'
-import DeadlineList from './pages/DeadlineList'
-import DeadlineDetail from './pages/DeadlineDetail'
-import DeadlineForm from './pages/DeadlineForm'
-import QAList from './pages/QAList'
-import QADetail from './pages/QADetail'
-import QAForm from './pages/QAForm'
 
 function ProtectedRoute({ children }) {
   const token = useAuthStore((state) => state.token)
@@ -50,17 +44,6 @@ function App() {
         <Route path="posts/:id" element={<PostDetail />} />
         <Route path="posts/new" element={<PostForm />} />
         <Route path="posts/:id/edit" element={<PostForm />} />
-
-        {/* Deadline Board */}
-        <Route path="deadline" element={<DeadlineList />} />
-        <Route path="deadline/:id" element={<DeadlineDetail />} />
-        <Route path="deadline/new" element={<DeadlineForm />} />
-        <Route path="deadline/:id/edit" element={<DeadlineForm />} />
-
-        {/* Q&A Board */}
-        <Route path="qa" element={<QAList />} />
-        <Route path="qa/:id" element={<QADetail />} />
-        <Route path="qa/new" element={<QAForm />} />
       </Route>
     </Routes>
   )
