@@ -83,9 +83,10 @@ function PostForm() {
       {/* Back Navigation */}
       <Link
         to={isEdit ? `/posts/${id}` : '/'}
-        className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 transition-colors mb-6 group"
+        className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
+        style={{ transition: 'color 0.2s ease-out' }}
       >
-        <svg className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+        <svg className="w-4 h-4 group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true" style={{ transition: 'transform 0.2s ease-out' }}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
         {isEdit ? '게시글로 돌아가기' : '목록으로'}
@@ -93,7 +94,7 @@ function PostForm() {
 
       <div className="card overflow-hidden">
         <div className="px-6 sm:px-8 py-5 border-b border-ink-100">
-          <h1 className="font-display text-xl font-bold text-ink-950 tracking-tight">
+          <h1 className="font-display text-xl font-bold text-ink-950 tracking-tight text-balance">
             {isEdit ? '게시글 수정' : '새 게시글 작성'}
           </h1>
           <p className="text-sm text-ink-400 mt-1">
@@ -109,9 +110,10 @@ function PostForm() {
             <input
               id="title"
               type="text"
+              autoComplete="off"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="제목을 입력하세요"
+              placeholder="제목을 입력하세요&#x2026;"
               className="input-field text-lg font-medium"
               required
             />
@@ -144,7 +146,7 @@ function PostForm() {
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="내용을 입력하세요"
+              placeholder="내용을 입력하세요&#x2026;"
               className="input-field resize-y leading-relaxed"
               rows="15"
               required
@@ -164,7 +166,7 @@ function PostForm() {
               disabled={isLoading}
               className="btn-accent"
             >
-              {isLoading ? '저장 중...' : isEdit ? '수정 완료' : '작성 완료'}
+              {isLoading ? '저장 중\u2026' : isEdit ? '수정 완료' : '작성 완료'}
             </button>
           </div>
         </form>
