@@ -33,7 +33,19 @@ postgres_data/
 .idea/
 *.swp
 *.swo
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Secrets (actual .env with real values)
+.env
+!.env.production
+!backend/.env.example
+!backend/.env.production
 
 # Logs
 *.log
+
+# Claude Code local
+.claude/projects/
