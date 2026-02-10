@@ -20,6 +20,7 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: int
     is_admin: bool
+    points: int = 50
     created_at: datetime
 
     class Config:

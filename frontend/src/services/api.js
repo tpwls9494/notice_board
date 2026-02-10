@@ -95,4 +95,35 @@ export const filesAPI = {
   deleteFile: (fileId) => api.delete(`/files/${fileId}`),
 };
 
+// Deadline Posts API
+export const deadlinePostsAPI = {
+  getPosts: () => api.get('/deadline-posts/'),
+  getPost: (id) => api.get(`/deadline-posts/${id}`),
+  createPost: (data) => api.post('/deadline-posts/', data),
+  updatePost: (id, data) => api.put(`/deadline-posts/${id}`, data),
+  deletePost: (id) => api.delete(`/deadline-posts/${id}`),
+  completePost: (id) => api.post(`/deadline-posts/${id}/complete`),
+  getComments: (postId) => api.get(`/deadline-posts/${postId}/comments`),
+  createComment: (postId, data) => api.post(`/deadline-posts/${postId}/comments`, data),
+  deleteComment: (commentId) => api.delete(`/deadline-posts/comments/${commentId}`),
+};
+
+// Q&A API
+export const qaAPI = {
+  getQuestions: (page = 1, pageSize = 10, search = '') => {
+    let url = `/qa/questions/?page=${page}&page_size=${pageSize}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    return api.get(url);
+  },
+  getQuestion: (id) => api.get(`/qa/questions/${id}`),
+  createQuestion: (data) => api.post('/qa/questions/', data),
+  deleteQuestion: (id) => api.delete(`/qa/questions/${id}`),
+  createAnswer: (data) => api.post('/qa/answers/', data),
+  deleteAnswer: (id) => api.delete(`/qa/answers/${id}`),
+  acceptAnswer: (questionId, answerId) =>
+    api.post(`/qa/questions/${questionId}/accept/${answerId}`),
+  getMyPoints: () => api.get('/qa/points/me'),
+  getPointHistory: () => api.get('/qa/points/history'),
+};
+
 export default api;

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import auth, posts, comments, categories, likes, files
+from app.api.v1 import auth, posts, comments, categories, likes, files, deadline_posts, qa
 from app.db.base import Base, engine
 from app.core.config import settings
 
@@ -30,6 +30,8 @@ app.include_router(comments.router, prefix="/api/v1/comments", tags=["comments"]
 app.include_router(categories.router, prefix="/api/v1/categories", tags=["categories"])
 app.include_router(likes.router, prefix="/api/v1/likes", tags=["likes"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
+app.include_router(deadline_posts.router, prefix="/api/v1/deadline-posts", tags=["deadline-posts"])
+app.include_router(qa.router, prefix="/api/v1/qa", tags=["qa"])
 
 
 @app.get("/")

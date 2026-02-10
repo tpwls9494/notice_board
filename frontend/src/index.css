@@ -96,6 +96,31 @@
     @apply font-display text-2xl font-bold text-ink-950 tracking-tight;
   }
 
+  .badge-urgent {
+    @apply badge bg-red-100 text-red-700 font-bold;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .badge-success {
+    @apply badge bg-emerald-100 text-emerald-700;
+  }
+
+  .badge-points {
+    @apply badge bg-amber-100 text-amber-800 font-bold;
+  }
+
+  .badge-expired {
+    @apply badge bg-ink-100 text-ink-400;
+  }
+
+  .countdown-display {
+    @apply font-mono text-sm tabular-nums tracking-tight;
+  }
+
+  .countdown-urgent {
+    @apply font-mono text-sm tabular-nums tracking-tight text-red-600 font-bold;
+  }
+
   .stagger-1 { animation-delay: 0.05s; }
   .stagger-2 { animation-delay: 0.1s; }
   .stagger-3 { animation-delay: 0.15s; }
