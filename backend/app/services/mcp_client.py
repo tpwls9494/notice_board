@@ -1,6 +1,6 @@
 import json
 import time
-from typing import Optional
+import random
 from sqlalchemy.orm import Session
 from app.crud import mcp_server as crud_mcp_server
 from app.crud import mcp_tool as crud_mcp_tool
@@ -9,7 +9,7 @@ from app.crud import mcp_tool as crud_mcp_tool
 class McpPlaygroundService:
     """
     MCP server playground service.
-    Currently provides simulated tool invocation using DB-stored tool definitions.
+    Currently provides simulated tool invocation using DB-stored sample outputs.
     """
 
     async def connect(self, db: Session, server_id: int) -> dict:
@@ -46,17 +46,27 @@ class McpPlaygroundService:
         if not tool:
             return {"server_id": server_id, "tool_name": tool_name, "error": f"Tool '{tool_name}' not found"}
 
+        # sample_output이 있으면 파싱하여 반환, 없으면 기본 메시지
+        if tool.sample_output:
+            try:
+                result = json.loads(tool.sample_output)
+            except json.JSONDecodeError:
+                result = {"content": [{"type": "text", "text": tool.sample_output}]}
+        else:
+            result = {
+                "content": [
+                    {"type": "text", "text": f"[Simulated] Tool '{tool_name}' executed with args: {json.dumps(arguments, ensure_ascii=False)}"}
+                ]
+            }
+
+        # 시뮬레이션 딜레이 (50-200ms)
+        delay = random.uniform(0.05, 0.2)
+        time.sleep(delay)
+
         elapsed = (time.time() - start_time) * 1000
         return {
             "server_id": server_id,
             "tool_name": tool_name,
-            "result": {
-                "content": [
-                    {
-                        "type": "text",
-                        "text": f"[Simulated] Tool '{tool_name}' executed successfully with args: {json.dumps(arguments, ensure_ascii=False)}",
-                    }
-                ]
-            },
+            "result": result,
             "execution_time_ms": round(elapsed, 2),
         }

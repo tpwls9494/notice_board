@@ -11,6 +11,7 @@ class McpTool(Base):
     name = Column(String(100), nullable=False, index=True)
     description = Column(Text)
     input_schema = Column(Text)
+    sample_output = Column(Text)
     server_id = Column(Integer, ForeignKey("mcp_servers.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

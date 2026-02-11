@@ -9,8 +9,10 @@ from app.models.mcp_server import McpServer
 from app.models.mcp_tool import McpTool
 from app.models.mcp_review import McpReview
 from app.models.mcp_install_guide import McpInstallGuide
+from app.models.playground_usage import PlaygroundUsage
 
 __all__ = [
     "User", "Post", "Comment", "Category", "Like", "File",
     "McpCategory", "McpServer", "McpTool", "McpReview", "McpInstallGuide",
+    "PlaygroundUsage",
 ]

@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -15,7 +16,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost"
 
     # GitHub API (optional, for higher rate limits)
-    GITHUB_TOKEN: str | None = None
+    GITHUB_TOKEN: Optional[str] = None
 
 
 settings = Settings()

@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 
 
@@ -25,3 +26,14 @@ class PlaygroundInvokeResponse(BaseModel):
     result: dict | list | str | None = None
     error: str | None = None
     execution_time_ms: float | None = None
+
+
+class PlaygroundUsageResponse(BaseModel):
+    id: int
+    server_id: int | None
+    tool_name: str
+    execution_time_ms: float | None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

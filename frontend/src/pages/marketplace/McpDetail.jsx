@@ -83,6 +83,7 @@ function McpDetail() {
 
   const tabs = [
     { key: 'description', label: '설명' },
+    ...(server.demo_video_url ? [{ key: 'demo', label: '데모' }] : []),
     { key: 'tools', label: `도구 (${server.tools?.length || 0})` },
     { key: 'install', label: '설치 가이드' },
     { key: 'reviews', label: `리뷰 (${server.review_count || 0})` },
@@ -203,6 +204,24 @@ function McpDetail() {
               <div className="prose prose-ink max-w-none text-ink-800 leading-relaxed whitespace-pre-wrap">
                 {server.github_readme || server.description}
               </div>
+            </div>
+          )}
+
+          {/* Demo Tab */}
+          {activeTab === 'demo' && server.demo_video_url && (
+            <div className="animate-fade-in">
+              <div className="aspect-video rounded-xl overflow-hidden bg-ink-950">
+                <iframe
+                  src={server.demo_video_url}
+                  className="w-full h-full"
+                  allowFullScreen
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  title={`${server.name} 데모 영상`}
+                />
+              </div>
+              <p className="text-sm text-ink-500 mt-3 text-center">
+                이 MCP 서버의 사용 방법을 확인하세요
+              </p>
             </div>
           )}
 

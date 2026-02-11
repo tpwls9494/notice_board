@@ -119,6 +119,7 @@ export const mcpServersAPI = {
   updateServer: (id, data) => api.put(`/mcp-servers/${id}`, data),
   deleteServer: (id) => api.delete(`/mcp-servers/${id}`),
   syncGithub: (id) => api.post(`/mcp-servers/${id}/sync-github`),
+  syncGithubAll: () => api.post('/mcp-servers/sync-github-all'),
   getTools: (id) => api.get(`/mcp-servers/${id}/tools`),
   createTool: (id, data) => api.post(`/mcp-servers/${id}/tools`, data),
   getGuides: (id) => api.get(`/mcp-servers/${id}/guides`),
@@ -139,6 +140,8 @@ export const mcpPlaygroundAPI = {
   connect: (serverId) => api.post('/mcp-playground/connect', { server_id: serverId }),
   invoke: (serverId, toolName, args = {}) =>
     api.post('/mcp-playground/invoke', { server_id: serverId, tool_name: toolName, arguments: args }),
+  getUsageHistory: (page = 1, pageSize = 20) =>
+    api.get(`/mcp-playground/usage-history?page=${page}&page_size=${pageSize}`),
 };
 
 export default api;

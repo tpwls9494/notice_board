@@ -13,6 +13,7 @@ from app.crud import mcp_server as crud_mcp_server
 from app.crud import mcp_tool as crud_mcp_tool
 from app.crud import mcp_install_guide as crud_mcp_install_guide
 from app.services.github import GitHubService
+from app.services.github_sync import sync_all_github_stats
 from app.core.config import settings
 
 router = APIRouter()
@@ -33,6 +34,7 @@ def _build_server_response(server) -> McpServerResponse:
         category_id=server.category_id,
         is_featured=server.is_featured,
         is_verified=server.is_verified,
+        demo_video_url=server.demo_video_url,
         avg_rating=server.avg_rating or 0.0,
         review_count=server.review_count or 0,
         created_by=server.created_by,
@@ -72,6 +74,20 @@ def get_mcp_servers(
         "page_size": page_size,
         "servers": [_build_server_response(s) for s in servers],
     }
+
+
+@router.post("/sync-github-all")
+async def sync_all_github(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+    await sync_all_github_stats(db)
+    return {"status": "ok", "message": "GitHub sync completed"}
 
 
 @router.get("/{server_id}", response_model=McpServerResponse)

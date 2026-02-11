@@ -1,10 +1,15 @@
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1 import auth, posts, comments, categories, likes, files
 from app.api.v1 import mcp_servers, mcp_categories, mcp_reviews, mcp_playground
 from app.db.base import Base, engine
+from app.db.session import SessionLocal
 from app.core.config import settings
-from app.models import McpCategory, McpServer, McpTool, McpReview, McpInstallGuide  # noqa: F401
+from app.models import McpCategory, McpServer, McpTool, McpReview, McpInstallGuide, PlaygroundUsage  # noqa: F401
+from app.services.github_sync import sync_all_github_stats
+
+logger = logging.getLogger(__name__)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -38,6 +43,17 @@ app.include_router(mcp_categories.router, prefix="/api/v1/mcp-categories", tags=
 app.include_router(mcp_servers.router, prefix="/api/v1/mcp-servers", tags=["mcp-servers"])
 app.include_router(mcp_reviews.router, prefix="/api/v1/mcp-reviews", tags=["mcp-reviews"])
 app.include_router(mcp_playground.router, prefix="/api/v1/mcp-playground", tags=["mcp-playground"])
+
+
+@app.on_event("startup")
+async def startup_sync_github():
+    db = SessionLocal()
+    try:
+        await sync_all_github_stats(db)
+    except Exception as e:
+        logger.warning(f"GitHub sync on startup failed: {e}")
+    finally:
+        db.close()
 
 
 @app.get("/")

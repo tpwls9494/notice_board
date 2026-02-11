@@ -6,6 +6,7 @@ class McpToolBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     input_schema: str | None = None
+    sample_output: str | None = None
 
 
 class McpToolCreate(McpToolBase):
@@ -44,6 +45,7 @@ class McpServerBase(BaseModel):
     install_command: str | None = None
     package_name: str | None = Field(None, max_length=200)
     category_id: int | None = None
+    demo_video_url: str | None = Field(None, max_length=500)
 
 
 class McpServerCreate(McpServerBase):
@@ -63,6 +65,7 @@ class McpServerUpdate(BaseModel):
     category_id: int | None = None
     is_featured: bool | None = None
     is_verified: bool | None = None
+    demo_video_url: str | None = Field(None, max_length=500)
 
 
 class McpServerResponse(McpServerBase):

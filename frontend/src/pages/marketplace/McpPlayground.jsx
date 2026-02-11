@@ -180,6 +180,29 @@ function McpPlayground() {
         </div>
       </div>
 
+      {/* Demo video + Usage info */}
+      {connectionStatus === 'connected' && (() => {
+        const currentServer = servers.find(s => s.id === parseInt(selectedServerId));
+        return currentServer?.demo_video_url ? (
+          <div className="card p-4 mb-6 flex items-center gap-3">
+            <svg className="w-5 h-5 text-ink-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
+            </svg>
+            <span className="text-sm text-ink-600">사용법이 궁금하다면</span>
+            <Link to={`/servers/${currentServer.id}`} className="text-sm font-medium text-ink-900 underline underline-offset-2">
+              데모 영상 보기
+            </Link>
+            <div className="ml-auto flex items-center gap-2">
+              <span className="badge-default text-xs">무료</span>
+            </div>
+          </div>
+        ) : (
+          <div className="card p-4 mb-6 flex items-center justify-end">
+            <span className="badge-default text-xs">무료</span>
+          </div>
+        );
+      })()}
+
       {/* Main Playground Area */}
       {connectionStatus === 'connected' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
