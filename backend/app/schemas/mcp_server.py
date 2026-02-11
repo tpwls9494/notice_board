@@ -46,6 +46,7 @@ class McpServerBase(BaseModel):
     package_name: str | None = Field(None, max_length=200)
     category_id: int | None = None
     demo_video_url: str | None = Field(None, max_length=500)
+    showcase_data: str | None = None
 
 
 class McpServerCreate(McpServerBase):
@@ -66,6 +67,7 @@ class McpServerUpdate(BaseModel):
     is_featured: bool | None = None
     is_verified: bool | None = None
     demo_video_url: str | None = Field(None, max_length=500)
+    showcase_data: str | None = None
 
 
 class McpServerResponse(McpServerBase):

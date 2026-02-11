@@ -35,6 +35,7 @@ def _build_server_response(server) -> McpServerResponse:
         is_featured=server.is_featured,
         is_verified=server.is_verified,
         demo_video_url=server.demo_video_url,
+        showcase_data=server.showcase_data,
         avg_rating=server.avg_rating or 0.0,
         review_count=server.review_count or 0,
         created_by=server.created_by,
@@ -42,7 +43,7 @@ def _build_server_response(server) -> McpServerResponse:
         category_name=server.category.name if server.category else None,
         created_at=server.created_at,
         updated_at=server.updated_at,
-        tools=[McpToolResponse(id=t.id, name=t.name, description=t.description, input_schema=t.input_schema) for t in server.tools],
+        tools=[McpToolResponse(id=t.id, name=t.name, description=t.description, input_schema=t.input_schema, sample_output=t.sample_output) for t in server.tools],
         install_guides=[McpInstallGuideResponse(id=g.id, client_name=g.client_name, config_json=g.config_json, instructions=g.instructions) for g in server.install_guides],
     )
 
@@ -224,7 +225,7 @@ def get_server_tools(
             detail="MCP server not found",
         )
     tools = crud_mcp_tool.get_tools_by_server(db, server_id)
-    return [McpToolResponse(id=t.id, name=t.name, description=t.description, input_schema=t.input_schema) for t in tools]
+    return [McpToolResponse(id=t.id, name=t.name, description=t.description, input_schema=t.input_schema, sample_output=t.sample_output) for t in tools]
 
 
 @router.post("/{server_id}/tools", response_model=McpToolResponse, status_code=status.HTTP_201_CREATED)
@@ -250,7 +251,7 @@ def create_server_tool(
     db_tool = crud_mcp_tool.create_mcp_tool(
         db, name=tool.name, description=tool.description, input_schema=tool.input_schema, server_id=server_id,
     )
-    return McpToolResponse(id=db_tool.id, name=db_tool.name, description=db_tool.description, input_schema=db_tool.input_schema)
+    return McpToolResponse(id=db_tool.id, name=db_tool.name, description=db_tool.description, input_schema=db_tool.input_schema, sample_output=db_tool.sample_output)
 
 
 # --- Install guides sub-resource ---

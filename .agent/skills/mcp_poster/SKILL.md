@@ -29,16 +29,18 @@ This skill allows the Agent to post articles or updates about MCP directly to th
         }
         ```
 
+
 3.  **Run the Posting Script**:
     -   When running outside the Docker container (e.g. from the terminal), you must override `DATABASE_URL` to point to `localhost`.
+    -   To post as a random user instead of the bot, add the `--random-author` flag.
     -   Command:
         ```bash
         export DATABASE_URL=postgresql://postgres:password@localhost:5432/company_board
-        cd backend && python3 -m app.create_mcp_post --file ../temp_mcp_post.json
+        cd backend && python3 -m app.create_mcp_post --file ../temp_mcp_post.json --random-author
         ```
 
 4.  **Confirm Success**:
-    -   The script will output `Successfully created post: Title (ID: X)`.
+    -   The script will output `Successfully created post: Title (ID: X) by username`.
     -   Clean up the temporary file.
 
 ## Example Usage

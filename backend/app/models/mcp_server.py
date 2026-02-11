@@ -27,6 +27,7 @@ class McpServer(Base):
     is_featured = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=False)
     demo_video_url = Column(String(500))
+    showcase_data = Column(Text)  # JSON: highlights, use_cases, scenarios
 
     # Cached stats
     avg_rating = Column(Float, default=0.0)
