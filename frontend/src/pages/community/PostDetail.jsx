@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
-import { postsAPI, commentsAPI, likesAPI, filesAPI } from '../services/api';
-import useAuthStore from '../stores/authStore';
+import { postsAPI, commentsAPI, likesAPI, filesAPI } from '../../services/api';
+import useAuthStore from '../../stores/authStore';
 
 function PostDetail() {
   const { id } = useParams();
@@ -32,7 +32,7 @@ function PostDetail() {
     mutationFn: () => postsAPI.deletePost(id),
     onSuccess: () => {
       alert('게시글이 삭제되었습니다.');
-      navigate('/');
+      navigate('/community');
     },
   });
 
@@ -147,7 +147,7 @@ function PostDetail() {
     <div className="max-w-4xl mx-auto animate-fade-up">
       {/* Back Navigation */}
       <Link
-        to="/"
+        to="/community"
         className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
         style={{ transition: 'color 0.2s ease-out' }}
       >
@@ -174,7 +174,7 @@ function PostDetail() {
             {(isAuthor || isAdmin) && (
               <div className="flex items-center gap-1 flex-shrink-0">
                 <Link
-                  to={`/posts/${id}/edit`}
+                  to={`/community/posts/${id}/edit`}
                   className="btn-ghost text-sm"
                 >
                   수정

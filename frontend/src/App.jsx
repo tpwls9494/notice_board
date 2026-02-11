@@ -4,9 +4,14 @@ import useAuthStore from './stores/authStore'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Register from './pages/Register'
-import PostList from './pages/PostList'
-import PostDetail from './pages/PostDetail'
-import PostForm from './pages/PostForm'
+// Marketplace
+import McpList from './pages/marketplace/McpList'
+import McpDetail from './pages/marketplace/McpDetail'
+import McpPlayground from './pages/marketplace/McpPlayground'
+// Community
+import PostList from './pages/community/PostList'
+import PostDetail from './pages/community/PostDetail'
+import PostForm from './pages/community/PostForm'
 
 function ProtectedRoute({ children }) {
   const token = useAuthStore((state) => state.token)
@@ -40,10 +45,17 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<PostList />} />
-        <Route path="posts/:id" element={<PostDetail />} />
-        <Route path="posts/new" element={<PostForm />} />
-        <Route path="posts/:id/edit" element={<PostForm />} />
+        {/* Marketplace (default home) */}
+        <Route index element={<McpList />} />
+        <Route path="servers/:id" element={<McpDetail />} />
+        <Route path="playground" element={<McpPlayground />} />
+        <Route path="playground/:serverId" element={<McpPlayground />} />
+
+        {/* Community (existing board, moved) */}
+        <Route path="community" element={<PostList />} />
+        <Route path="community/posts/:id" element={<PostDetail />} />
+        <Route path="community/posts/new" element={<PostForm />} />
+        <Route path="community/posts/:id/edit" element={<PostForm />} />
       </Route>
     </Routes>
   )

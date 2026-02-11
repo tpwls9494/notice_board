@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { postsAPI } from '../services/api';
+import { postsAPI } from '../../services/api';
 import { useState, useEffect } from 'react';
-import useCategoriesStore from '../stores/categoriesStore';
+import useCategoriesStore from '../../stores/categoriesStore';
 
 function PostList() {
   const [page, setPage] = useState(1);
@@ -67,7 +67,7 @@ function PostList() {
         <div className="flex items-end justify-between mb-6">
           <div>
             <h1 className="font-display text-3xl font-bold text-ink-950 tracking-tight text-balance">
-              게시판
+              커뮤니티
             </h1>
             <p className="mt-1 text-sm text-ink-500">
               전체 <span className="font-semibold text-ink-700">{total}</span>개의 게시글
@@ -166,7 +166,7 @@ function PostList() {
           posts.map((post, index) => (
             <Link
               key={post.id}
-              to={`/posts/${post.id}`}
+              to={`/community/posts/${post.id}`}
               className={`card-hover block opacity-0 animate-fade-up stagger-${Math.min(index + 1, 8)}`}
             >
               <div className="px-5 py-4 flex items-center gap-4">

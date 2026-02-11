@@ -5,6 +5,8 @@ function Layout() {
   const { user, logout } = useAuthStore()
   const location = useLocation()
 
+  const isCommunity = location.pathname.startsWith('/community')
+
   return (
     <div className="min-h-screen bg-paper-100 bg-noise">
       {/* Navigation */}
@@ -21,9 +23,33 @@ function Layout() {
                 <span className="text-paper-50 font-display font-bold text-sm">AG</span>
               </div>
               <span className="font-display text-lg font-bold text-ink-950 tracking-tight">
-                사내 게시판
+                Antigravity
               </span>
             </Link>
+
+            {/* Navigation Tabs */}
+            <div className="hidden sm:flex items-center gap-1">
+              <Link
+                to="/"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                  !isCommunity
+                    ? 'bg-ink-100 text-ink-900'
+                    : 'text-ink-500 hover:text-ink-700 hover:bg-ink-50'
+                }`}
+              >
+                마켓플레이스
+              </Link>
+              <Link
+                to="/community"
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                  isCommunity
+                    ? 'bg-ink-100 text-ink-900'
+                    : 'text-ink-500 hover:text-ink-700 hover:bg-ink-50'
+                }`}
+              >
+                커뮤니티
+              </Link>
+            </div>
 
             {/* Right Actions */}
             <div className="flex items-center gap-2">
@@ -38,16 +64,18 @@ function Layout() {
                 </span>
               </div>
 
-              <Link
-                to="/posts/new"
-                className="btn-primary text-sm flex items-center gap-1.5"
-                aria-label="새 글 쓰기"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                <span className="hidden sm:inline">글쓰기</span>
-              </Link>
+              {isCommunity && (
+                <Link
+                  to="/community/posts/new"
+                  className="btn-primary text-sm flex items-center gap-1.5"
+                  aria-label="새 글 쓰기"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  <span className="hidden sm:inline">글쓰기</span>
+                </Link>
+              )}
 
               <button
                 onClick={logout}
@@ -56,6 +84,30 @@ function Layout() {
                 로그아웃
               </button>
             </div>
+          </div>
+
+          {/* Mobile Tabs */}
+          <div className="flex sm:hidden items-center gap-1 pb-2 -mt-1">
+            <Link
+              to="/"
+              className={`flex-1 text-center px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                !isCommunity
+                  ? 'bg-ink-100 text-ink-900'
+                  : 'text-ink-500'
+              }`}
+            >
+              마켓플레이스
+            </Link>
+            <Link
+              to="/community"
+              className={`flex-1 text-center px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
+                isCommunity
+                  ? 'bg-ink-100 text-ink-900'
+                  : 'text-ink-500'
+              }`}
+            >
+              커뮤니티
+            </Link>
           </div>
         </div>
       </nav>
@@ -69,7 +121,7 @@ function Layout() {
       <footer className="border-t border-subtle mt-auto">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 py-6">
           <p className="text-center text-xs text-ink-400 tracking-wide">
-            Antigravity Internal Board
+            Antigravity MCP Marketplace
           </p>
         </div>
       </footer>

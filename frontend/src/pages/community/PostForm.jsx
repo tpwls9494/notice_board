@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { postsAPI } from '../services/api'
-import useCategoriesStore from '../stores/categoriesStore'
+import { postsAPI } from '../../services/api'
+import useCategoriesStore from '../../stores/categoriesStore'
 
 function PostForm() {
   const { id } = useParams()
@@ -37,7 +37,7 @@ function PostForm() {
     mutationFn: (data) => postsAPI.createPost(data),
     onSuccess: (response) => {
       alert('게시글이 작성되었습니다.')
-      navigate(`/posts/${response.data.id}`)
+      navigate(`/community/posts/${response.data.id}`)
     },
     onError: (error) => {
       alert(error.response?.data?.detail || '게시글 작성에 실패했습니다.')
@@ -48,7 +48,7 @@ function PostForm() {
     mutationFn: (data) => postsAPI.updatePost(id, data),
     onSuccess: () => {
       alert('게시글이 수정되었습니다.')
-      navigate(`/posts/${id}`)
+      navigate(`/community/posts/${id}`)
     },
     onError: (error) => {
       alert(error.response?.data?.detail || '게시글 수정에 실패했습니다.')
@@ -82,7 +82,7 @@ function PostForm() {
     <div className="max-w-4xl mx-auto animate-fade-up">
       {/* Back Navigation */}
       <Link
-        to={isEdit ? `/posts/${id}` : '/'}
+        to={isEdit ? `/community/posts/${id}` : '/community'}
         className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
         style={{ transition: 'color 0.2s ease-out' }}
       >
