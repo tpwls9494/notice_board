@@ -12,6 +12,7 @@ class PlaygroundConnectResponse(BaseModel):
     status: str
     tools: list[dict] = []
     error: str | None = None
+    is_real_connection: bool = False
 
 
 class PlaygroundInvokeRequest(BaseModel):

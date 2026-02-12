@@ -18,5 +18,11 @@ class Settings(BaseSettings):
     # GitHub API (optional, for higher rate limits)
     GITHUB_TOKEN: Optional[str] = None
 
+    # MCP Playground settings
+    MCP_ALLOWED_SERVERS: str = "fetch-server"  # 실제 연결 허용 서버 slug (쉼표 구분)
+    MCP_CONNECT_TIMEOUT: int = 30  # 연결 타임아웃 (초)
+    MCP_INVOKE_TIMEOUT: int = 60  # tool 실행 타임아웃 (초)
+    MCP_SESSION_TTL: int = 300  # 유휴 세션 TTL (초)
+
 
 settings = Settings()

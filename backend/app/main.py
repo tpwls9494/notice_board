@@ -56,6 +56,12 @@ async def startup_sync_github():
         db.close()
 
 
+@app.on_event("shutdown")
+async def shutdown_mcp_connections():
+    from app.services.mcp_client import playground_service
+    await playground_service.shutdown()
+
+
 @app.get("/")
 def root():
     return {"message": "Antigravity MCP Marketplace API", "version": "2.0.0"}

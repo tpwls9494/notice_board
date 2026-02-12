@@ -608,8 +608,8 @@ def seed():
                 "short_description": "AI가 웹 콘텐츠를 가져와 분석하는 MCP 서버",
                 "github_url": "https://github.com/modelcontextprotocol/servers",
                 "github_stars": 78499,
-                "install_command": "npx -y @modelcontextprotocol/server-fetch",
-                "package_name": "@modelcontextprotocol/server-fetch",
+                "install_command": "uvx mcp-server-fetch",
+                "package_name": "mcp-server-fetch",
                 "is_featured": False,
                 "is_verified": True,
                 "category_slug": "web",
@@ -653,10 +653,12 @@ def seed():
             existing = db.query(McpServer).filter(McpServer.slug == server_data["slug"]).first()
 
             if existing:
-                # Update showcase_data and description on existing servers
+                # Update existing servers
                 existing.showcase_data = server_data.get("showcase_data")
                 existing.description = server_data["description"]
                 existing.short_description = server_data.get("short_description")
+                existing.install_command = server_data.get("install_command")
+                existing.package_name = server_data.get("package_name")
                 db.flush()
                 continue
 
