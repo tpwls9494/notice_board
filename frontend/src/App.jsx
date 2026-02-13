@@ -50,28 +50,55 @@ function App() {
         }}
       />
       <Routes>
+        {/* Standalone auth pages (fallback) */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }
-        >
-          {/* Community (default home) */}
+        {/* Main app with public Layout */}
+        <Route path="/" element={<Layout />}>
+          {/* Community (public - anyone can view) */}
           <Route index element={<PostList />} />
           <Route path="posts/:id" element={<PostDetail />} />
-          <Route path="posts/new" element={<PostForm />} />
-          <Route path="posts/:id/edit" element={<PostForm />} />
 
-          {/* Marketplace */}
+          {/* Community (protected - login required) */}
+          <Route
+            path="posts/new"
+            element={
+              <ProtectedRoute>
+                <PostForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="posts/:id/edit"
+            element={
+              <ProtectedRoute>
+                <PostForm />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Marketplace (public - anyone can view) */}
           <Route path="marketplace" element={<McpList />} />
           <Route path="marketplace/servers/:id" element={<McpDetail />} />
-          <Route path="marketplace/playground" element={<McpPlayground />} />
-          <Route path="marketplace/playground/:serverId" element={<McpPlayground />} />
+
+          {/* Marketplace (protected - login required) */}
+          <Route
+            path="marketplace/playground"
+            element={
+              <ProtectedRoute>
+                <McpPlayground />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="marketplace/playground/:serverId"
+            element={
+              <ProtectedRoute>
+                <McpPlayground />
+              </ProtectedRoute>
+            }
+          />
         </Route>
       </Routes>
     </ConfirmProvider>

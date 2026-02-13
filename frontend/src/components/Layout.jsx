@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
+import LoginModal from './LoginModal'
 
 function Layout() {
-  const { user, logout } = useAuthStore()
+  const { user, logout, token } = useAuthStore()
   const location = useLocation()
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
   const isMarketplace = location.pathname.startsWith('/marketplace')
 
@@ -53,36 +56,57 @@ function Layout() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2 z-10">
-              <div className="hidden sm:flex items-center mr-2 px-3 py-1.5 bg-ink-50 rounded-full">
-                <div className="w-5 h-5 rounded-full bg-ink-300 flex items-center justify-center mr-2">
-                  <span className="text-[10px] font-bold text-ink-700">
-                    {(user?.username || '?')[0].toUpperCase()}
-                  </span>
-                </div>
-                <span className="text-sm font-medium text-ink-700">
-                  {user?.username || '사용자'}
-                </span>
-              </div>
+              {user && token ? (
+                <>
+                  {/* 로그인 상태 */}
+                  <div className="hidden sm:flex items-center mr-2 px-3 py-1.5 bg-ink-50 rounded-full">
+                    <div className="w-5 h-5 rounded-full bg-ink-300 flex items-center justify-center mr-2">
+                      <span className="text-[10px] font-bold text-ink-700">
+                        {(user?.username || '?')[0].toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-ink-700">
+                      {user?.username || '사용자'}
+                    </span>
+                  </div>
 
-              {!isMarketplace && (
-                <Link
-                  to="/posts/new"
-                  className="btn-primary text-sm flex items-center gap-1.5"
-                  aria-label="새 글 쓰기"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                  </svg>
-                  <span className="hidden sm:inline">글쓰기</span>
-                </Link>
+                  {!isMarketplace && (
+                    <Link
+                      to="/posts/new"
+                      className="btn-primary text-sm flex items-center gap-1.5"
+                      aria-label="새 글 쓰기"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      <span className="hidden sm:inline">글쓰기</span>
+                    </Link>
+                  )}
+
+                  <button
+                    onClick={logout}
+                    className="btn-ghost text-sm text-ink-500"
+                  >
+                    로그아웃
+                  </button>
+                </>
+              ) : (
+                <>
+                  {/* 비로그인 상태 */}
+                  <button
+                    onClick={() => setShowLoginModal(true)}
+                    className="btn-ghost text-sm"
+                  >
+                    로그인
+                  </button>
+                  <Link
+                    to="/register"
+                    className="btn-secondary text-sm"
+                  >
+                    회원가입
+                  </Link>
+                </>
               )}
-
-              <button
-                onClick={logout}
-                className="btn-ghost text-sm text-ink-500"
-              >
-                로그아웃
-              </button>
             </div>
           </div>
 
@@ -125,6 +149,13 @@ function Layout() {
           </p>
         </div>
       </footer>
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSuccess={() => setShowLoginModal(false)}
+      />
     </div>
   )
 }

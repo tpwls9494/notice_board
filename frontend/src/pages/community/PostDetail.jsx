@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { postsAPI, commentsAPI, likesAPI, filesAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
 import { useConfirm } from '../../components/ConfirmModal';
+import LoginModal from '../../components/LoginModal';
 
 function PostDetail() {
   const { id } = useParams();
@@ -14,6 +15,7 @@ function PostDetail() {
   const [comment, setComment] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const confirm = useConfirm();
 
   const { data: postData, isLoading: postLoading } = useQuery({
@@ -105,8 +107,7 @@ function PostDetail() {
 
   const handleLikeToggle = () => {
     if (!token) {
-      toast.error('로그인이 필요합니다.');
-      navigate('/login');
+      setShowLoginModal(true);
       return;
     }
 
@@ -321,7 +322,7 @@ function PostDetail() {
           </h2>
 
           {/* Comment Form */}
-          {token && (
+          {token ? (
             <form onSubmit={handleCommentSubmit} className="mb-6">
               <textarea
                 value={comment}
@@ -340,6 +341,18 @@ function PostDetail() {
                 </button>
               </div>
             </form>
+          ) : (
+            <div className="mb-6 p-4 bg-ink-50 rounded-xl border border-ink-200 text-center">
+              <p className="text-sm text-ink-600 mb-3">
+                댓글을 작성하려면 로그인이 필요합니다
+              </p>
+              <button
+                onClick={() => setShowLoginModal(true)}
+                className="btn-primary text-sm"
+              >
+                로그인
+              </button>
+            </div>
           )}
 
           {/* Comments List */}
@@ -391,6 +404,12 @@ function PostDetail() {
           )}
         </div>
       </article>
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+      />
     </div>
   );
 }
