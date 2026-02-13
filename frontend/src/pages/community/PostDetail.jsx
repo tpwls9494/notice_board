@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { postsAPI, commentsAPI, likesAPI, filesAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
@@ -17,6 +17,7 @@ function PostDetail() {
   const [uploading, setUploading] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const confirm = useConfirm();
+  const commentInputRef = useRef(null);
 
   const { data: postData, isLoading: postLoading } = useQuery({
     queryKey: ['post', id],
@@ -325,6 +326,7 @@ function PostDetail() {
           {token ? (
             <form onSubmit={handleCommentSubmit} className="mb-6">
               <textarea
+                ref={commentInputRef}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="댓글을 입력하세요&#x2026;"
@@ -407,6 +409,13 @@ function PostDetail() {
       <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
+        onSuccess={() => {
+          setShowLoginModal(false)
+          // 로그인 성공 후 댓글 입력창에 포커스
+          setTimeout(() => {
+            commentInputRef.current?.focus()
+          }, 100)
+        }}
       />
     </div>
   );

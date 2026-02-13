@@ -20,48 +20,25 @@ function Register() {
     const success = await register(email, username, password)
     if (success) {
       toast.success('회원가입 성공! 로그인해주세요.')
-      navigate('/login')
+      navigate('/?login=true')
     }
   }
 
-  return (
-    <div className="min-h-screen flex bg-paper-100 bg-noise">
-      {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-ink-900 relative overflow-hidden items-center justify-center">
-        <div className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}
-        />
-        <div className="relative z-10 text-center px-12 animate-fade-in">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-8 border border-white/10">
-            <span className="font-display text-2xl font-bold text-white">J</span>
-          </div>
-          <h1 className="font-display text-4xl font-bold text-white tracking-tight mb-4 text-balance">
-            함께 만들어가는
-          </h1>
-          <p className="text-ink-400 text-lg leading-relaxed max-w-sm mx-auto">
-            jion의 일원이 되어<br />
-            자유롭게 소통하세요
-          </p>
-          <div className="mt-12 flex items-center justify-center gap-3">
-            <div className="w-2 h-0.5 bg-ink-700 rounded-full" />
-            <div className="w-8 h-0.5 bg-ink-400 rounded-full" />
-            <div className="w-2 h-0.5 bg-ink-600 rounded-full" />
-          </div>
-        </div>
-      </div>
+  const handleLoginClick = (e) => {
+    e.preventDefault()
+    navigate('/?login=true')
+  }
 
-      {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-md animate-fade-up">
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-10">
-            <div className="w-12 h-12 bg-ink-950 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span className="font-display text-lg font-bold text-paper-50">J</span>
-            </div>
-            <h1 className="font-display text-2xl font-bold text-ink-950 text-balance">게시판</h1>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-paper-100 bg-noise px-6 py-12">
+      <div className="w-full max-w-md animate-fade-up">
+        {/* Logo */}
+        <div className="text-center mb-10">
+          <div className="w-12 h-12 bg-ink-950 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <span className="font-display text-lg font-bold text-paper-50">J</span>
           </div>
+          <h1 className="font-display text-2xl font-bold text-ink-950 text-balance">jion</h1>
+        </div>
 
           <div>
             <h2 className="font-display text-2xl font-bold text-ink-950 tracking-tight text-balance">
@@ -172,13 +149,15 @@ function Register() {
 
             <p className="text-center text-sm text-ink-500 mt-6">
               이미 계정이 있으신가요?{' '}
-              <Link to="/login" className="font-semibold text-ink-800 hover:text-ink-950 underline underline-offset-2 transition-colors duration-200">
+              <button
+                onClick={handleLoginClick}
+                className="font-semibold text-ink-800 hover:text-ink-950 underline underline-offset-2 transition-colors duration-200"
+              >
                 로그인
-              </Link>
+              </button>
             </p>
           </form>
         </div>
-      </div>
     </div>
   )
 }

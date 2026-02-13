@@ -1,14 +1,25 @@
-import { useState } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { Outlet, Link, useLocation, useSearchParams } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
 import LoginModal from './LoginModal'
 
 function Layout() {
   const { user, logout, token } = useAuthStore()
   const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [showLoginModal, setShowLoginModal] = useState(false)
 
   const isMarketplace = location.pathname.startsWith('/marketplace')
+
+  // 쿼리 파라미터로 로그인 모달 띄우기
+  useEffect(() => {
+    if (searchParams.get('login') === 'true') {
+      setShowLoginModal(true)
+      // 쿼리 파라미터 제거
+      searchParams.delete('login')
+      setSearchParams(searchParams, { replace: true })
+    }
+  }, [searchParams, setSearchParams])
 
   return (
     <div className="min-h-screen bg-paper-100 bg-noise">
