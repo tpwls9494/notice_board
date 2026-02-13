@@ -8,6 +8,15 @@ from app.models.mcp_category import McpCategory
 from app.models.mcp_server import McpServer
 from app.models.mcp_tool import McpTool
 from app.models.mcp_install_guide import McpInstallGuide
+# Import all models to ensure SQLAlchemy can resolve relationships
+from app.models.user import User  # noqa: F401
+from app.models.post import Post  # noqa: F401
+from app.models.category import Category  # noqa: F401
+from app.models.comment import Comment  # noqa: F401
+from app.models.like import Like  # noqa: F401
+from app.models.file import File  # noqa: F401
+from app.models.bookmark import Bookmark  # noqa: F401
+from app.models.notification import Notification  # noqa: F401
 
 
 # --- Install Guide Templates ---
