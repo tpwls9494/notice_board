@@ -46,6 +46,9 @@ docker compose -f docker-compose.prod.yml up -d
 echo -e "${YELLOW}⏳ Waiting for services to be ready...${NC}"
 sleep 10
 
+echo -e "${YELLOW}🌱 Seeding category data...${NC}"
+docker exec company_board_backend python -m seed_categories || echo -e "${YELLOW}⚠️  Category seeding skipped (might already exist)${NC}"
+
 # Check if services are running
 if docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
     echo -e "${GREEN}✅ Deployment successful!${NC}"

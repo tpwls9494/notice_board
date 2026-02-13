@@ -100,10 +100,15 @@ function PostForm() {
       return
     }
 
+    if (!categoryId) {
+      toast.error('카테고리를 선택해주세요.')
+      return
+    }
+
     const data = {
       title: title.trim(),
       content: content.trim(),
-      category_id: categoryId ? parseInt(categoryId) : null,
+      category_id: parseInt(categoryId),
     }
 
     try {
@@ -187,18 +192,19 @@ function PostForm() {
 
           <div>
             <label htmlFor="category" className="block text-sm font-semibold text-ink-700 mb-2">
-              카테고리
+              카테고리 <span className="text-red-500">*</span>
             </label>
             <select
               id="category"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
               className="input-field"
+              required
             >
-              <option value="">카테고리 선택 (선택사항)</option>
+              <option value="">카테고리를 선택하세요</option>
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
-                  {category.name}
+                  {category.icon ? `${category.icon} ` : ''}{category.name}
                 </option>
               ))}
             </select>

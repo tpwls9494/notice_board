@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 class PostBase(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     content: str = Field(..., min_length=1)
-    category_id: Optional[int] = None
+    category_id: int
 
 
 class PostCreate(PostBase):
