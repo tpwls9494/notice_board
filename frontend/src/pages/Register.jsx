@@ -20,7 +20,6 @@ function Register() {
     const success = await register(email, username, password)
     if (success) {
       toast.success('회원가입 성공! 로그인해주세요.')
-      navigate('/?login=true')
     }
   }
 
