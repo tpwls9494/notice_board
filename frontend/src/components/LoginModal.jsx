@@ -132,17 +132,6 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
               '로그인'
             )}
           </button>
-
-          <p className="text-center text-sm text-ink-500 mt-4">
-            계정이 없으신가요?{' '}
-            <Link
-              to="/register"
-              onClick={onClose}
-              className="font-semibold text-ink-800 hover:text-ink-950 underline underline-offset-2 transition-colors duration-200"
-            >
-              회원가입
-            </Link>
-          </p>
         </form>
       </div>
     </div>

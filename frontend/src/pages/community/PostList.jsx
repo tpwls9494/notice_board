@@ -79,21 +79,6 @@ function PostList() {
           </div>
         </div>
 
-        {/* Anonymous User Banner */}
-        {!token && (
-          <div className="mb-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-sm text-blue-800">
-              지금은 둘러보기 모드입니다. 글을 작성하려면 로그인하세요.
-            </p>
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="btn-primary text-sm whitespace-nowrap"
-            >
-              로그인
-            </button>
-          </div>
-        )}
-
         {/* Search & Filter Bar */}
         <div className="card p-4">
           <div className="flex flex-col sm:flex-row gap-3">

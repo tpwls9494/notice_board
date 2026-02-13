@@ -342,16 +342,14 @@ function PostDetail() {
               </div>
             </form>
           ) : (
-            <div className="mb-6 p-4 bg-ink-50 rounded-xl border border-ink-200 text-center">
-              <p className="text-sm text-ink-600 mb-3">
-                댓글을 작성하려면 로그인이 필요합니다
-              </p>
-              <button
+            <div className="mb-6">
+              <textarea
                 onClick={() => setShowLoginModal(true)}
-                className="btn-primary text-sm"
-              >
-                로그인
-              </button>
+                placeholder="로그인 후 댓글을 작성할 수 있습니다"
+                className="input-field resize-none cursor-pointer"
+                rows="3"
+                readOnly
+              />
             </div>
           )}
 
