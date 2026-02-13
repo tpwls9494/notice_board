@@ -9,6 +9,14 @@ from app.db.base import Base, engine
 from app.db.session import SessionLocal
 from app.core.config import settings
 from app.models import McpCategory, McpServer, McpTool, McpReview, McpInstallGuide, PlaygroundUsage  # noqa: F401
+from app.models.user import User  # noqa: F401
+from app.models.post import Post  # noqa: F401
+from app.models.category import Category  # noqa: F401
+from app.models.comment import Comment  # noqa: F401
+from app.models.like import Like  # noqa: F401
+from app.models.file import File  # noqa: F401
+from app.models.bookmark import Bookmark  # noqa: F401
+from app.models.notification import Notification  # noqa: F401
 from app.services.github_sync import sync_all_github_stats
 
 logger = logging.getLogger(__name__)

@@ -14,6 +14,15 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Engagement features
+    profile_image_url = Column(String(500), nullable=True)
+    bio = Column(String(200), nullable=True)
+    experience_points = Column(Integer, default=0)
+    level = Column(Integer, default=1)
+    badge = Column(String(50), default="초보자")
+
     posts = relationship("Post", back_populates="author", cascade="all, delete-orphan")
     comments = relationship("Comment", back_populates="author", cascade="all, delete-orphan")
     likes = relationship("Like", back_populates="user", cascade="all, delete-orphan")
+    bookmarks = relationship("Bookmark", back_populates="user", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
