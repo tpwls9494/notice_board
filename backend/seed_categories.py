@@ -13,6 +13,14 @@ sys.path.insert(0, str(backend_dir))
 
 from app.db.session import SessionLocal
 from app.models.category import Category
+# Import all models to ensure SQLAlchemy can resolve relationships
+from app.models.user import User  # noqa: F401
+from app.models.post import Post  # noqa: F401
+from app.models.comment import Comment  # noqa: F401
+from app.models.like import Like  # noqa: F401
+from app.models.file import File  # noqa: F401
+from app.models.bookmark import Bookmark  # noqa: F401
+from app.models.notification import Notification  # noqa: F401
 
 
 def seed_categories():

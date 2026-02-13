@@ -8,7 +8,7 @@ function Register() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const { register, isLoading, error } = useAuthStore()
+  const { register, isLoading, error, clearError } = useAuthStore()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
@@ -69,7 +69,10 @@ function Register() {
                 required
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  if (error) clearError()
+                }}
                 className="input-field"
                 placeholder="name@company.com"
               />
@@ -86,7 +89,10 @@ function Register() {
                 required
                 autoComplete="username"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value)
+                  if (error) clearError()
+                }}
                 className="input-field"
                 placeholder="표시될 이름을 입력하세요&#x2026;"
               />
@@ -103,7 +109,10 @@ function Register() {
                 minLength={6}
                 autoComplete="new-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  if (error) clearError()
+                }}
                 className="input-field"
                 placeholder="최소 6자 이상&#x2026;"
               />
@@ -119,7 +128,10 @@ function Register() {
                 required
                 autoComplete="new-password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value)
+                  if (error) clearError()
+                }}
                 className={`input-field ${
                   confirmPassword && password !== confirmPassword
                     ? 'border-red-300 focus:border-red-400 focus:ring-red-200/50'

@@ -78,6 +78,10 @@ const useAuthStore = create((set) => ({
       set({ token: null, user: null });
     }
   },
+
+  clearError: () => {
+    set({ error: null });
+  },
 }));
 
 export default useAuthStore;
