@@ -179,7 +179,7 @@ function McpList() {
           {servers.map((server, index) => (
             <Link
               key={server.id}
-              to={`/servers/${server.id}`}
+              to={`/marketplace/servers/${server.id}`}
               className={`card-hover block opacity-0 animate-fade-up stagger-${Math.min(index + 1, 8)}`}
             >
               <div className="p-5">

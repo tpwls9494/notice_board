@@ -13,12 +13,32 @@ from app.core.security import get_password_hash
 
 def get_or_create_user(db, username="mcp_bot", random_user=False):
     if random_user:
-        # Always create a new random user for variety as requested by user
-        import string
-        def generate_random_string(length=8):
-            return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
-        
-        u_name = f"user_{generate_random_string()}"
+        # Generate realistic English usernames
+        first_parts = [
+            "codingking", "devmaster", "techie", "digitalnomad", "cloudguru",
+            "john_kim", "sarah_lee", "mike_park", "jenny_choi", "alex_jung",
+            "developer", "programmer", "coder", "hacker", "engineer",
+            "david_choi", "emily_park", "chris_lee", "jessica_kim", "ryan_jung",
+            "techbro", "deventhusiast", "codewizard", "bytemaster", "fullstacker",
+            "james_seo", "linda_kang", "kevin_oh", "amy_shin", "eric_han"
+        ]
+
+        second_parts = [
+            "99", "2024", "2025", "pro", "master", "dev", "lab", "hub", "zone",
+            str(random.randint(100, 999)), str(random.randint(10, 99)), "x", "gg"
+        ]
+
+        # 60% chance for combined username, 40% for standalone
+        if random.random() > 0.4:
+            u_name = f"{random.choice(first_parts)}{random.choice(second_parts)}"
+        else:
+            u_name = random.choice(first_parts)
+
+        # If username already exists, add a number
+        existing = db.query(User).filter(User.username == u_name).first()
+        if existing:
+            u_name = f"{u_name}_{random.randint(1, 999)}"
+
         user = User(
             email=f"{u_name}@example.com",
             username=u_name,

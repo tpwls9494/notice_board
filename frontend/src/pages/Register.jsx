@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import useAuthStore from '../stores/authStore'
 
 function Register() {
@@ -13,12 +14,12 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (password !== confirmPassword) {
-      alert('비밀번호가 일치하지 않습니다')
+      toast.error('비밀번호가 일치하지 않습니다')
       return
     }
     const success = await register(email, username, password)
     if (success) {
-      alert('회원가입 성공! 로그인해주세요.')
+      toast.success('회원가입 성공! 로그인해주세요.')
       navigate('/login')
     }
   }
@@ -34,13 +35,13 @@ function Register() {
         />
         <div className="relative z-10 text-center px-12 animate-fade-in">
           <div className="w-16 h-16 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-8 border border-white/10">
-            <span className="font-display text-2xl font-bold text-white">AG</span>
+            <span className="font-display text-2xl font-bold text-white">J</span>
           </div>
           <h1 className="font-display text-4xl font-bold text-white tracking-tight mb-4 text-balance">
             함께 만들어가는
           </h1>
           <p className="text-ink-400 text-lg leading-relaxed max-w-sm mx-auto">
-            Antigravity의 일원이 되어<br />
+            jion의 일원이 되어<br />
             자유롭게 소통하세요
           </p>
           <div className="mt-12 flex items-center justify-center gap-3">
@@ -57,9 +58,9 @@ function Register() {
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-10">
             <div className="w-12 h-12 bg-ink-950 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span className="font-display text-lg font-bold text-paper-50">AG</span>
+              <span className="font-display text-lg font-bold text-paper-50">J</span>
             </div>
-            <h1 className="font-display text-2xl font-bold text-ink-950 text-balance">사내 게시판</h1>
+            <h1 className="font-display text-2xl font-bold text-ink-950 text-balance">게시판</h1>
           </div>
 
           <div>
@@ -95,6 +96,7 @@ function Register() {
                 className="input-field"
                 placeholder="name@company.com"
               />
+              <p className="text-xs text-ink-400 mt-1.5">이메일 형식으로 입력해주세요 (예: user@example.com)</p>
             </div>
 
             <div>

@@ -1,6 +1,6 @@
-# 사내 게시판
+# 게시판
 
-Antigravity 1000명 규모의 사내 게시판 시스템입니다.
+jion의 1000명 규모의 게시판 시스템입니다.
 
 ## 기술 스택
 
@@ -38,7 +38,7 @@ Antigravity 1000명 규모의 사내 게시판 시스템입니다.
 - **색상**: 순수 뉴트럴 그레이 스케일 (Tailwind neutral)
 - **서체**: Pretendard (한/영 통합 Sans-serif)
 - **그림자**: 저 불투명도 뉴트럴 소프트 섀도
-- **접근성**: `prefers-reduced-motion` 지원, `aria-hidden` / `aria-label` / `role="alert"` 적용
+- **접근성**: `prefers-reduced-motion` 지원, `aria-hidden` / `aria-label` 적용
 - **가이드라인**: [Web Interface Guidelines](https://github.com/vercel-labs/web-interface-guidelines) 준수
 
 ## 설치 및 실행

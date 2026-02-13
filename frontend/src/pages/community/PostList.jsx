@@ -166,7 +166,7 @@ function PostList() {
           posts.map((post, index) => (
             <Link
               key={post.id}
-              to={`/community/posts/${post.id}`}
+              to={`/posts/${post.id}`}
               className={`card-hover block opacity-0 animate-fade-up stagger-${Math.min(index + 1, 8)}`}
             >
               <div className="px-5 py-4 flex items-center gap-4">

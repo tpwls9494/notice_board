@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { postsAPI, commentsAPI, likesAPI, filesAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
+import { useConfirm } from '../../components/ConfirmModal';
 
 function PostDetail() {
   const { id } = useParams();
@@ -12,6 +14,7 @@ function PostDetail() {
   const [comment, setComment] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const confirm = useConfirm();
 
   const { data: postData, isLoading: postLoading } = useQuery({
     queryKey: ['post', id],
@@ -31,8 +34,8 @@ function PostDetail() {
   const deletePostMutation = useMutation({
     mutationFn: () => postsAPI.deletePost(id),
     onSuccess: () => {
-      alert('게시글이 삭제되었습니다.');
-      navigate('/community');
+      toast.success('게시글이 삭제되었습니다.');
+      navigate('/');
     },
   });
 
@@ -57,7 +60,7 @@ function PostDetail() {
       queryClient.invalidateQueries(['post', id]);
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || '좋아요에 실패했습니다.');
+      toast.error(error.response?.data?.detail || '좋아요에 실패했습니다.');
     },
   });
 
@@ -72,7 +75,7 @@ function PostDetail() {
     mutationFn: (fileId) => filesAPI.deleteFile(fileId),
     onSuccess: () => {
       queryClient.invalidateQueries(['files', id]);
-      alert('파일이 삭제되었습니다.');
+      toast.success('파일이 삭제되었습니다.');
     },
   });
 
@@ -88,8 +91,8 @@ function PostDetail() {
   const post = postData?.data;
   const files = filesData?.data || [];
 
-  const handleDelete = () => {
-    if (window.confirm('정말 삭제하시겠습니까?')) {
+  const handleDelete = async () => {
+    if (await confirm({ title: '게시글 삭제', message: '정말 삭제하시겠습니까?', confirmText: '삭제' })) {
       deletePostMutation.mutate();
     }
   };
@@ -102,7 +105,7 @@ function PostDetail() {
 
   const handleLikeToggle = () => {
     if (!token) {
-      alert('로그인이 필요합니다.');
+      toast.error('로그인이 필요합니다.');
       navigate('/login');
       return;
     }
@@ -117,7 +120,7 @@ function PostDetail() {
   const handleFileUpload = async () => {
     if (!selectedFile) return;
     if (!token) {
-      alert('로그인이 필요합니다.');
+      toast.error('로그인이 필요합니다.');
       return;
     }
 
@@ -126,16 +129,16 @@ function PostDetail() {
       await filesAPI.uploadFile(id, selectedFile);
       queryClient.invalidateQueries(['files', id]);
       setSelectedFile(null);
-      alert('파일이 업로드되었습니다.');
+      toast.success('파일이 업로드되었습니다.');
     } catch (error) {
-      alert(error.response?.data?.detail || '파일 업로드에 실패했습니다.');
+      toast.error(error.response?.data?.detail || '파일 업로드에 실패했습니다.');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleFileDelete = (fileId) => {
-    if (window.confirm('파일을 삭제하시겠습니까?')) {
+  const handleFileDelete = async (fileId) => {
+    if (await confirm({ title: '파일 삭제', message: '파일을 삭제하시겠습니까?', confirmText: '삭제' })) {
       deleteFileMutation.mutate(fileId);
     }
   };
@@ -147,7 +150,7 @@ function PostDetail() {
     <div className="max-w-4xl mx-auto animate-fade-up">
       {/* Back Navigation */}
       <Link
-        to="/community"
+        to="/"
         className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
         style={{ transition: 'color 0.2s ease-out' }}
       >
@@ -174,7 +177,7 @@ function PostDetail() {
             {(isAuthor || isAdmin) && (
               <div className="flex items-center gap-1 flex-shrink-0">
                 <Link
-                  to={`/community/posts/${id}/edit`}
+                  to={`/posts/${id}/edit`}
                   className="btn-ghost text-sm"
                 >
                   수정
@@ -367,8 +370,8 @@ function PostDetail() {
                     </div>
                     {(user?.id === comment.user_id || isAdmin) && (
                       <button
-                        onClick={() => {
-                          if (window.confirm('댓글을 삭제하시겠습니까?')) {
+                        onClick={async () => {
+                          if (await confirm({ title: '댓글 삭제', message: '댓글을 삭제하시겠습니까?', confirmText: '삭제' })) {
                             deleteCommentMutation.mutate(comment.id);
                           }
                         }}

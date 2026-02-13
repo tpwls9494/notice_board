@@ -16,8 +16,20 @@ const useAuthStore = create((set) => ({
       set({ token: access_token, isLoading: false });
       return true;
     } catch (error) {
+      let errorMessage = '로그인에 실패했습니다';
+
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.status === 401) {
+        errorMessage = '이메일 또는 비밀번호가 올바르지 않습니다';
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.detail || '입력 정보를 확인해주세요';
+      } else if (!error.response) {
+        errorMessage = '서버에 연결할 수 없습니다';
+      }
+
       set({
-        error: error.response?.data?.detail || 'Login failed',
+        error: errorMessage,
         isLoading: false
       });
       return false;
@@ -31,9 +43,16 @@ const useAuthStore = create((set) => ({
       set({ isLoading: false });
       return true;
     } catch (error) {
-      console.error('Registration error:', error);
-      console.error('Error response:', error.response);
-      const errorMessage = error.response?.data?.detail || error.message || 'Registration failed';
+      let errorMessage = '회원가입에 실패했습니다';
+
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response.data?.detail || '입력 정보를 확인해주세요';
+      } else if (!error.response) {
+        errorMessage = '서버에 연결할 수 없습니다';
+      }
+
       set({
         error: errorMessage,
         isLoading: false

@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { mcpServersAPI, mcpPlaygroundAPI } from '../../services/api';
 
 function McpPlayground() {
@@ -32,12 +33,12 @@ function McpPlayground() {
         setArgsJson('{}');
       } else {
         setConnectionStatus('error');
-        alert(data.error || '연결에 실패했습니다.');
+        toast.error(data.error || '연결에 실패했습니다.');
       }
     },
     onError: (error) => {
       setConnectionStatus('error');
-      alert(error.response?.data?.detail || '연결에 실패했습니다.');
+      toast.error(error.response?.data?.detail || '연결에 실패했습니다.');
     },
   });
 
@@ -77,7 +78,7 @@ function McpPlayground() {
     try {
       args = JSON.parse(argsJson);
     } catch {
-      alert('올바른 JSON 형식이 아닙니다.');
+      toast.error('올바른 JSON 형식이 아닙니다.');
       return;
     }
     setResult(null);
@@ -128,7 +129,7 @@ function McpPlayground() {
     <div className="animate-fade-up">
       {/* Back Navigation */}
       <Link
-        to="/"
+        to="/marketplace"
         className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
         style={{ transition: 'color 0.2s ease-out' }}
       >
@@ -189,7 +190,7 @@ function McpPlayground() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
             </svg>
             <span className="text-sm text-ink-600">사용법이 궁금하다면</span>
-            <Link to={`/servers/${currentServer.id}`} className="text-sm font-medium text-ink-900 underline underline-offset-2">
+            <Link to={`/marketplace/servers/${currentServer.id}`} className="text-sm font-medium text-ink-900 underline underline-offset-2">
               데모 영상 보기
             </Link>
             <div className="ml-auto flex items-center gap-2">

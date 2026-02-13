@@ -1,22 +1,24 @@
-# CLAUDE.md — Antigravity MCP Marketplace
+# CLAUDE.md — Jion MCP Marketplace
 
 ## 프로젝트 개요
 MCP(Model Context Protocol) 서버를 발견, 테스트, 설치할 수 있는 마켓플레이스 플랫폼.
-기존 사내 게시판 코드를 커뮤니티 탭으로 재활용하고, MCP 마켓플레이스를 새로 추가하는 구조.
+기존 게시판 코드를 커뮤니티 탭으로 재활용하고, MCP 마켓플레이스를 새로 추가하는 구조.
 
 ## 플랫폼 구조
 ```
-메인: MCP 마켓플레이스
+
+메인 (/) : 커뮤니티 (기존 게시판 재활용)
+├── 질문/답변
+├── 사용 후기
+├── 추천/요청
+└── 팁/가이드
+
+서브 (/marketplace) : MCP 마켓플레이스
 ├── MCP 목록/검색        # 카테고리별 MCP 서버 브라우징
 ├── MCP 상세             # 설명, README, 설치 가이드, 리뷰
 ├── 플레이그라운드        # 웹에서 실제 MCP 서버 연결 및 tool 호출 테스트
 └── 설치 가이드           # Claude Desktop/Cursor 등 클라이언트별 설치법
 
-커뮤니티 탭 (기존 게시판 재활용)
-├── 질문/답변
-├── 사용 후기
-├── 추천/요청
-└── 팁/가이드
 ```
 
 ## 기술 스택
@@ -88,7 +90,7 @@ frontend/src/
 │   ├── Login.jsx         # (기존)
 │   └── Register.jsx      # (기존)
 ├── components/
-│   ├── Layout.jsx        # 네비게이션에 마켓플레이스/커뮤니티 탭 추가
+│   ├── Layout.jsx        # 네비게이션에 커뮤니티/마켓플레이스 탭 (커뮤니티가 메인)
 │   └── marketplace/      # [신규] MCP 관련 컴포넌트
 ├── services/api.js       # API 함수 (기존 + mcpAPI 추가)
 ├── stores/               # Zustand 스토어 (기존 + MCP 스토어 추가)

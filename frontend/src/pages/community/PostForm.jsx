@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { postsAPI } from '../../services/api'
 import useCategoriesStore from '../../stores/categoriesStore'
 
@@ -36,22 +37,22 @@ function PostForm() {
   const createMutation = useMutation({
     mutationFn: (data) => postsAPI.createPost(data),
     onSuccess: (response) => {
-      alert('게시글이 작성되었습니다.')
-      navigate(`/community/posts/${response.data.id}`)
+      toast.success('게시글이 작성되었습니다.')
+      navigate(`/posts/${response.data.id}`)
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || '게시글 작성에 실패했습니다.')
+      toast.error(error.response?.data?.detail || '게시글 작성에 실패했습니다.')
     },
   })
 
   const updateMutation = useMutation({
     mutationFn: (data) => postsAPI.updatePost(id, data),
     onSuccess: () => {
-      alert('게시글이 수정되었습니다.')
-      navigate(`/community/posts/${id}`)
+      toast.success('게시글이 수정되었습니다.')
+      navigate(`/posts/${id}`)
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || '게시글 수정에 실패했습니다.')
+      toast.error(error.response?.data?.detail || '게시글 수정에 실패했습니다.')
     },
   })
 
@@ -59,7 +60,7 @@ function PostForm() {
     e.preventDefault()
 
     if (!title.trim() || !content.trim()) {
-      alert('제목과 내용을 모두 입력해주세요.')
+      toast.error('제목과 내용을 모두 입력해주세요.')
       return
     }
 
@@ -82,7 +83,7 @@ function PostForm() {
     <div className="max-w-4xl mx-auto animate-fade-up">
       {/* Back Navigation */}
       <Link
-        to={isEdit ? `/community/posts/${id}` : '/community'}
+        to={isEdit ? `/posts/${id}` : '/'}
         className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
         style={{ transition: 'color 0.2s ease-out' }}
       >

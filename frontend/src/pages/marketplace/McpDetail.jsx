@@ -1,8 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { useState, useMemo } from 'react';
+import { toast } from 'sonner';
 import { mcpServersAPI, mcpReviewsAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
+import { useConfirm } from '../../components/ConfirmModal';
 
 // --- Inline SVG Icon Map (no library needed) ---
 const ICONS = {
@@ -63,6 +65,7 @@ function McpDetail() {
   const [currentScenarioIndex, setCurrentScenarioIndex] = useState(0);
   const [visibleSteps, setVisibleSteps] = useState(1);
   const [expandedTools, setExpandedTools] = useState({});
+  const confirm = useConfirm();
 
   const { data: serverData, isLoading } = useQuery({
     queryKey: ['mcp-server', id],
@@ -84,7 +87,7 @@ function McpDetail() {
       setReviewRating(5);
     },
     onError: (error) => {
-      alert(error.response?.data?.detail || '리뷰 작성에 실패했습니다.');
+      toast.error(error.response?.data?.detail || '리뷰 작성에 실패했습니다.');
     },
   });
 
@@ -141,7 +144,7 @@ function McpDetail() {
 
   const handleCopyConfig = (text) => {
     navigator.clipboard.writeText(text).then(() => {
-      alert('설정이 클립보드에 복사되었습니다.');
+      toast.success('클립보드에 복사되었습니다.');
     });
   };
 
@@ -172,7 +175,7 @@ function McpDetail() {
     <div className="max-w-4xl mx-auto animate-fade-up">
       {/* Back Navigation */}
       <Link
-        to="/"
+        to="/marketplace"
         className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
         style={{ transition: 'color 0.2s ease-out' }}
       >
@@ -231,7 +234,7 @@ function McpDetail() {
           {/* Action buttons */}
           <div className="flex flex-wrap items-center gap-3">
             <Link
-              to={`/playground/${server.id}`}
+              to={`/marketplace/playground/${server.id}`}
               className="btn-primary flex items-center gap-2"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
@@ -437,7 +440,7 @@ function McpDetail() {
                               직접 체험해 보세요
                             </p>
                             <Link
-                              to={`/playground/${server.id}`}
+                              to={`/marketplace/playground/${server.id}`}
                               className="btn-primary text-sm inline-flex items-center gap-2"
                             >
                               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -679,8 +682,8 @@ function McpDetail() {
                         </div>
                         {(user?.id === review.user_id || user?.is_admin) && (
                           <button
-                            onClick={() => {
-                              if (window.confirm('리뷰를 삭제하시겠습니까?')) {
+                            onClick={async () => {
+                              if (await confirm({ title: '리뷰 삭제', message: '리뷰를 삭제하시겠습니까?', confirmText: '삭제' })) {
                                 deleteReviewMutation.mutate(review.id);
                               }
                             }}

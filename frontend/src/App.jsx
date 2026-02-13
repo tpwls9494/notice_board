@@ -1,7 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
+import { Toaster } from 'sonner'
 import useAuthStore from './stores/authStore'
 import Layout from './components/Layout'
+import { ConfirmProvider } from './components/ConfirmModal'
 import Login from './pages/Login'
 import Register from './pages/Register'
 // Marketplace
@@ -33,31 +35,46 @@ function App() {
   }, [token, fetchUser])
 
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+    <ConfirmProvider>
+      <Toaster
+        position="top-center"
+        toastOptions={{
+          style: {
+            fontFamily: '"Pretendard", "Noto Sans KR", system-ui, sans-serif',
+            borderRadius: '0.875rem',
+            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1), 0 4px 25px -5px rgba(0,0,0,0.05)',
+            border: '1px solid rgba(0,0,0,0.06)',
+            padding: '14px 18px',
+            fontSize: '14px',
+          },
+        }}
+      />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
-        {/* Marketplace (default home) */}
-        <Route index element={<McpList />} />
-        <Route path="servers/:id" element={<McpDetail />} />
-        <Route path="playground" element={<McpPlayground />} />
-        <Route path="playground/:serverId" element={<McpPlayground />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          {/* Community (default home) */}
+          <Route index element={<PostList />} />
+          <Route path="posts/:id" element={<PostDetail />} />
+          <Route path="posts/new" element={<PostForm />} />
+          <Route path="posts/:id/edit" element={<PostForm />} />
 
-        {/* Community (existing board, moved) */}
-        <Route path="community" element={<PostList />} />
-        <Route path="community/posts/:id" element={<PostDetail />} />
-        <Route path="community/posts/new" element={<PostForm />} />
-        <Route path="community/posts/:id/edit" element={<PostForm />} />
-      </Route>
-    </Routes>
+          {/* Marketplace */}
+          <Route path="marketplace" element={<McpList />} />
+          <Route path="marketplace/servers/:id" element={<McpDetail />} />
+          <Route path="marketplace/playground" element={<McpPlayground />} />
+          <Route path="marketplace/playground/:serverId" element={<McpPlayground />} />
+        </Route>
+      </Routes>
+    </ConfirmProvider>
   )
 }
 

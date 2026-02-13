@@ -54,7 +54,7 @@ if docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
     docker compose -f docker-compose.prod.yml ps
     echo ""
     echo -e "${GREEN}🌐 Application is running!${NC}"
-    echo "Access your application at: http://YOUR_EC2_IP"
+    echo "Access your application at: http://3.89.59.227"
     echo ""
     echo "Useful commands:"
     echo "  View logs: docker compose -f docker-compose.prod.yml logs -f"

@@ -1,6 +1,8 @@
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from app.api.v1 import auth, posts, comments, categories, likes, files
 from app.api.v1 import mcp_servers, mcp_categories, mcp_reviews, mcp_playground
 from app.db.base import Base, engine
@@ -15,10 +17,58 @@ logger = logging.getLogger(__name__)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Antigravity MCP Marketplace API",
+    title="jion MCP Marketplace API",
     description="MCP 마켓플레이스 & 커뮤니티 API",
     version="2.0.0",
 )
+
+# Custom exception handler for validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Handle validation errors with user-friendly messages
+    """
+    errors = exc.errors()
+
+    # Check for common validation errors and provide friendly messages
+    for error in errors:
+        field = error.get("loc", [])[-1] if error.get("loc") else "field"
+        error_type = error.get("type", "")
+
+        # Email validation error
+        if error_type == "value_error.email" or "email" in str(error_type):
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"detail": "올바른 이메일 형식을 입력해주세요 (예: user@example.com)"}
+            )
+
+        # String too short
+        if "string_too_short" in error_type:
+            min_length = error.get("ctx", {}).get("limit_value", "")
+            if field == "password":
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"detail": f"비밀번호는 최소 {min_length}자 이상이어야 합니다"}
+                )
+            elif field == "username":
+                return JSONResponse(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    content={"detail": f"사용자명은 최소 {min_length}자 이상이어야 합니다"}
+                )
+
+        # Missing field
+        if error_type == "value_error.missing":
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"detail": f"{field} 필드는 필수입니다"}
+            )
+
+    # Default validation error message
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": "입력 정보를 확인해주세요"}
+    )
+
 
 # CORS settings
 origins = settings.CORS_ORIGINS.split(",")
@@ -64,7 +114,7 @@ async def shutdown_mcp_connections():
 
 @app.get("/")
 def root():
-    return {"message": "Antigravity MCP Marketplace API", "version": "2.0.0"}
+    return {"message": "jion MCP Marketplace API", "version": "2.0.0"}
 
 
 @app.get("/health")
