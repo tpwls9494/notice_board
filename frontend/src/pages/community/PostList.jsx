@@ -1,28 +1,39 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { postsAPI } from '../../services/api';
 import { useState, useEffect } from 'react';
+import { postsAPI } from '../../services/api';
 import useCategoriesStore from '../../stores/categoriesStore';
-import useAuthStore from '../../stores/authStore';
 import LoginModal from '../../components/LoginModal';
+import TodayStatsBar from '../../components/community/TodayStatsBar';
+import CommunityHero from '../../components/community/CommunityHero';
+import HotPostsSection from '../../components/community/HotPostsSection';
+import PinnedGuideSection from '../../components/community/PinnedGuideSection';
+import PostCardList from '../../components/community/PostCardList';
+import EmptyState from '../../components/community/EmptyState';
+
+const SORT_OPTIONS = [
+  { value: 'latest', label: '최신순' },
+  { value: 'hot24h', label: '인기 (24시간)' },
+  { value: 'week', label: '주간 베스트' },
+  { value: 'comments', label: '댓글 많은 순' },
+];
 
 function PostList() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [categoryId, setCategoryId] = useState(null);
+  const [sort, setSort] = useState('latest');
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const { categories, fetchCategories } = useCategoriesStore();
-  const { token } = useAuthStore();
 
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['posts', page, search, categoryId],
-    queryFn: () => postsAPI.getPosts(page, 10, search, categoryId),
+    queryKey: ['posts', page, search, categoryId, sort],
+    queryFn: () => postsAPI.getPosts(page, 10, search, categoryId, sort),
   });
 
   const handleSearch = (e) => {
@@ -31,28 +42,6 @@ function PostList() {
     setPage(1);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <div className="w-8 h-8 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
-        <p className="text-sm text-ink-400">불러오는 중&#x2026;</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-24">
-        <div className="inline-flex items-center gap-2 px-4 py-3 bg-red-50 text-red-700 rounded-xl text-sm" role="alert">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-          </svg>
-          게시글을 불러오는데 실패했습니다.
-        </div>
-      </div>
-    );
-  }
-
   const posts = data?.data?.posts || [];
   const total = data?.data?.total || 0;
   const pageSize = data?.data?.page_size || 10;
@@ -60,21 +49,22 @@ function PostList() {
 
   return (
     <div className="animate-fade-up">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <h1 className="font-display text-3xl font-bold text-ink-950 tracking-tight text-balance">
-              커뮤니티
-            </h1>
-            <p className="mt-1 text-sm text-ink-500">
-              전체 <span className="font-semibold text-ink-700">{total}</span>개의 게시글
-            </p>
-          </div>
-        </div>
+      {/* 1. Today Stats */}
+      <TodayStatsBar />
 
+      {/* 2. Hero */}
+      <CommunityHero onLoginClick={() => setShowLoginModal(true)} />
+
+      {/* 3. Hot Posts */}
+      <HotPostsSection />
+
+      {/* 4. Pinned Guides */}
+      <PinnedGuideSection />
+
+      {/* 5. Category Tabs + Search + Sort */}
+      <div className="mb-6">
         {/* Category Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-6 scrollbar-hide">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
           <button
             onClick={() => { setCategoryId(null); setPage(1); }}
             className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${
@@ -100,29 +90,40 @@ function PostList() {
           ))}
         </div>
 
-        {/* Search Bar */}
+        {/* Search + Sort */}
         <div className="card p-4">
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
-              <svg
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400"
-                fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-              </svg>
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="제목 또는 내용으로 검색&#x2026;"
-                className="input-field pl-10"
-              />
-            </div>
-            <button type="submit" className="btn-primary whitespace-nowrap">
-              검색
-            </button>
-          </form>
+          <div className="flex gap-2">
+            <form onSubmit={handleSearch} className="flex gap-2 flex-1">
+              <div className="relative flex-1">
+                <svg
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400"
+                  fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="제목 또는 내용으로 검색..."
+                  className="input-field pl-10"
+                />
+              </div>
+              <button type="submit" className="btn-primary whitespace-nowrap">
+                검색
+              </button>
+            </form>
+            <select
+              value={sort}
+              onChange={(e) => { setSort(e.target.value); setPage(1); }}
+              className="input-field w-auto min-w-[140px]"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
 
           {/* Active Search Filter */}
           {search && (
@@ -144,152 +145,28 @@ function PostList() {
         </div>
       </div>
 
-      {/* Posts List */}
-      {posts.length === 0 ? (
-        <div className="card px-6 py-16 text-center">
-          <div className="text-ink-300 mb-3">
-            <svg className="w-12 h-12 mx-auto" fill="none" viewBox="0 0 24 24" strokeWidth={1} stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-            </svg>
-          </div>
-          <p className="text-ink-500 font-medium">게시글이 없습니다</p>
-          <p className="text-ink-400 text-sm mt-1">첫 번째 게시글을 작성해보세요</p>
+      {/* 6. Posts List / Loading / Error / Empty */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-3">
+          <div className="w-8 h-8 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
+          <p className="text-sm text-ink-400">불러오는 중&#x2026;</p>
         </div>
+      ) : error ? (
+        <div className="text-center py-24">
+          <div className="inline-flex items-center gap-2 px-4 py-3 bg-red-50 text-red-700 rounded-xl text-sm" role="alert">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+            게시글을 불러오는데 실패했습니다.
+          </div>
+        </div>
+      ) : posts.length === 0 ? (
+        <EmptyState />
       ) : (
-        <>
-          {/* Desktop Table View */}
-          <div className="hidden md:block">
-            <div className="card overflow-hidden">
-              {/* Table Header */}
-              <div className="px-6 py-3 bg-paper-50 border-b border-ink-100 grid grid-cols-12 gap-4 text-xs font-semibold text-ink-500 uppercase tracking-wide">
-                <div className="col-span-1">번호</div>
-                <div className="col-span-1">카테고리</div>
-                <div className="col-span-5">제목</div>
-                <div className="col-span-2">작성자</div>
-                <div className="col-span-2">날짜</div>
-                <div className="col-span-1 text-center">조회/추천</div>
-              </div>
-
-              {/* Table Body */}
-              <div className="divide-y divide-ink-100">
-                {posts.map((post) => (
-                  <Link
-                    key={post.id}
-                    to={`/posts/${post.id}`}
-                    className="px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-paper-50 transition-colors block"
-                  >
-                    {/* 번호 */}
-                    <div className="col-span-1 text-sm font-mono text-ink-400">
-                      {post.id}
-                    </div>
-
-                    {/* 카테고리 */}
-                    <div className="col-span-1">
-                      {post.category_name && (
-                        <span className="badge-default text-[11px]">
-                          {post.category_name}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 제목 + 댓글수 */}
-                    <div className="col-span-5 min-w-0">
-                      <span className="text-sm font-medium text-ink-900 hover:underline truncate">
-                        {post.title}
-                      </span>
-                      {post.comment_count > 0 && (
-                        <span className="ml-1.5 text-xs text-ink-500 font-semibold">
-                          [{post.comment_count}]
-                        </span>
-                      )}
-                    </div>
-
-                    {/* 작성자 */}
-                    <div className="col-span-2 text-sm text-ink-600 truncate">
-                      {post.author_username}
-                    </div>
-
-                    {/* 날짜 */}
-                    <div className="col-span-2 text-xs text-ink-400">
-                      {new Intl.DateTimeFormat('ko-KR', { dateStyle: 'short' }).format(new Date(post.created_at))}
-                    </div>
-
-                    {/* 조회수/추천수 */}
-                    <div className="col-span-1 text-center">
-                      <div className="flex flex-col gap-0.5 text-xs text-ink-400">
-                        <span className="flex items-center justify-center gap-1">
-                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                          </svg>
-                          {post.views}
-                        </span>
-                        {post.likes_count > 0 && (
-                          <span className="flex items-center justify-center gap-1 text-ink-500">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-                            </svg>
-                            {post.likes_count}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="md:hidden space-y-2">
-            {posts.map((post, index) => (
-              <Link
-                key={post.id}
-                to={`/posts/${post.id}`}
-                className={`card-hover block opacity-0 animate-fade-up stagger-${Math.min(index + 1, 8)}`}
-              >
-                <div className="px-5 py-4 flex items-center gap-4">
-                  {/* Post Number */}
-                  <div className="flex w-10 h-10 rounded-lg bg-paper-200 items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-ink-400 font-mono">
-                      {post.id}
-                    </span>
-                  </div>
-
-                  {/* Post Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h2 className="text-[15px] font-semibold text-ink-900 truncate">
-                        {post.title}
-                      </h2>
-                      {post.category_name && (
-                        <span className="badge-default text-[11px] flex-shrink-0">
-                          {post.category_name}
-                        </span>
-                      )}
-                      {post.comment_count > 0 && (
-                        <span className="text-xs text-ink-500 font-semibold flex-shrink-0">
-                          [{post.comment_count}]
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-ink-400">
-                      <span className="font-medium text-ink-600">{post.author_username}</span>
-                      <span>{new Intl.DateTimeFormat('ko-KR').format(new Date(post.created_at))}</span>
-                    </div>
-                  </div>
-
-                  {/* Arrow */}
-                  <svg className="w-4 h-4 text-ink-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                  </svg>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </>
+        <PostCardList posts={posts} />
       )}
 
-      {/* Pagination */}
+      {/* 7. Pagination */}
       {totalPages > 1 && (
         <div className="mt-8 flex justify-center items-center gap-1">
           <button
@@ -346,7 +223,7 @@ function PostList() {
         </div>
       )}
 
-      {/* Login Modal */}
+      {/* 8. Login Modal */}
       <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}

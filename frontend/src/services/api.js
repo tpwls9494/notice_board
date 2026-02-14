@@ -42,12 +42,24 @@ export const authAPI = {
   getMe: () => api.get('/auth/me'),
 };
 
+// Community API
+export const communityAPI = {
+  getStats: () => api.get('/community/stats'),
+  getPinnedPosts: (limit = 3) => api.get(`/community/pinned?limit=${limit}`),
+  getHotPosts: (window = '24h', limit = 6, categoryId = null) => {
+    let url = `/community/hot?window=${window}&limit=${limit}`;
+    if (categoryId) url += `&category_id=${categoryId}`;
+    return api.get(url);
+  },
+};
+
 // Posts API
 export const postsAPI = {
-  getPosts: (page = 1, pageSize = 10, search = '', categoryId = null) => {
+  getPosts: (page = 1, pageSize = 10, search = '', categoryId = null, sort = 'latest') => {
     let url = `/posts/?page=${page}&page_size=${pageSize}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (categoryId) url += `&category_id=${categoryId}`;
+    if (sort && sort !== 'latest') url += `&sort=${sort}`;
     return api.get(url);
   },
   getPost: (id) => api.get(`/posts/${id}`),

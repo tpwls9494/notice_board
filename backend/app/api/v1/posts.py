@@ -16,6 +16,7 @@ def get_posts(
     page_size: int = Query(10, ge=1, le=100),
     search: Optional[str] = Query(None),
     category_id: Optional[int] = Query(None),
+    sort: Optional[str] = Query("latest"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
@@ -25,7 +26,8 @@ def get_posts(
         skip=skip,
         limit=page_size,
         search=search,
-        category_id=category_id
+        category_id=category_id,
+        sort=sort or "latest",
     )
 
     # Add author username, comment count, likes count, and is_liked

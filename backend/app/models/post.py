@@ -19,6 +19,7 @@ class Post(Base):
     # Engagement features
     is_pinned = Column(Boolean, default=False)
     is_featured = Column(Boolean, default=False)
+    pinned_order = Column(Integer, nullable=True)
 
     author = relationship("User", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")

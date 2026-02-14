@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
@@ -17,7 +18,8 @@ def get_posts(
     skip: int = 0,
     limit: int = 10,
     search: Optional[str] = None,
-    category_id: Optional[int] = None
+    category_id: Optional[int] = None,
+    sort: str = "latest",
 ) -> tuple[List[Post], int]:
     query = db.query(Post)
 
@@ -35,8 +37,53 @@ def get_posts(
     if category_id:
         query = query.filter(Post.category_id == category_id)
 
+    # Apply time window for score-based sorts
+    if sort in ("hot24h", "week"):
+        window_delta = timedelta(hours=24) if sort == "hot24h" else timedelta(days=7)
+        window_start = datetime.now(timezone.utc) - window_delta
+        query = query.filter(Post.created_at >= window_start)
+
     total = query.count()
-    posts = query.order_by(desc(Post.created_at)).offset(skip).limit(limit).all()
+
+    # Apply sort
+    if sort == "comments":
+        comments_sub = (
+            db.query(
+                Comment.post_id,
+                func.count(Comment.id).label("cnt"),
+            )
+            .group_by(Comment.post_id)
+            .subquery()
+        )
+        query = (
+            query.outerjoin(comments_sub, Post.id == comments_sub.c.post_id)
+            .order_by(desc(func.coalesce(comments_sub.c.cnt, 0)), desc(Post.created_at))
+        )
+    elif sort in ("hot24h", "week"):
+        likes_sub = (
+            db.query(Like.post_id, func.count(Like.id).label("lc"))
+            .group_by(Like.post_id).subquery()
+        )
+        comments_sub = (
+            db.query(Comment.post_id, func.count(Comment.id).label("cc"))
+            .group_by(Comment.post_id).subquery()
+        )
+        score = (
+            func.coalesce(likes_sub.c.lc, 0) * 3
+            + func.coalesce(comments_sub.c.cc, 0) * 2
+            + Post.views * 0.2
+        )
+        query = (
+            query
+            .outerjoin(likes_sub, Post.id == likes_sub.c.post_id)
+            .outerjoin(comments_sub, Post.id == comments_sub.c.post_id)
+            .order_by(desc(score), desc(Post.created_at))
+        )
+    else:
+        # latest (default)
+        query = query.order_by(desc(Post.created_at))
+
+    posts = query.offset(skip).limit(limit).all()
     return posts, total
 
 

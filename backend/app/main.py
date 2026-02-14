@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from app.api.v1 import auth, posts, comments, categories, likes, files
+from app.api.v1 import auth, posts, comments, categories, likes, files, community
 from app.api.v1 import mcp_servers, mcp_categories, mcp_reviews, mcp_playground
 from app.db.base import Base, engine
 from app.db.session import SessionLocal
@@ -95,6 +95,7 @@ app.include_router(comments.router, prefix="/api/v1/comments", tags=["comments"]
 app.include_router(categories.router, prefix="/api/v1/categories", tags=["categories"])
 app.include_router(likes.router, prefix="/api/v1/likes", tags=["likes"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
+app.include_router(community.router, prefix="/api/v1/community", tags=["community"])
 
 # MCP Marketplace routers
 app.include_router(mcp_categories.router, prefix="/api/v1/mcp-categories", tags=["mcp-categories"])
