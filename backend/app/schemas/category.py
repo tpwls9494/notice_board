@@ -21,6 +21,7 @@ class CategoryResponse(CategoryBase):
     icon: str | None = None
     order: int = 0
     is_active: bool = True
+    today_post_count: int = 0
 
     class Config:
         from_attributes = True

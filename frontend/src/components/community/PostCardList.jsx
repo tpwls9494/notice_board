@@ -27,7 +27,9 @@ function formatDate(dateStr) {
   return `${yy}.${mm}.${dd}`;
 }
 
-function PostCardList({ posts }) {
+function PostCardList({ posts, selectedCategoryId }) {
+  const showCategory = selectedCategoryId == null;
+
   return (
     <>
       {/* Desktop Table View */}
@@ -36,8 +38,8 @@ function PostCardList({ posts }) {
           {/* Table Header */}
           <div className="px-6 py-3 bg-paper-50 border-b border-ink-100 grid grid-cols-12 gap-4 text-xs font-semibold text-ink-500 uppercase tracking-wide">
             <div className="col-span-1">번호</div>
-            <div className="col-span-1">카테고리</div>
-            <div className="col-span-4">제목</div>
+            {showCategory && <div className="col-span-1">카테고리</div>}
+            <div className={showCategory ? 'col-span-4' : 'col-span-5'}>제목</div>
             <div className="col-span-2">작성자</div>
             <div className="col-span-2">날짜</div>
             <div className="col-span-1 text-center">조회</div>
@@ -66,16 +68,18 @@ function PostCardList({ posts }) {
                 </div>
 
                 {/* 카테고리 */}
-                <div className="col-span-1">
-                  {post.category_name && (
-                    <span className="badge-default text-[11px]">
-                      {post.category_name}
-                    </span>
-                  )}
-                </div>
+                {showCategory && (
+                  <div className="col-span-1">
+                    {post.category_name && (
+                      <span className="badge-default text-[11px]">
+                        {post.category_name}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* 제목 + 댓글수 */}
-                <div className="col-span-4 min-w-0">
+                <div className={`${showCategory ? 'col-span-4' : 'col-span-5'} min-w-0`}>
                   <span className={`text-sm font-medium hover:underline truncate${
                     post.is_pinned ? ' text-ink-950 font-semibold' : ' text-ink-900'
                   }`}>

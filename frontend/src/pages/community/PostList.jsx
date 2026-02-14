@@ -72,20 +72,30 @@ function PostList() {
       {/* 5. Category Grid */}
       <section className="mb-8">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => { setCategoryId(category.id); setPage(1); }}
-              className={`card px-4 py-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
-                categoryId === category.id
-                  ? 'ring-2 ring-ink-950 border-ink-950'
-                  : 'hover:border-ink-200'
-              }`}
-            >
-              <span className="text-2xl block mb-2">{category.icon}</span>
-              <span className="text-sm font-semibold text-ink-800 block">{category.name}</span>
-            </button>
-          ))}
+          {[...categories].sort((a, b) => {
+            if (a.slug === 'notice') return 1;
+            if (b.slug === 'notice') return -1;
+            return 0;
+          }).map((category) => {
+            const isNotice = category.slug === 'notice';
+            return (
+              <button
+                key={category.id}
+                onClick={() => { setCategoryId(category.id); setPage(1); }}
+                className={`card px-4 py-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
+                  categoryId === category.id
+                    ? 'ring-2 ring-ink-950 border-ink-950'
+                    : 'hover:border-ink-200'
+                } ${isNotice ? 'opacity-50 hover:opacity-100' : ''}`}
+              >
+                <span className="text-2xl block mb-2">{category.icon}</span>
+                <span className="text-sm font-semibold text-ink-800 block">{category.name}</span>
+                {category.today_post_count > 0 && (
+                  <span className="text-xs text-blue-600 font-medium mt-1 block">오늘 +{category.today_post_count}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -110,7 +120,9 @@ function PostList() {
               className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${
                 categoryId === category.id
                   ? 'bg-ink-950 text-paper-50 shadow-soft'
-                  : 'bg-paper-200 text-ink-600 hover:bg-paper-300'
+                  : category.slug === 'notice'
+                    ? 'bg-paper-200 text-ink-400 hover:bg-paper-300'
+                    : 'bg-paper-200 text-ink-600 hover:bg-paper-300'
               }`}
             >
               {category.icon && <span className="mr-1">{category.icon}</span>}
@@ -203,7 +215,7 @@ function PostList() {
       ) : posts.length === 0 ? (
         <EmptyState />
       ) : (
-        <PostCardList posts={posts} />
+        <PostCardList posts={posts} selectedCategoryId={categoryId} />
       )}
 
       {/* 7. Pagination */}

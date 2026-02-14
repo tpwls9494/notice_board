@@ -17,8 +17,8 @@ def get_categories(
     limit: int = 100,
     db: Session = Depends(get_db)
 ):
-    """Get all categories"""
-    categories = crud_category.get_categories(db, skip=skip, limit=limit)
+    """Get all categories with today's post count"""
+    categories = crud_category.get_categories_with_today_count(db, skip=skip, limit=limit)
     return categories
 
 
