@@ -17,6 +17,7 @@ def get_posts(
     search: Optional[str] = Query(None),
     category_id: Optional[int] = Query(None),
     sort: Optional[str] = Query("latest"),
+    window: Optional[str] = Query("24h"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
@@ -28,6 +29,7 @@ def get_posts(
         search=search,
         category_id=category_id,
         sort=sort or "latest",
+        window=window or "24h",
     )
 
     # Add author username, comment count, likes count, and is_liked
@@ -46,6 +48,7 @@ def get_posts(
             "comment_count": crud_post.get_comment_count(db, post.id),
             "likes_count": crud_post.get_likes_count(db, post.id),
             "is_liked": crud_post.check_user_liked(db, post.id, current_user.id) if current_user else False,
+            "is_pinned": post.is_pinned or False,
             "category_name": post.category.name if post.category else None,
         }
         post_responses.append(PostResponse(**post_dict))
@@ -87,6 +90,7 @@ def get_post(
         comment_count=crud_post.get_comment_count(db, post.id),
         likes_count=crud_post.get_likes_count(db, post.id),
         is_liked=crud_post.check_user_liked(db, post.id, current_user.id) if current_user else False,
+        is_pinned=post.is_pinned or False,
         category_name=post.category.name if post.category else None,
     )
 
@@ -111,6 +115,7 @@ def create_post(
         comment_count=0,
         likes_count=0,
         is_liked=False,
+        is_pinned=db_post.is_pinned or False,
         category_name=db_post.category.name if db_post.category else None,
     )
 
@@ -150,6 +155,7 @@ def update_post(
         comment_count=crud_post.get_comment_count(db, post_id),
         likes_count=crud_post.get_likes_count(db, post_id),
         is_liked=crud_post.check_user_liked(db, post_id, current_user.id),
+        is_pinned=updated_post.is_pinned or False,
         category_name=updated_post.category.name if updated_post.category else None,
     )
 

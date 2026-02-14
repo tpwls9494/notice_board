@@ -55,11 +55,12 @@ export const communityAPI = {
 
 // Posts API
 export const postsAPI = {
-  getPosts: (page = 1, pageSize = 10, search = '', categoryId = null, sort = 'latest') => {
+  getPosts: (page = 1, pageSize = 10, search = '', categoryId = null, sort = 'latest', window = '24h') => {
     let url = `/posts/?page=${page}&page_size=${pageSize}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (categoryId) url += `&category_id=${categoryId}`;
     if (sort && sort !== 'latest') url += `&sort=${sort}`;
+    if (sort === 'hot' && window) url += `&window=${window}`;
     return api.get(url);
   },
   getPost: (id) => api.get(`/posts/${id}`),

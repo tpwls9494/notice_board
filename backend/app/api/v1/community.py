@@ -41,6 +41,7 @@ def get_pinned_posts(
             comment_count=crud_post.get_comment_count(db, p.id),
             likes_count=crud_post.get_likes_count(db, p.id),
             is_liked=crud_post.check_user_liked(db, p.id, current_user.id) if current_user else False,
+            is_pinned=p.is_pinned or False,
             category_name=p.category.name if p.category else None,
         )
         for p in posts
@@ -72,6 +73,7 @@ def get_hot_posts(
             comment_count=r["comment_count"],
             likes_count=r["likes_count"],
             is_liked=crud_post.check_user_liked(db, r["post"].id, current_user.id) if current_user else False,
+            is_pinned=r["post"].is_pinned or False,
             category_name=r["post"].category.name if r["post"].category else None,
         )
         for r in results

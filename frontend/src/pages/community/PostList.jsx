@@ -12,9 +12,16 @@ import EmptyState from '../../components/community/EmptyState';
 
 const SORT_OPTIONS = [
   { value: 'latest', label: '최신순' },
-  { value: 'hot24h', label: '인기 (24시간)' },
-  { value: 'week', label: '주간 베스트' },
-  { value: 'comments', label: '댓글 많은 순' },
+  { value: 'views', label: '조회순' },
+  { value: 'likes', label: '추천순' },
+  { value: 'comments', label: '댓글순' },
+  { value: 'hot', label: '인기순' },
+];
+
+const WINDOW_OPTIONS = [
+  { value: '24h', label: '24시간' },
+  { value: '7d', label: '7일' },
+  { value: '30d', label: '30일' },
 ];
 
 function PostList() {
@@ -23,6 +30,7 @@ function PostList() {
   const [searchInput, setSearchInput] = useState('');
   const [categoryId, setCategoryId] = useState(null);
   const [sort, setSort] = useState('latest');
+  const [window, setWindow] = useState('24h');
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   const { categories, fetchCategories } = useCategoriesStore();
@@ -32,8 +40,8 @@ function PostList() {
   }, [fetchCategories]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['posts', page, search, categoryId, sort],
-    queryFn: () => postsAPI.getPosts(page, 10, search, categoryId, sort),
+    queryKey: ['posts', page, search, categoryId, sort, window],
+    queryFn: () => postsAPI.getPosts(page, 10, search, categoryId, sort, window),
   });
 
   const handleSearch = (e) => {
@@ -117,12 +125,23 @@ function PostList() {
             <select
               value={sort}
               onChange={(e) => { setSort(e.target.value); setPage(1); }}
-              className="input-field w-auto min-w-[140px]"
+              className="input-field w-auto min-w-[120px]"
             >
               {SORT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+            {sort === 'hot' && (
+              <select
+                value={window}
+                onChange={(e) => { setWindow(e.target.value); setPage(1); }}
+                className="input-field w-auto min-w-[100px]"
+              >
+                {WINDOW_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {/* Active Search Filter */}

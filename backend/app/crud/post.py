@@ -13,17 +13,8 @@ def get_post(db: Session, post_id: int) -> Optional[Post]:
     return db.query(Post).filter(Post.id == post_id).first()
 
 
-def get_posts(
-    db: Session,
-    skip: int = 0,
-    limit: int = 10,
-    search: Optional[str] = None,
-    category_id: Optional[int] = None,
-    sort: str = "latest",
-) -> tuple[List[Post], int]:
-    query = db.query(Post)
-
-    # Apply search filter
+def _apply_base_filters(query, search: Optional[str], category_id: Optional[int]):
+    """Apply search and category filters to a query."""
     if search:
         search_filter = f"%{search}%"
         query = query.filter(
@@ -32,34 +23,67 @@ def get_posts(
                 Post.content.ilike(search_filter)
             )
         )
-
-    # Apply category filter
     if category_id:
         query = query.filter(Post.category_id == category_id)
+    return query
 
-    # Apply time window for score-based sorts
-    if sort in ("hot24h", "week"):
-        window_delta = timedelta(hours=24) if sort == "hot24h" else timedelta(days=7)
+
+def get_posts(
+    db: Session,
+    skip: int = 0,
+    limit: int = 10,
+    search: Optional[str] = None,
+    category_id: Optional[int] = None,
+    sort: str = "latest",
+    window: str = "24h",
+) -> tuple[List[Post], int]:
+    # --- Pinned posts (page 1 only) ---
+    pinned_posts: List[Post] = []
+    if skip == 0:
+        pinned_q = db.query(Post).filter(Post.is_pinned == True)  # noqa: E712
+        pinned_q = _apply_base_filters(pinned_q, search, category_id)
+        pinned_posts = pinned_q.order_by(
+            func.coalesce(Post.pinned_order, 9999), desc(Post.created_at)
+        ).all()
+
+    # --- Normal (non-pinned) posts ---
+    query = db.query(Post).filter(
+        or_(Post.is_pinned == False, Post.is_pinned == None)  # noqa: E711,E712
+    )
+    query = _apply_base_filters(query, search, category_id)
+
+    # Time window for hot sort
+    window_map = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
+    if sort == "hot":
+        window_delta = window_map.get(window, timedelta(hours=24))
         window_start = datetime.now(timezone.utc) - window_delta
         query = query.filter(Post.created_at >= window_start)
 
-    total = query.count()
+    normal_total = query.count()
+    total = len(pinned_posts) + normal_total
 
     # Apply sort
-    if sort == "comments":
+    if sort == "views":
+        query = query.order_by(desc(Post.views), desc(Post.created_at))
+    elif sort == "likes":
+        likes_sub = (
+            db.query(Like.post_id, func.count(Like.id).label("lc"))
+            .group_by(Like.post_id).subquery()
+        )
+        query = (
+            query.outerjoin(likes_sub, Post.id == likes_sub.c.post_id)
+            .order_by(desc(func.coalesce(likes_sub.c.lc, 0)), desc(Post.created_at))
+        )
+    elif sort == "comments":
         comments_sub = (
-            db.query(
-                Comment.post_id,
-                func.count(Comment.id).label("cnt"),
-            )
-            .group_by(Comment.post_id)
-            .subquery()
+            db.query(Comment.post_id, func.count(Comment.id).label("cnt"))
+            .group_by(Comment.post_id).subquery()
         )
         query = (
             query.outerjoin(comments_sub, Post.id == comments_sub.c.post_id)
             .order_by(desc(func.coalesce(comments_sub.c.cnt, 0)), desc(Post.created_at))
         )
-    elif sort in ("hot24h", "week"):
+    elif sort == "hot":
         likes_sub = (
             db.query(Like.post_id, func.count(Like.id).label("lc"))
             .group_by(Like.post_id).subquery()
@@ -83,7 +107,8 @@ def get_posts(
         # latest (default)
         query = query.order_by(desc(Post.created_at))
 
-    posts = query.offset(skip).limit(limit).all()
+    normal_posts = query.offset(skip).limit(limit).all()
+    posts = pinned_posts + normal_posts
     return posts, total
 
 

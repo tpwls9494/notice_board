@@ -29,6 +29,7 @@ class PostResponse(PostBase):
     comment_count: Optional[int] = 0
     likes_count: Optional[int] = 0
     is_liked: Optional[bool] = False
+    is_pinned: Optional[bool] = False
     category_name: Optional[str] = None
 
     class Config:
