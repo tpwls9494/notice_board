@@ -12,7 +12,7 @@ function CommunityHero({ onLoginClick }) {
             커뮤니티
           </h1>
           <p className="mt-1.5 text-sm text-ink-500 max-w-md">
-            MCP에 대한 질문, 사용 후기, 추천, 팁을 나눠보세요
+            개발/IT 이야기 + 유머 + 자료를 모으는 커뮤니티
           </p>
         </div>
         {token ? (

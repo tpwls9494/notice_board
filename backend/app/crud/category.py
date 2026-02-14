@@ -4,7 +4,14 @@ from app.schemas.category import CategoryCreate, CategoryUpdate
 
 
 def get_categories(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(Category).offset(skip).limit(limit).all()
+    return (
+        db.query(Category)
+        .filter(Category.is_active == True)
+        .order_by(Category.order.asc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def get_category(db: Session, category_id: int):

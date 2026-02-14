@@ -69,7 +69,27 @@ function PostList() {
       {/* 4. Pinned Guides */}
       <PinnedGuideSection />
 
-      {/* 5. Category Tabs + Search + Sort */}
+      {/* 5. Category Grid */}
+      <section className="mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => { setCategoryId(category.id); setPage(1); }}
+              className={`card px-4 py-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
+                categoryId === category.id
+                  ? 'ring-2 ring-ink-950 border-ink-950'
+                  : 'hover:border-ink-200'
+              }`}
+            >
+              <span className="text-2xl block mb-2">{category.icon}</span>
+              <span className="text-sm font-semibold text-ink-800 block">{category.name}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* 6. Category Tabs + Search + Sort */}
       <div className="mb-6">
         {/* Category Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
@@ -93,6 +113,7 @@ function PostList() {
                   : 'bg-paper-200 text-ink-600 hover:bg-paper-300'
               }`}
             >
+              {category.icon && <span className="mr-1">{category.icon}</span>}
               {category.name}
             </button>
           ))}

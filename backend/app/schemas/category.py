@@ -17,6 +17,10 @@ class CategoryUpdate(BaseModel):
 
 class CategoryResponse(CategoryBase):
     id: int
+    slug: str
+    icon: str | None = None
+    order: int = 0
+    is_active: bool = True
 
     class Config:
         from_attributes = True

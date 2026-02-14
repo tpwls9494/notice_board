@@ -42,47 +42,63 @@ def seed_categories():
             db.commit()
             print("기존 카테고리를 삭제했습니다.")
 
-        # 기본 카테고리 데이터
+        # 기본 카테고리 데이터 (커뮤니티 7개)
         categories = [
             {
-                "name": "질문/답변",
-                "description": "MCP 서버 개발 및 사용에 대한 질문과 답변",
-                "slug": "qna",
-                "icon": "❓",
+                "name": "공지",
+                "description": "공지사항 및 운영 관련 안내",
+                "slug": "notice",
+                "icon": "📢",
                 "order": 1,
-                "is_active": True
+                "is_active": True,
             },
             {
-                "name": "사용 후기",
-                "description": "MCP 서버 사용 경험과 리뷰 공유",
-                "slug": "review",
-                "icon": "⭐",
-                "order": 2,
-                "is_active": True
-            },
-            {
-                "name": "추천/요청",
-                "description": "MCP 서버 추천 및 기능 요청",
-                "slug": "request",
-                "icon": "💡",
-                "order": 3,
-                "is_active": True
-            },
-            {
-                "name": "팁/가이드",
-                "description": "유용한 팁과 가이드 공유",
-                "slug": "guide",
-                "icon": "📚",
-                "order": 4,
-                "is_active": True
-            },
-            {
-                "name": "자유",
-                "description": "자유로운 주제의 게시글",
+                "name": "자유/잡담",
+                "description": "자유로운 주제의 이야기",
                 "slug": "free",
                 "icon": "💬",
+                "order": 2,
+                "is_active": True,
+            },
+            {
+                "name": "유머/짤",
+                "description": "웃긴 이야기와 짤 공유",
+                "slug": "humor",
+                "icon": "😂",
+                "order": 3,
+                "is_active": True,
+            },
+            {
+                "name": "질문(Q&A)",
+                "description": "개발 및 IT 관련 질문과 답변",
+                "slug": "qna",
+                "icon": "❓",
+                "order": 4,
+                "is_active": True,
+            },
+            {
+                "name": "개발/IT 뉴스",
+                "description": "개발 및 IT 업계 뉴스와 트렌드",
+                "slug": "dev-news",
+                "icon": "💻",
                 "order": 5,
-                "is_active": True
+                "is_active": True,
+            },
+            {
+                "name": "팁/도구 추천",
+                "description": "유용한 팁, 도구, 서비스 추천",
+                "slug": "tips",
+                "icon": "🛠️",
+                "order": 6,
+                "is_active": True,
+            },
+            {
+                "name": "프로젝트/쇼케이스",
+                "description": "자신의 프로젝트와 작업물 공유",
+                "slug": "showcase",
+                "icon": "🚀",
+                "order": 7,
+                "is_active": True,
             },
         ]
 
