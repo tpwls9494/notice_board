@@ -84,10 +84,10 @@ function Layout() {
                   {!isMarketplace && (
                     <Link
                       to="/posts/new"
-                      className="btn-primary text-sm flex items-center gap-1.5"
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-ink-200 bg-white text-ink-600 hover:bg-paper-100 hover:text-ink-900 transition-colors"
                       aria-label="새 글 쓰기"
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                       </svg>
                       <span className="hidden sm:inline">글쓰기</span>

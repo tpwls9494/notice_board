@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { postsAPI } from '../../services/api';
 import useCategoriesStore from '../../stores/categoriesStore';
-import TodayStatsBar from '../../components/community/TodayStatsBar';
 import CommunityHero from '../../components/community/CommunityHero';
-import HotPostsSection from '../../components/community/HotPostsSection';
-import PinnedGuideSection from '../../components/community/PinnedGuideSection';
+import CommunityTopFeeds from '../../components/community/CommunityTopFeeds';
+import CategoryPreviewGrid from '../../components/community/CategoryPreviewGrid';
 import PostCardList from '../../components/community/PostCardList';
 import EmptyState from '../../components/community/EmptyState';
 
@@ -30,6 +29,7 @@ function PostList() {
   const [categoryId, setCategoryId] = useState(null);
   const [sort, setSort] = useState('latest');
   const [window, setWindow] = useState('24h');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const { categories, fetchCategories } = useCategoriesStore();
 
@@ -37,15 +37,44 @@ function PostList() {
     fetchCategories();
   }, [fetchCategories]);
 
+  useEffect(() => {
+    if (search || sort !== 'latest' || window !== '24h') {
+      setIsFilterOpen(true);
+    }
+  }, [search, sort, window]);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['posts', page, search, categoryId, sort, window],
     queryFn: () => postsAPI.getPosts(page, 10, search, categoryId, sort, window),
   });
 
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => {
+      if (a.order != null && b.order != null) return a.order - b.order;
+      return a.id - b.id;
+    });
+  }, [categories]);
+
+  const activeCategory = useMemo(
+    () => sortedCategories.find((category) => category.id === categoryId),
+    [sortedCategories, categoryId]
+  );
+
   const handleSearch = (e) => {
     e.preventDefault();
     setSearch(searchInput);
     setPage(1);
+  };
+
+  const handleCategorySelect = (id, scrollToAllPosts = false) => {
+    setCategoryId(id);
+    setPage(1);
+
+    if (scrollToAllPosts) {
+      requestAnimationFrame(() => {
+        document.getElementById('all-posts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
   };
 
   const posts = data?.data?.posts || [];
@@ -55,174 +84,177 @@ function PostList() {
 
   return (
     <div className="animate-fade-up">
-      {/* 1. Today Stats */}
-      <TodayStatsBar />
-
-      {/* 2. Hero */}
       <CommunityHero />
 
-      {/* 3. Hot Posts */}
-      <HotPostsSection />
-
-      {/* 4. Pinned Guides */}
-      <PinnedGuideSection />
-
-      {/* 5. Category Grid */}
-      <section className="mb-8">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          {[...categories].sort((a, b) => {
-            if (a.slug === 'notice') return 1;
-            if (b.slug === 'notice') return -1;
-            return 0;
-          }).map((category) => {
-            const isNotice = category.slug === 'notice';
-            return (
-              <button
-                key={category.id}
-                onClick={() => { setCategoryId(category.id); setPage(1); }}
-                className={`card px-4 py-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-card-hover ${
-                  categoryId === category.id
-                    ? 'ring-2 ring-ink-950 border-ink-950'
-                    : 'hover:border-ink-200'
-                } ${isNotice ? 'opacity-50 hover:opacity-100' : ''}`}
-              >
-                <span className="text-2xl block mb-2">{category.icon}</span>
-                <span className="text-sm font-semibold text-ink-800 block">{category.name}</span>
-                {category.today_post_count > 0 && (
-                  <span className="text-xs text-blue-600 font-medium mt-1 block">오늘 +{category.today_post_count}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* 6. Category Tabs + Search + Sort */}
-      <div className="mb-6">
-        {/* Category Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
+      <section className="mb-3.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
           <button
-            onClick={() => { setCategoryId(null); setPage(1); }}
-            className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${
-              categoryId === null
-                ? 'bg-ink-950 text-paper-50 shadow-soft'
-                : 'bg-paper-200 text-ink-600 hover:bg-paper-300'
+            onClick={() => {
+              setCategoryId(null);
+              setPage(1);
+            }}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${
+              categoryId == null
+                ? 'bg-ink-900 text-paper-50 border-ink-900'
+                : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
             }`}
           >
             전체
           </button>
-          {categories.map((category) => (
+          {sortedCategories.map((category) => (
             <button
               key={category.id}
-              onClick={() => { setCategoryId(category.id); setPage(1); }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg whitespace-nowrap transition-all ${
+              onClick={() => handleCategorySelect(category.id)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${
                 categoryId === category.id
-                  ? 'bg-ink-950 text-paper-50 shadow-soft'
+                  ? 'bg-ink-900 text-paper-50 border-ink-900'
                   : category.slug === 'notice'
-                    ? 'bg-paper-200 text-ink-400 hover:bg-paper-300'
-                    : 'bg-paper-200 text-ink-600 hover:bg-paper-300'
+                    ? 'bg-paper-100 text-ink-500 border-ink-200 hover:bg-paper-200'
+                    : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
               }`}
             >
-              {category.icon && <span className="mr-1">{category.icon}</span>}
-              {category.name}
+              {category.icon && (
+                <span className="text-[20px] leading-none" aria-hidden="true">
+                  {category.icon}
+                </span>
+              )}
+              <span>{category.name}</span>
             </button>
           ))}
         </div>
+      </section>
 
-        {/* Search + Sort */}
-        <div className="card p-4">
-          <div className="flex gap-2">
-            <form onSubmit={handleSearch} className="flex gap-2 flex-1">
-              <div className="relative flex-1">
-                <svg
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400"
-                  fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"
-                  aria-hidden="true"
+      <CommunityTopFeeds categoryId={categoryId} />
+
+      <CategoryPreviewGrid
+        categories={sortedCategories}
+        onSelectCategory={(id) => handleCategorySelect(id, true)}
+      />
+
+      <section id="all-posts" className="mt-5">
+        <div className="mb-2.5 flex items-center justify-between gap-2">
+          <h2 className="text-base font-semibold text-ink-900">
+            전체 글
+            {activeCategory && (
+              <span className="ml-1.5 text-xs text-ink-500">/ {activeCategory.name}</span>
+            )}
+          </h2>
+          <button
+            onClick={() => setIsFilterOpen((prev) => !prev)}
+            className="px-2 py-1 text-xs rounded-md border border-ink-200 text-ink-600 hover:bg-paper-100 transition-colors"
+          >
+            검색/정렬 {isFilterOpen ? '접기' : '열기'}
+          </button>
+        </div>
+
+        {isFilterOpen && (
+          <div className="card rounded-xl p-3 mb-3">
+            <div className="flex flex-col lg:flex-row gap-2">
+              <form onSubmit={handleSearch} className="flex gap-2 flex-1">
+                <div className="relative flex-1">
+                  <svg
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="제목 또는 내용 검색"
+                    className="input-field !py-2 !pr-3 !pl-9 text-sm"
+                  />
+                </div>
+                <button type="submit" className="btn-secondary text-xs !px-3 !py-2 whitespace-nowrap">
+                  검색
+                </button>
+              </form>
+
+              <div className="flex gap-2">
+                <select
+                  value={sort}
+                  onChange={(e) => {
+                    setSort(e.target.value);
+                    setPage(1);
+                  }}
+                  className="input-field !py-2 !px-3 text-sm w-auto min-w-[100px]"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                </svg>
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder="제목 또는 내용으로 검색..."
-                  className="input-field pl-10"
-                />
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                {sort === 'hot' && (
+                  <select
+                    value={window}
+                    onChange={(e) => {
+                      setWindow(e.target.value);
+                      setPage(1);
+                    }}
+                    className="input-field !py-2 !px-3 text-sm w-auto min-w-[90px]"
+                  >
+                    {WINDOW_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                )}
               </div>
-              <button type="submit" className="btn-primary whitespace-nowrap">
-                검색
-              </button>
-            </form>
-            <select
-              value={sort}
-              onChange={(e) => { setSort(e.target.value); setPage(1); }}
-              className="input-field w-auto min-w-[120px]"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-            {sort === 'hot' && (
-              <select
-                value={window}
-                onChange={(e) => { setWindow(e.target.value); setPage(1); }}
-                className="input-field w-auto min-w-[100px]"
-              >
-                {WINDOW_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+            </div>
+
+            {search && (
+              <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-ink-100">
+                <span className="badge-accent text-[11px] flex items-center gap-1">
+                  검색: {search}
+                  <button
+                    onClick={() => {
+                      setSearch('');
+                      setSearchInput('');
+                      setPage(1);
+                    }}
+                    className="text-accent hover:text-accent-dark"
+                    aria-label="검색 필터 제거"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              </div>
             )}
           </div>
+        )}
 
-          {/* Active Search Filter */}
-          {search && (
-            <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-ink-100">
-              <span className="badge-accent flex items-center gap-1.5">
-                검색: {search}
-                <button
-                  onClick={() => { setSearch(''); setSearchInput(''); setPage(1); }}
-                  className="text-accent hover:text-accent-dark ml-0.5"
-                  aria-label="검색 필터 제거"
-                >
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 6. Posts List / Loading / Error / Empty */}
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-3">
-          <div className="w-8 h-8 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
-          <p className="text-sm text-ink-400">불러오는 중&#x2026;</p>
-        </div>
-      ) : error ? (
-        <div className="text-center py-24">
-          <div className="inline-flex items-center gap-2 px-4 py-3 bg-red-50 text-red-700 rounded-xl text-sm" role="alert">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
-            게시글을 불러오는데 실패했습니다.
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12 gap-2">
+            <div className="w-6 h-6 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
+            <p className="text-xs text-ink-400">불러오는 중...</p>
           </div>
-        </div>
-      ) : posts.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <PostCardList posts={posts} selectedCategoryId={categoryId} />
-      )}
+        ) : error ? (
+          <div className="text-center py-12">
+            <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 text-red-700 rounded-lg text-xs" role="alert">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+              게시글을 불러오는데 실패했습니다.
+            </div>
+          </div>
+        ) : posts.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <PostCardList posts={posts} selectedCategoryId={categoryId} />
+        )}
+      </section>
 
-      {/* 7. Pagination */}
       {totalPages > 1 && (
-        <div className="mt-8 flex justify-center items-center gap-1">
+        <div className="mt-5 flex justify-center items-center gap-1">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="btn-ghost text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            className="btn-ghost text-xs !px-2.5 !py-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="이전 페이지"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
@@ -242,12 +274,12 @@ function PostList() {
               }, [])
               .map((item, idx) =>
                 item === '...' ? (
-                  <span key={`ellipsis-${idx}`} className="px-1 text-ink-400 text-sm">&#x2026;</span>
+                  <span key={`ellipsis-${idx}`} className="px-1 text-ink-400 text-xs">&#x2026;</span>
                 ) : (
                   <button
                     key={item}
                     onClick={() => setPage(item)}
-                    className={`w-9 h-9 rounded-lg text-sm font-medium ${
+                    className={`w-8 h-8 rounded-md text-xs font-medium ${
                       page === item
                         ? 'bg-ink-950 text-paper-50 shadow-soft'
                         : 'text-ink-600 hover:bg-ink-100'
@@ -263,7 +295,7 @@ function PostList() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="btn-ghost text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            className="btn-ghost text-xs !px-2.5 !py-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
             aria-label="다음 페이지"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
@@ -272,7 +304,6 @@ function PostList() {
           </button>
         </div>
       )}
-
     </div>
   );
 }
