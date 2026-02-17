@@ -38,13 +38,6 @@ function PostForm() {
 
   const createMutation = useMutation({
     mutationFn: (data) => postsAPI.createPost(data),
-    onSuccess: (response) => {
-      toast.success('게시글이 작성되었습니다.')
-      navigate(`/posts/${response.data.id}`)
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.detail || '게시글 작성에 실패했습니다.')
-    },
   })
 
   const updateMutation = useMutation({
@@ -52,9 +45,6 @@ function PostForm() {
     onSuccess: () => {
       toast.success('게시글이 수정되었습니다.')
       navigate(`/posts/${id}`)
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.detail || '게시글 수정에 실패했습니다.')
     },
   })
 
@@ -143,7 +133,10 @@ function PostForm() {
         navigate(`/posts/${postId}`)
       }
     } catch (error) {
-      toast.error(error.response?.data?.detail || '게시글 작성에 실패했습니다.')
+      toast.error(
+        error.response?.data?.detail
+          || (isEdit ? '게시글 수정에 실패했습니다.' : '게시글 작성에 실패했습니다.')
+      )
     }
   }
 

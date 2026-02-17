@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { postsAPI } from '../../services/api';
 import useCategoriesStore from '../../stores/categoriesStore';
-import LoginModal from '../../components/LoginModal';
 import TodayStatsBar from '../../components/community/TodayStatsBar';
 import CommunityHero from '../../components/community/CommunityHero';
 import HotPostsSection from '../../components/community/HotPostsSection';
@@ -31,7 +30,6 @@ function PostList() {
   const [categoryId, setCategoryId] = useState(null);
   const [sort, setSort] = useState('latest');
   const [window, setWindow] = useState('24h');
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   const { categories, fetchCategories } = useCategoriesStore();
 
@@ -61,7 +59,7 @@ function PostList() {
       <TodayStatsBar />
 
       {/* 2. Hero */}
-      <CommunityHero onLoginClick={() => setShowLoginModal(true)} />
+      <CommunityHero />
 
       {/* 3. Hot Posts */}
       <HotPostsSection />
@@ -275,11 +273,6 @@ function PostList() {
         </div>
       )}
 
-      {/* 8. Login Modal */}
-      <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
-      />
     </div>
   );
 }
