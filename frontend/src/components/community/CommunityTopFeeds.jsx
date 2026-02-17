@@ -37,6 +37,33 @@ function resolveCategorySlug(post, categorySlugById) {
   return CATEGORY_FALLBACK_SLUG[post?.category_name] || 'default';
 }
 
+function formatRelativeTime(dateValue) {
+  if (!dateValue) return '방금 전';
+
+  const parsedDate = new Date(dateValue);
+  if (Number.isNaN(parsedDate.getTime())) return '방금 전';
+
+  const diffMs = Date.now() - parsedDate.getTime();
+  if (diffMs < 60_000) return '방금 전';
+
+  const diffMinutes = Math.floor(diffMs / 60_000);
+  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}시간 전`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}일 전`;
+
+  const diffWeeks = Math.floor(diffDays / 7);
+  if (diffWeeks < 5) return `${diffWeeks}주 전`;
+
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMonths < 12) return `${diffMonths}개월 전`;
+
+  return `${Math.floor(diffDays / 365)}년 전`;
+}
+
 function FeedRows({ posts, showPopularity = false, isLoading = false, categorySlugById = {} }) {
   const visiblePosts = posts.slice(0, LIST_LIMIT);
 
@@ -57,37 +84,44 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
   }
 
   return (
-    <ul className="divide-y divide-ink-100">
+    <ul className="px-2 py-2 space-y-1">
       {visiblePosts.map((post) => {
         const categorySlug = resolveCategorySlug(post, categorySlugById);
         const barColor = CATEGORY_BAR_COLOR[categorySlug] || CATEGORY_BAR_COLOR.default;
+        const author = post.author_username || '익명';
+        const relativeTime = formatRelativeTime(post.created_at);
+        const authorMeta = `${author} · ${relativeTime}`;
         const metaText = showPopularity
-          ? `추천 ${post.likes_count || 0} · 댓글 ${post.comment_count || 0} · 조회 ${post.views || 0}`
+          ? `추천 ${post.likes_count || 0} · 조회 ${post.views || 0} · 댓글 ${post.comment_count || 0}`
           : `댓글 ${post.comment_count || 0}`;
 
         return (
           <li key={post.id}>
             <Link
               to={`/posts/${post.id}`}
-              className="relative block px-3 py-1.5 pl-4 hover:bg-paper-50 transition-colors"
+              className="group relative block rounded-lg border border-transparent px-3 py-2 pl-4 hover:bg-paper-50/90 hover:border-ink-100 transition-colors"
             >
               <span
-                className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full"
+                className="absolute left-1 top-2.5 bottom-2.5 w-[1.5px] rounded-full opacity-35 group-hover:opacity-80 transition-opacity"
                 style={{ backgroundColor: barColor }}
                 aria-hidden="true"
               />
-              <div className="flex items-center gap-2 min-w-0 text-[13px]">
-                {post.category_name && (
-                  <span className="inline-flex items-center rounded-full border border-ink-100 bg-paper-50 px-1.5 py-[2px] text-[12px] font-medium text-ink-600 shrink-0 leading-none">
-                    {post.category_name}
-                  </span>
-                )}
-                <span className="truncate text-ink-900 font-medium flex-1">
-                  {post.title}
-                </span>
-                <span className="text-[10px] text-ink-500 shrink-0 whitespace-nowrap">
-                  {metaText}
-                </span>
+              <div className="min-w-0">
+                <div className="flex items-start gap-2 min-w-0">
+                  {post.category_name && (
+                    <span className="mt-[1px] inline-flex items-center rounded-full border border-ink-100 bg-paper-50 px-1.5 py-[2px] text-[11px] font-medium text-ink-500 shrink-0 leading-none">
+                      {post.category_name}
+                    </span>
+                  )}
+                  <h3 className="truncate text-[14px] font-semibold text-ink-900 flex-1">
+                    {post.title}
+                  </h3>
+                </div>
+
+                <div className="mt-1 flex items-center justify-between gap-2 text-[12px] text-ink-400">
+                  <span className="truncate">{authorMeta}</span>
+                  <span className="shrink-0 whitespace-nowrap">{metaText}</span>
+                </div>
               </div>
             </Link>
           </li>
@@ -100,12 +134,12 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
 function FeedPanel({ title, posts, isLoading, showPopularity = false, categorySlugById, moreLink }) {
   return (
     <section className="card rounded-xl overflow-hidden min-h-[280px] flex flex-col">
-      <header className="px-3 py-2.5 border-b border-ink-100 bg-paper-50">
+      <header className="px-3.5 py-2.5 border-b border-ink-100">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-ink-900">{title}</h2>
+          <h2 className="text-[15px] font-semibold tracking-tight text-ink-900">{title}</h2>
           <Link
             to={moreLink}
-            className="text-[11px] font-medium text-ink-500 hover:text-ink-700 transition-colors"
+            className="text-[12px] font-medium text-ink-500 hover:text-ink-700 transition-colors"
           >
             더보기
           </Link>
