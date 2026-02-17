@@ -29,7 +29,7 @@ function Layout() {
           <div className="relative flex justify-between items-center h-16">
             {/* Logo */}
             <Link
-              to="/"
+              to="/community"
               className="group flex items-center gap-3 transition-opacity hover:opacity-80 z-10"
             >
               <div className="w-8 h-8 bg-ink-950 rounded-lg flex items-center justify-center
@@ -44,7 +44,7 @@ function Layout() {
             {/* Navigation Tabs - Centered */}
             <div className="absolute left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-1">
               <Link
-                to="/"
+                to="/community"
                 className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200 ${
                   !isMarketplace
                     ? 'bg-ink-100 text-ink-900'
@@ -124,7 +124,7 @@ function Layout() {
           {/* Mobile Tabs */}
           <div className="flex sm:hidden items-center gap-1 pb-2 -mt-1">
             <Link
-              to="/"
+              to="/community"
               className={`flex-1 text-center px-3 py-1.5 text-sm font-medium rounded-lg transition-colors duration-200 ${
                 !isMarketplace
                   ? 'bg-ink-100 text-ink-900'

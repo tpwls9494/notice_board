@@ -49,7 +49,7 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => onSelectCategory(category.id)}
+                  onClick={() => onSelectCategory(category.slug)}
                   className="text-[11px] text-ink-500 hover:text-ink-900 whitespace-nowrap"
                 >
                   더보기

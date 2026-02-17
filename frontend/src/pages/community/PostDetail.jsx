@@ -36,7 +36,7 @@ function PostDetail() {
     mutationFn: () => postsAPI.deletePost(id),
     onSuccess: () => {
       toast.success('게시글이 삭제되었습니다.');
-      navigate('/');
+      navigate('/community');
     },
   });
 
@@ -130,7 +130,7 @@ function PostDetail() {
     <div className="max-w-4xl mx-auto animate-fade-up">
       {/* Back Navigation */}
       <Link
-        to="/"
+        to="/community"
         className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
         style={{ transition: 'color 0.2s ease-out' }}
       >

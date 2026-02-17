@@ -11,7 +11,8 @@ import McpList from './pages/marketplace/McpList'
 import McpDetail from './pages/marketplace/McpDetail'
 import McpPlayground from './pages/marketplace/McpPlayground'
 // Community
-import PostList from './pages/community/PostList'
+import CommunityHubPage from './pages/community/CommunityHubPage'
+import CommunityBoardPage from './pages/community/CommunityBoardPage'
 import PostDetail from './pages/community/PostDetail'
 import PostForm from './pages/community/PostForm'
 
@@ -57,7 +58,9 @@ function App() {
         {/* Main app with public Layout */}
         <Route path="/" element={<Layout />}>
           {/* Community (public - anyone can view) */}
-          <Route index element={<PostList />} />
+          <Route index element={<Navigate to="community" replace />} />
+          <Route path="community" element={<CommunityHubPage />} />
+          <Route path="community/:slug" element={<CommunityBoardPage />} />
           <Route path="posts/:id" element={<PostDetail />} />
 
           {/* Community (protected - login required) */}
