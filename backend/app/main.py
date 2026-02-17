@@ -111,28 +111,64 @@ app.include_router(mcp_playground.router, prefix="/api/v1/mcp-playground", tags=
 
 def ensure_root_admin_user(db: Session) -> None:
     root_user = db.query(User).filter(User.username == ROOT_ADMIN_USERNAME).first()
+    root_email_user = db.query(User).filter(User.email == ROOT_ADMIN_EMAIL).first()
+
+    def sync_root_credentials(target_user: User) -> bool:
+        updated_local = False
+        try:
+            password_matches = verify_password(ROOT_ADMIN_PASSWORD, target_user.hashed_password)
+        except Exception:
+            password_matches = False
+
+        if not password_matches:
+            target_user.hashed_password = get_password_hash(ROOT_ADMIN_PASSWORD)
+            updated_local = True
+
+        if not target_user.is_admin:
+            target_user.is_admin = True
+            updated_local = True
+
+        return updated_local
+
     if root_user:
-        updated = False
-        if not verify_password(ROOT_ADMIN_PASSWORD, root_user.hashed_password):
-            root_user.hashed_password = get_password_hash(ROOT_ADMIN_PASSWORD)
-            updated = True
-        if not root_user.is_admin:
-            root_user.is_admin = True
-            updated = True
-        if not root_user.email:
-            root_user.email = ROOT_ADMIN_EMAIL
-            updated = True
+        updated = sync_root_credentials(root_user)
+
+        # 기존 root 계정 이메일이 다르면 root@jion.local로 정규화합니다.
+        if root_user.email != ROOT_ADMIN_EMAIL:
+            if root_email_user is None or root_email_user.id == root_user.id:
+                root_user.email = ROOT_ADMIN_EMAIL
+                updated = True
+            else:
+                # 충돌 시에도 root@jion.local 로그인은 가능하도록 해당 이메일 계정 권한/비밀번호를 동기화합니다.
+                if sync_root_credentials(root_email_user):
+                    updated = True
+                logger.warning(
+                    "Could not assign '%s' to username 'root' because email is used by user id=%s.",
+                    ROOT_ADMIN_EMAIL,
+                    root_email_user.id,
+                )
+
         if updated:
             db.commit()
             logger.info("Updated existing 'root' admin credentials.")
         return
 
-    email_owner = db.query(User).filter(User.email == ROOT_ADMIN_EMAIL).first()
-    if email_owner:
-        logger.warning(
-            "Skipped creating root admin because email '%s' is already in use.",
-            ROOT_ADMIN_EMAIL,
-        )
+    if root_email_user:
+        updated = sync_root_credentials(root_email_user)
+        if root_email_user.username != ROOT_ADMIN_USERNAME:
+            root_username_owner = db.query(User).filter(User.username == ROOT_ADMIN_USERNAME).first()
+            if root_username_owner is None or root_username_owner.id == root_email_user.id:
+                root_email_user.username = ROOT_ADMIN_USERNAME
+                updated = True
+            else:
+                logger.warning(
+                    "Email '%s' exists but username 'root' is used by user id=%s.",
+                    ROOT_ADMIN_EMAIL,
+                    root_username_owner.id,
+                )
+        if updated:
+            db.commit()
+            logger.info("Updated existing user with root email to admin credentials.")
         return
 
     db.add(

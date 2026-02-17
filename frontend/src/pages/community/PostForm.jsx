@@ -4,6 +4,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { postsAPI, filesAPI } from '../../services/api'
 import useCategoriesStore from '../../stores/categoriesStore'
+import useAuthStore from '../../stores/authStore'
+
+const NOTICE_CATEGORY_SLUG = 'notice'
 
 function PostForm() {
   const { id } = useParams()
@@ -18,6 +21,7 @@ function PostForm() {
   const [uploadProgress, setUploadProgress] = useState(false)
 
   const { categories, fetchCategories } = useCategoriesStore()
+  const user = useAuthStore((state) => state.user)
 
   useEffect(() => {
     fetchCategories()
@@ -36,6 +40,10 @@ function PostForm() {
       setCategoryId(postData.data.category_id || '')
     }
   }, [postData])
+
+  const selectableCategories = categories.filter(
+    (category) => user?.is_admin || category.slug !== NOTICE_CATEGORY_SLUG
+  )
 
   const createMutation = useMutation({
     mutationFn: (data) => postsAPI.createPost(data),
@@ -203,7 +211,7 @@ function PostForm() {
               required
             >
               <option value="">카테고리를 선택하세요</option>
-              {categories.map((category) => (
+              {selectableCategories.map((category) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
