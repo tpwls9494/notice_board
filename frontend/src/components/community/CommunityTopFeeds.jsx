@@ -17,14 +17,14 @@ const CATEGORY_FALLBACK_SLUG = {
 };
 
 const CATEGORY_BAR_COLOR = {
-  notice: '#94A3B8',
-  free: '#7AA2C2',
-  humor: '#7EA68D',
-  qna: '#B79D7A',
-  'dev-news': '#8B9FD1',
-  tips: '#7BA9A4',
-  showcase: '#B28B8B',
-  default: '#CBD5E1',
+  notice: '#A5B3C2',
+  free: '#8EA3B3',
+  humor: '#8FA598',
+  qna: '#B5A48F',
+  'dev-news': '#9CA9C1',
+  tips: '#8EA7A5',
+  showcase: '#AE9B9B',
+  default: '#D4DDE6',
 };
 
 function resolveCategorySlug(post, categorySlugById) {
@@ -60,36 +60,36 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
 
         return (
           <li key={post.id}>
-          <Link
-            to={`/posts/${post.id}`}
-            className="relative block px-3 py-2 pl-4 hover:bg-paper-50 transition-colors"
-          >
-            <span
-              className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-sm"
-              style={{ backgroundColor: barColor }}
-              aria-hidden="true"
-            />
-            <div className="flex items-center gap-2 min-w-0 text-[13px]">
-              {post.category_name && (
-                <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[12px] font-medium text-ink-600 shrink-0 leading-none">
-                  [{post.category_name}]
+            <Link
+              to={`/posts/${post.id}`}
+              className="relative block px-3 py-1.5 pl-4 hover:bg-paper-50 transition-colors"
+            >
+              <span
+                className="absolute left-0 top-2 bottom-2 w-[2px] rounded-full"
+                style={{ backgroundColor: barColor }}
+                aria-hidden="true"
+              />
+              <div className="flex items-center gap-2 min-w-0 text-[13px]">
+                {post.category_name && (
+                  <span className="inline-flex items-center rounded-full border border-ink-100 bg-paper-50 px-1.5 py-[2px] text-[12px] font-medium text-ink-600 shrink-0 leading-none">
+                    [{post.category_name}]
+                  </span>
+                )}
+                <span className="truncate text-ink-900 font-medium flex-1">
+                  {post.title}
                 </span>
-              )}
-              <span className="truncate text-ink-900 font-medium flex-1">
-                {post.title}
-              </span>
-              <span className="text-[11px] text-ink-500 shrink-0">
-                댓글 {post.comment_count || 0}
-              </span>
-            </div>
-            {showPopularity && (
-              <div className="mt-1 pl-0.5 flex items-center gap-2 text-[11px] text-ink-400">
-                <span>추천 {post.likes_count || 0}</span>
-                <span>댓글 {post.comment_count || 0}</span>
-                <span>조회 {post.views || 0}</span>
+                <span className="text-[11px] text-ink-500 shrink-0">
+                  댓글 {post.comment_count || 0}
+                </span>
               </div>
-            )}
-          </Link>
+              {showPopularity && (
+                <div className="mt-0.5 pl-0.5 flex items-center gap-1.5 text-[10px] text-ink-400 whitespace-nowrap">
+                  <span>추천 {post.likes_count || 0}</span>
+                  <span>댓글 {post.comment_count || 0}</span>
+                  <span>조회 {post.views || 0}</span>
+                </div>
+              )}
+            </Link>
           </li>
         );
       })}
