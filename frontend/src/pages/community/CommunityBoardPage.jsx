@@ -55,11 +55,14 @@ function CommunityBoardPage() {
     <div className="animate-fade-up">
       <section className="mb-4">
         <h1 className="font-display text-2xl font-bold text-ink-950 tracking-tight text-balance flex items-center gap-2">
-          {activeCategory.icon && (
-            <span className="text-2xl leading-none" aria-hidden="true">
-              {activeCategory.icon}
-            </span>
-          )}
+          <span
+            className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink-200 bg-paper-100 text-ink-500 shrink-0"
+            aria-hidden="true"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5v13.5H3.75V5.25zm5.25 0v13.5m5.25-13.5v13.5M3.75 9.75h16.5m-16.5 4.5h16.5" />
+            </svg>
+          </span>
           <span>{activeCategory.name} 게시판</span>
         </h1>
         <p className="mt-1 text-xs text-ink-500 max-w-md">
@@ -71,7 +74,7 @@ function CommunityBoardPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
           <button
             onClick={() => navigate('/community')}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border whitespace-nowrap transition-colors bg-white text-ink-600 border-ink-200 hover:bg-paper-100"
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-white text-ink-600 border-ink-200 hover:bg-paper-100"
           >
             전체
           </button>
@@ -79,7 +82,7 @@ function CommunityBoardPage() {
             <button
               key={category.id}
               onClick={() => navigate(`/community/${category.slug}`)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${
+              className={`inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors ${
                 category.slug === activeCategory.slug
                   ? 'bg-ink-900 text-paper-50 border-ink-900'
                   : category.slug === 'notice'
@@ -87,12 +90,7 @@ function CommunityBoardPage() {
                     : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
               }`}
             >
-              {category.icon && (
-                <span className="text-[20px] leading-none" aria-hidden="true">
-                  {category.icon}
-                </span>
-              )}
-              <span>{category.name}</span>
+              {category.name}
             </button>
           ))}
         </div>

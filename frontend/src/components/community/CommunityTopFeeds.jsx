@@ -1,11 +1,41 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { communityAPI, postsAPI } from '../../services/api';
+import useCategoriesStore from '../../stores/categoriesStore';
 
 const LIST_LIMIT = 6;
 
-function FeedRows({ posts, showPopularity = false, isLoading = false }) {
+const CATEGORY_FALLBACK_SLUG = {
+  '공지': 'notice',
+  '자유': 'free',
+  '유머': 'humor',
+  '질문': 'qna',
+  'IT 뉴스': 'dev-news',
+  '팁 추천': 'tips',
+  '프로젝트': 'showcase',
+};
+
+const CATEGORY_BAR_COLOR = {
+  notice: '#94A3B8',
+  free: '#7AA2C2',
+  humor: '#7EA68D',
+  qna: '#B79D7A',
+  'dev-news': '#8B9FD1',
+  tips: '#7BA9A4',
+  showcase: '#B28B8B',
+  default: '#CBD5E1',
+};
+
+function resolveCategorySlug(post, categorySlugById) {
+  if (post?.category_id != null && categorySlugById[post.category_id]) {
+    return categorySlugById[post.category_id];
+  }
+
+  return CATEGORY_FALLBACK_SLUG[post?.category_name] || 'default';
+}
+
+function FeedRows({ posts, showPopularity = false, isLoading = false, categorySlugById = {} }) {
   if (isLoading) {
     return (
       <div className="px-3 py-2 text-xs text-ink-400">
@@ -24,16 +54,25 @@ function FeedRows({ posts, showPopularity = false, isLoading = false }) {
 
   return (
     <ul className="divide-y divide-ink-100">
-      {posts.map((post) => (
-        <li key={post.id}>
+      {posts.map((post) => {
+        const categorySlug = resolveCategorySlug(post, categorySlugById);
+        const barColor = CATEGORY_BAR_COLOR[categorySlug] || CATEGORY_BAR_COLOR.default;
+
+        return (
+          <li key={post.id}>
           <Link
             to={`/posts/${post.id}`}
-            className="block px-3 py-2 hover:bg-paper-50 transition-colors"
+            className="relative block px-3 py-2 pl-4 hover:bg-paper-50 transition-colors"
           >
+            <span
+              className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-sm"
+              style={{ backgroundColor: barColor }}
+              aria-hidden="true"
+            />
             <div className="flex items-center gap-2 min-w-0 text-[13px]">
               {post.category_name && (
-                <span className="badge-default text-[10px] px-1.5 py-0 leading-5">
-                  {post.category_name}
+                <span className="inline-flex items-center rounded-full border border-ink-200 bg-ink-50 px-2 py-0.5 text-[12px] font-medium text-ink-600 shrink-0 leading-none">
+                  [{post.category_name}]
                 </span>
               )}
               <span className="truncate text-ink-900 font-medium flex-1">
@@ -51,13 +90,14 @@ function FeedRows({ posts, showPopularity = false, isLoading = false }) {
               </div>
             )}
           </Link>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
-function FeedPanel({ title, posts, isLoading, showPopularity = false }) {
+function FeedPanel({ title, posts, isLoading, showPopularity = false, categorySlugById }) {
   return (
     <section className="card rounded-xl overflow-hidden">
       <header className="px-3 py-2.5 border-b border-ink-100 bg-paper-50">
@@ -67,6 +107,7 @@ function FeedPanel({ title, posts, isLoading, showPopularity = false }) {
         posts={posts}
         showPopularity={showPopularity}
         isLoading={isLoading}
+        categorySlugById={categorySlugById}
       />
     </section>
   );
@@ -74,6 +115,13 @@ function FeedPanel({ title, posts, isLoading, showPopularity = false }) {
 
 function CommunityTopFeeds({ categoryId }) {
   const [mobileTab, setMobileTab] = useState('latest');
+  const { categories, fetchCategories } = useCategoriesStore();
+
+  useEffect(() => {
+    if (categories.length === 0) {
+      fetchCategories();
+    }
+  }, [categories.length, fetchCategories]);
 
   const { data: latestData, isLoading: latestLoading } = useQuery({
     queryKey: ['community', 'latest', categoryId],
@@ -92,6 +140,13 @@ function CommunityTopFeeds({ categoryId }) {
     [latestData]
   );
   const hotPosts = useMemo(() => hotData?.data || [], [hotData]);
+  const categorySlugById = useMemo(() => {
+    const map = {};
+    categories.forEach((category) => {
+      map[category.id] = category.slug;
+    });
+    return map;
+  }, [categories]);
 
   return (
     <section className="mb-4">
@@ -123,12 +178,14 @@ function CommunityTopFeeds({ categoryId }) {
           title="최신글"
           posts={latestPosts}
           isLoading={latestLoading}
+          categorySlugById={categorySlugById}
         />
         <FeedPanel
           title="인기글 (24h)"
           posts={hotPosts}
           isLoading={hotLoading}
           showPopularity
+          categorySlugById={categorySlugById}
         />
       </div>
 
@@ -138,6 +195,7 @@ function CommunityTopFeeds({ categoryId }) {
             title="최신글"
             posts={latestPosts}
             isLoading={latestLoading}
+            categorySlugById={categorySlugById}
           />
         ) : (
           <FeedPanel
@@ -145,6 +203,7 @@ function CommunityTopFeeds({ categoryId }) {
             posts={hotPosts}
             isLoading={hotLoading}
             showPopularity
+            categorySlugById={categorySlugById}
           />
         )}
       </div>

@@ -28,7 +28,7 @@ function CommunityHubPage() {
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
           <button
             onClick={() => navigate('/community')}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border whitespace-nowrap transition-colors bg-ink-900 text-paper-50 border-ink-900"
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-ink-900 text-paper-50 border-ink-900"
           >
             전체
           </button>
@@ -36,18 +36,13 @@ function CommunityHubPage() {
             <button
               key={category.id}
               onClick={() => navigate(`/community/${category.slug}`)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${
+              className={`inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors ${
                 category.slug === 'notice'
                   ? 'bg-paper-100 text-ink-500 border-ink-200 hover:bg-paper-200'
                   : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
               }`}
             >
-              {category.icon && (
-                <span className="text-[20px] leading-none" aria-hidden="true">
-                  {category.icon}
-                </span>
-              )}
-              <span>{category.name}</span>
+              {category.name}
             </button>
           ))}
         </div>

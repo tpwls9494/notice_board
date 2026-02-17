@@ -38,11 +38,14 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
             <section key={category.id} className="card rounded-xl px-3 py-2.5">
               <header className="flex items-center justify-between gap-2 pb-2 border-b border-ink-100">
                 <div className="flex items-center gap-1.5 min-w-0">
-                  {category.icon && (
-                    <span className="text-xl leading-none" aria-hidden="true">
-                      {category.icon}
-                    </span>
-                  )}
+                  <span
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-md border border-ink-200 bg-paper-100 text-ink-500 shrink-0"
+                    aria-hidden="true"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5v13.5H3.75V5.25zm5.25 0v13.5m5.25-13.5v13.5M3.75 9.75h16.5m-16.5 4.5h16.5" />
+                    </svg>
+                  </span>
                   <h3 className="text-sm font-semibold text-ink-900 truncate">
                     {category.name}
                   </h3>
