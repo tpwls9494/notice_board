@@ -4,7 +4,9 @@ import { Link } from 'react-router-dom';
 import { communityAPI, postsAPI } from '../../services/api';
 import useCategoriesStore from '../../stores/categoriesStore';
 
-const LIST_LIMIT = 6;
+const LIST_LIMIT = 8;
+const LATEST_MORE_LINK = '/community/posts?sort=latest';
+const HOT_MORE_LINK = '/community/posts?sort=hot&window=24h';
 
 const CATEGORY_FALLBACK_SLUG = {
   '공지': 'notice',
@@ -36,6 +38,8 @@ function resolveCategorySlug(post, categorySlugById) {
 }
 
 function FeedRows({ posts, showPopularity = false, isLoading = false, categorySlugById = {} }) {
+  const visiblePosts = posts.slice(0, LIST_LIMIT);
+
   if (isLoading) {
     return (
       <div className="px-3 py-2 text-xs text-ink-400">
@@ -44,7 +48,7 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
     );
   }
 
-  if (posts.length === 0) {
+  if (visiblePosts.length === 0) {
     return (
       <div className="px-3 py-2 text-xs text-ink-400">
         표시할 글이 없습니다.
@@ -54,9 +58,12 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
 
   return (
     <ul className="divide-y divide-ink-100">
-      {posts.map((post) => {
+      {visiblePosts.map((post) => {
         const categorySlug = resolveCategorySlug(post, categorySlugById);
         const barColor = CATEGORY_BAR_COLOR[categorySlug] || CATEGORY_BAR_COLOR.default;
+        const metaText = showPopularity
+          ? `추천 ${post.likes_count || 0} · 댓글 ${post.comment_count || 0} · 조회 ${post.views || 0}`
+          : `댓글 ${post.comment_count || 0}`;
 
         return (
           <li key={post.id}>
@@ -78,17 +85,10 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
                 <span className="truncate text-ink-900 font-medium flex-1">
                   {post.title}
                 </span>
-                <span className="text-[11px] text-ink-500 shrink-0">
-                  댓글 {post.comment_count || 0}
+                <span className="text-[10px] text-ink-500 shrink-0 whitespace-nowrap">
+                  {metaText}
                 </span>
               </div>
-              {showPopularity && (
-                <div className="mt-0.5 pl-0.5 flex items-center gap-1.5 text-[10px] text-ink-400 whitespace-nowrap">
-                  <span>추천 {post.likes_count || 0}</span>
-                  <span>댓글 {post.comment_count || 0}</span>
-                  <span>조회 {post.views || 0}</span>
-                </div>
-              )}
             </Link>
           </li>
         );
@@ -97,18 +97,28 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
   );
 }
 
-function FeedPanel({ title, posts, isLoading, showPopularity = false, categorySlugById }) {
+function FeedPanel({ title, posts, isLoading, showPopularity = false, categorySlugById, moreLink }) {
   return (
-    <section className="card rounded-xl overflow-hidden">
+    <section className="card rounded-xl overflow-hidden min-h-[280px] flex flex-col">
       <header className="px-3 py-2.5 border-b border-ink-100 bg-paper-50">
-        <h2 className="text-sm font-semibold text-ink-900">{title}</h2>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-ink-900">{title}</h2>
+          <Link
+            to={moreLink}
+            className="text-[11px] font-medium text-ink-500 hover:text-ink-700 transition-colors"
+          >
+            더보기
+          </Link>
+        </div>
       </header>
-      <FeedRows
-        posts={posts}
-        showPopularity={showPopularity}
-        isLoading={isLoading}
-        categorySlugById={categorySlugById}
-      />
+      <div className="flex-1">
+        <FeedRows
+          posts={posts}
+          showPopularity={showPopularity}
+          isLoading={isLoading}
+          categorySlugById={categorySlugById}
+        />
+      </div>
     </section>
   );
 }
@@ -179,6 +189,7 @@ function CommunityTopFeeds({ categoryId }) {
           posts={latestPosts}
           isLoading={latestLoading}
           categorySlugById={categorySlugById}
+          moreLink={LATEST_MORE_LINK}
         />
         <FeedPanel
           title="인기글 (24h)"
@@ -186,6 +197,7 @@ function CommunityTopFeeds({ categoryId }) {
           isLoading={hotLoading}
           showPopularity
           categorySlugById={categorySlugById}
+          moreLink={HOT_MORE_LINK}
         />
       </div>
 
@@ -196,6 +208,7 @@ function CommunityTopFeeds({ categoryId }) {
             posts={latestPosts}
             isLoading={latestLoading}
             categorySlugById={categorySlugById}
+            moreLink={LATEST_MORE_LINK}
           />
         ) : (
           <FeedPanel
@@ -204,6 +217,7 @@ function CommunityTopFeeds({ categoryId }) {
             isLoading={hotLoading}
             showPopularity
             categorySlugById={categorySlugById}
+            moreLink={HOT_MORE_LINK}
           />
         )}
       </div>

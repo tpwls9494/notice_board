@@ -18,22 +18,28 @@ const WINDOW_OPTIONS = [
   { value: '30d', label: '30일' },
 ];
 
-function PostListPage({ categoryId, categoryName }) {
+function PostListPage({
+  categoryId = null,
+  categoryName = '전체',
+  title = null,
+  initialSort = 'latest',
+  initialWindow = '24h',
+}) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [sort, setSort] = useState('latest');
-  const [window, setWindow] = useState('24h');
+  const [sort, setSort] = useState(initialSort);
+  const [window, setWindow] = useState(initialWindow);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
     setPage(1);
     setSearch('');
     setSearchInput('');
-    setSort('latest');
-    setWindow('24h');
+    setSort(initialSort);
+    setWindow(initialWindow);
     setIsFilterOpen(false);
-  }, [categoryId]);
+  }, [categoryId, initialSort, initialWindow]);
 
   useEffect(() => {
     if (search || sort !== 'latest' || window !== '24h') {
@@ -44,7 +50,6 @@ function PostListPage({ categoryId, categoryName }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['posts', page, search, categoryId, sort, window],
     queryFn: () => postsAPI.getPosts(page, 10, search, categoryId, sort, window),
-    enabled: Boolean(categoryId),
   });
 
   const posts = data?.data?.posts || [];
@@ -62,7 +67,7 @@ function PostListPage({ categoryId, categoryName }) {
     <section id="board-posts" className="mt-5">
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-ink-900">
-          {categoryName} 게시판 글
+          {title || `${categoryName} 게시판 글`}
         </h2>
         <button
           onClick={() => setIsFilterOpen((prev) => !prev)}

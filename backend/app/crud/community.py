@@ -6,6 +6,7 @@ from sqlalchemy import func, desc, case
 from app.models.post import Post
 from app.models.comment import Comment
 from app.models.like import Like
+from app.models.user import User
 
 
 KST = timezone(timedelta(hours=9))
@@ -25,9 +26,14 @@ def get_community_stats(db: Session) -> dict:
         Comment.created_at >= today_start_utc
     ).scalar() or 0
 
+    today_signups = db.query(func.count(User.id)).filter(
+        User.created_at >= today_start_utc
+    ).scalar() or 0
+
     return {
         "today_posts": today_posts,
         "today_comments": today_comments,
+        "today_signups": today_signups,
         "active_users": None,
     }
 
