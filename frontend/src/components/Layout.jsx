@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Outlet, Link, useLocation, useSearchParams } from 'react-router-dom'
+import { Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
 import LoginModal from './LoginModal'
 
 function Layout() {
   const { user, logout, token } = useAuthStore()
   const location = useLocation()
+  const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showLoginModal, setShowLoginModal] = useState(false)
   const authActionClass = 'inline-flex h-9 items-center rounded-lg px-3.5 text-sm font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700'
@@ -21,6 +22,11 @@ function Layout() {
       setSearchParams(searchParams, { replace: true })
     }
   }, [searchParams, setSearchParams])
+
+  const handleLogout = () => {
+    logout()
+    navigate('/community', { replace: true })
+  }
 
   return (
     <div className="min-h-screen bg-paper-100 bg-noise">
@@ -96,7 +102,7 @@ function Layout() {
                   )}
 
                   <button
-                    onClick={logout}
+                    onClick={handleLogout}
                     className="btn-ghost text-sm text-ink-500"
                   >
                     로그아웃

@@ -26,7 +26,7 @@ function Register() {
 
   const handleLoginClick = (e) => {
     e.preventDefault()
-    navigate('/?login=true')
+    navigate('/community?login=true')
   }
 
   return (
