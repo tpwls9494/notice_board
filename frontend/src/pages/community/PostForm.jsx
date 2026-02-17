@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { postsAPI, filesAPI } from '../../services/api'
 import useCategoriesStore from '../../stores/categoriesStore'
@@ -8,6 +8,7 @@ import useCategoriesStore from '../../stores/categoriesStore'
 function PostForm() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const isEdit = Boolean(id)
 
   const [title, setTitle] = useState('')
@@ -42,11 +43,14 @@ function PostForm() {
 
   const updateMutation = useMutation({
     mutationFn: (data) => postsAPI.updatePost(id, data),
-    onSuccess: () => {
-      toast.success('게시글이 수정되었습니다.')
-      navigate(`/posts/${id}`)
-    },
   })
+
+  const invalidateCommunityCaches = async () => {
+    await Promise.allSettled([
+      queryClient.invalidateQueries({ queryKey: ['community'] }),
+      queryClient.invalidateQueries({ queryKey: ['posts'] }),
+    ])
+  }
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || [])
@@ -105,10 +109,14 @@ function PostForm() {
       if (isEdit) {
         // 수정 시에는 파일 업로드 지원 안 함
         await updateMutation.mutateAsync(data)
+        await invalidateCommunityCaches()
+        toast.success('게시글이 수정되었습니다.')
+        navigate(`/posts/${id}`)
       } else {
         // 1. 게시글 생성
         const response = await createMutation.mutateAsync(data)
         const postId = response.data.id
+        await invalidateCommunityCaches()
 
         // 2. 파일 업로드 (선택된 파일이 있을 경우)
         if (selectedFiles.length > 0) {
