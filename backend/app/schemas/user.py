@@ -13,7 +13,8 @@ class UserCreate(UserBase):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    # 로그인은 기존 운영 계정 호환을 위해 .local 도메인 등도 허용합니다.
+    email: str = Field(..., min_length=3, max_length=255)
     password: str
 
 
