@@ -107,9 +107,11 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
                                 <span className="truncate text-[13px] font-medium text-ink-800">
                                   {post.title}
                                 </span>
-                                <span className="shrink-0 text-[11px] text-ink-500">
-                                  [{post.comment_count || 0}]
-                                </span>
+                                {post.comment_count > 0 && (
+                                  <span className="shrink-0 text-[11px] text-ink-500">
+                                    [{post.comment_count}]
+                                  </span>
+                                )}
                               </span>
                               <span className="shrink-0 text-[11px] text-ink-400">
                                 {timeText}
