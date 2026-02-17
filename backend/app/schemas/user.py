@@ -19,6 +19,8 @@ class UserLogin(BaseModel):
 
 
 class UserResponse(UserBase):
+    # .local 등 운영 계정 이메일도 응답 직렬화에서 허용합니다.
+    email: str
     id: int
     is_admin: bool
     created_at: datetime
