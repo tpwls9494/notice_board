@@ -5,7 +5,7 @@ import { communityAPI } from '../../services/api';
 function HotPostsSection() {
   const { data, isLoading } = useQuery({
     queryKey: ['community', 'hot', '24h'],
-    queryFn: () => communityAPI.getHotPosts('24h', 6),
+    queryFn: () => communityAPI.getHotPosts('24h', 3),
     staleTime: 5 * 60_000,
   });
 
