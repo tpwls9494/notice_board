@@ -5,9 +5,29 @@ from app.db.session import get_db
 from app.api.deps import get_current_user, get_current_user_optional
 from app.schemas.post import PostCreate, PostUpdate, PostResponse, PostListResponse
 from app.models.user import User
+from app.models.category import Category
 from app.crud import post as crud_post
 
 router = APIRouter()
+NOTICE_CATEGORY_SLUG = "notice"
+
+
+def get_category_or_404(db: Session, category_id: int) -> Category:
+    category = db.query(Category).filter(Category.id == category_id).first()
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Category not found",
+        )
+    return category
+
+
+def ensure_notice_write_permission(category: Category, current_user: User) -> None:
+    if category.slug == NOTICE_CATEGORY_SLUG and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admins can write notice posts",
+        )
 
 
 @router.get("/", response_model=PostListResponse)
@@ -101,6 +121,9 @@ def create_post(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    category = get_category_or_404(db, post.category_id)
+    ensure_notice_write_permission(category, current_user)
+
     db_post = crud_post.create_post(db, post, current_user.id)
     return PostResponse(
         id=db_post.id,
@@ -140,6 +163,12 @@ def update_post(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions",
         )
+
+    target_category_id = (
+        post_update.category_id if post_update.category_id is not None else db_post.category_id
+    )
+    target_category = get_category_or_404(db, target_category_id)
+    ensure_notice_write_permission(target_category, current_user)
 
     updated_post = crud_post.update_post(db, post_id, post_update)
     return PostResponse(

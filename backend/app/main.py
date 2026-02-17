@@ -3,11 +3,13 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 from app.api.v1 import auth, posts, comments, categories, likes, files, community
 from app.api.v1 import mcp_servers, mcp_categories, mcp_reviews, mcp_playground
 from app.db.base import Base, engine
 from app.db.session import SessionLocal
 from app.core.config import settings
+from app.core.security import get_password_hash, verify_password
 from app.models import McpCategory, McpServer, McpTool, McpReview, McpInstallGuide, PlaygroundUsage  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.post import Post  # noqa: F401
@@ -20,6 +22,9 @@ from app.models.notification import Notification  # noqa: F401
 from app.services.github_sync import sync_all_github_stats
 
 logger = logging.getLogger(__name__)
+ROOT_ADMIN_USERNAME = "root"
+ROOT_ADMIN_PASSWORD = "root1234"
+ROOT_ADMIN_EMAIL = "root@jion.local"
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -104,13 +109,58 @@ app.include_router(mcp_reviews.router, prefix="/api/v1/mcp-reviews", tags=["mcp-
 app.include_router(mcp_playground.router, prefix="/api/v1/mcp-playground", tags=["mcp-playground"])
 
 
+def ensure_root_admin_user(db: Session) -> None:
+    root_user = db.query(User).filter(User.username == ROOT_ADMIN_USERNAME).first()
+    if root_user:
+        updated = False
+        if not verify_password(ROOT_ADMIN_PASSWORD, root_user.hashed_password):
+            root_user.hashed_password = get_password_hash(ROOT_ADMIN_PASSWORD)
+            updated = True
+        if not root_user.is_admin:
+            root_user.is_admin = True
+            updated = True
+        if not root_user.email:
+            root_user.email = ROOT_ADMIN_EMAIL
+            updated = True
+        if updated:
+            db.commit()
+            logger.info("Updated existing 'root' admin credentials.")
+        return
+
+    email_owner = db.query(User).filter(User.email == ROOT_ADMIN_EMAIL).first()
+    if email_owner:
+        logger.warning(
+            "Skipped creating root admin because email '%s' is already in use.",
+            ROOT_ADMIN_EMAIL,
+        )
+        return
+
+    db.add(
+        User(
+            email=ROOT_ADMIN_EMAIL,
+            username=ROOT_ADMIN_USERNAME,
+            hashed_password=get_password_hash(ROOT_ADMIN_PASSWORD),
+            is_admin=True,
+        )
+    )
+    db.commit()
+    logger.info("Created default root admin user.")
+
+
 @app.on_event("startup")
 async def startup_sync_github():
     db = SessionLocal()
     try:
-        await sync_all_github_stats(db)
-    except Exception as e:
-        logger.warning(f"GitHub sync on startup failed: {e}")
+        try:
+            ensure_root_admin_user(db)
+        except Exception as e:
+            db.rollback()
+            logger.warning(f"Root admin bootstrap failed: {e}")
+
+        try:
+            await sync_all_github_stats(db)
+        except Exception as e:
+            logger.warning(f"GitHub sync on startup failed: {e}")
     finally:
         db.close()
 
