@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { communityAPI, postsAPI } from '../../services/api';
 import useCategoriesStore from '../../stores/categoriesStore';
 
-const LIST_LIMIT = 8;
+const LIST_LIMIT = 5;
 const LATEST_MORE_LINK = '/community/posts?sort=latest';
 const HOT_MORE_LINK = '/community/posts?sort=hot&window=24h';
 

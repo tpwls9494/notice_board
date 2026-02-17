@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { postsAPI } from '../../services/api';
 
 const PREVIEW_LIMIT = 5;
+const EXCLUDED_CATEGORY_SLUGS = new Set(['notice']);
+const MAX_CATEGORY_CARDS = 6;
 
 function formatRelativeTime(dateValue) {
   if (!dateValue) return '방금 전';
@@ -31,7 +33,9 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
     return [...categories].sort((a, b) => {
       if (a.order != null && b.order != null) return a.order - b.order;
       return a.id - b.id;
-    });
+    })
+      .filter((category) => !EXCLUDED_CATEGORY_SLUGS.has(category.slug))
+      .slice(0, MAX_CATEGORY_CARDS);
   }, [categories]);
 
   const previewQueries = useQueries({
@@ -54,21 +58,18 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
     };
   });
 
-  // 글이 없는 카테고리는 카드 자체를 숨겨서 피드 밀도를 유지합니다.
-  const visibleCards = previewCards.filter(({ posts, isLoading }) => isLoading || posts.length > 0);
-
   return (
     <section className="mb-5">
       <header className="mb-2.5 flex items-center justify-between gap-2">
         <h2 className="text-[17px] font-semibold tracking-tight text-ink-900">게시판별 최근 글</h2>
-        <span className="text-[12px] text-ink-400">각 게시판 최근 5개</span>
+        <span className="text-[12px] text-ink-400">공지 제외 6개 게시판</span>
       </header>
 
-      {visibleCards.length === 0 ? (
+      {previewCards.length === 0 ? (
         <p className="px-1 text-[12px] text-ink-400">최근 글이 있는 게시판이 아직 없습니다.</p>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {visibleCards.map(({ category, posts, isLoading }) => (
+          {previewCards.map(({ category, posts, isLoading }) => (
             <section key={category.id} className="card rounded-xl px-3 py-2">
               <header className="flex items-center justify-between gap-2 border-b border-ink-100 pb-1.5">
                 <div className="min-w-0">
@@ -101,12 +102,18 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
                             to={`/posts/${post.id}`}
                             className="block rounded-md px-1.5 py-1.5 transition-colors hover:bg-paper-50"
                           >
-                            <span className="block truncate text-[13px] font-medium text-ink-800">
-                              {post.title}
-                            </span>
-                            <span className="mt-0.5 flex items-center justify-between text-[12px] text-ink-400">
-                              <span>{timeText}</span>
-                              <span>댓글 {post.comment_count || 0}</span>
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="flex min-w-0 items-center gap-1.5">
+                                <span className="truncate text-[13px] font-medium text-ink-800">
+                                  {post.title}
+                                </span>
+                                <span className="shrink-0 text-[11px] text-ink-500">
+                                  [{post.comment_count || 0}]
+                                </span>
+                              </span>
+                              <span className="shrink-0 text-[11px] text-ink-400">
+                                {timeText}
+                              </span>
                             </span>
                           </Link>
                         </li>

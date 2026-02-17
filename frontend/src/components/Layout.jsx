@@ -8,6 +8,7 @@ function Layout() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showLoginModal, setShowLoginModal] = useState(false)
+  const authActionClass = 'inline-flex h-9 items-center rounded-lg px-3.5 text-sm font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700'
 
   const isMarketplace = location.pathname.startsWith('/marketplace')
 
@@ -106,13 +107,13 @@ function Layout() {
                   {/* 비로그인 상태 */}
                   <button
                     onClick={() => setShowLoginModal(true)}
-                    className="btn-ghost text-sm"
+                    className={authActionClass}
                   >
                     로그인
                   </button>
                   <Link
                     to="/register"
-                    className="btn-secondary text-sm"
+                    className={authActionClass}
                   >
                     회원가입
                   </Link>

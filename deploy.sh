@@ -63,6 +63,9 @@ else
     printf "n\n" | docker exec -i company_board_backend python -m seed_categories || echo -e "${YELLOW}⚠️  Category seeding skipped${NC}"
 fi
 
+echo -e "${YELLOW}🧩 Seeding MCP marketplace data...${NC}"
+docker compose -f docker-compose.prod.yml exec -T backend python -m app.seed_mcp_data || echo -e "${YELLOW}⚠️  MCP marketplace seeding failed${NC}"
+
 # Check if services are running
 if docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
     echo -e "${GREEN}✅ Deployment successful!${NC}"
