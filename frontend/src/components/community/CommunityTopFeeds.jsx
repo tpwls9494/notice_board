@@ -72,7 +72,7 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
               <div className="flex items-center gap-2 min-w-0 text-[13px]">
                 {post.category_name && (
                   <span className="inline-flex items-center rounded-full border border-ink-100 bg-paper-50 px-1.5 py-[2px] text-[12px] font-medium text-ink-600 shrink-0 leading-none">
-                    [{post.category_name}]
+                    {post.category_name}
                   </span>
                 )}
                 <span className="truncate text-ink-900 font-medium flex-1">
