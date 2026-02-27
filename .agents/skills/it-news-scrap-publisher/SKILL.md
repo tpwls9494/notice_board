@@ -7,7 +7,7 @@ description: RSS/Atom 피드에서 최신 IT 기사를 수집해 이 프로젝�
 
 ## 개요
 
-설정된 피드에서 IT 뉴스를 가져오고, 기존 게시글 링크와 중복을 제거한 뒤, 백엔드 API로 게시글을 생성한다. 기본 피드는 한국 IT 매체 중심이며, 스크립트는 기본적으로 한국 기사만 통과시킨다.
+설정된 피드에서 IT 뉴스를 가져오고, 기존 게시글 링크와 중복을 제거한 뒤, 백엔드 API로 게시글을 생성한다. 게시글 본문은 요약 템플릿이 아니라 기사 본문을 우선 추출해 넣고, 실패 시 요약으로 자동 폴백한다.
 
 ## 작업 절차
 
@@ -19,6 +19,7 @@ description: RSS/Atom 피드에서 최신 IT 기사를 수집해 이 프로젝�
 2. 항상 드라이런부터 실행한다.
 - `--dry-run`으로 제목/링크/요약을 먼저 점검한다.
 - 네트워크 없이 파서만 확인할 때는 `--no-api`를 함께 쓴다.
+- 기사 페이지 본문 추출을 잠시 끄려면 `--no-article-fetch`를 사용한다.
 
 3. 인증 후 게시한다.
 - 가능하면 `--token`(또는 `IT_NEWS_BOT_TOKEN`)을 사용한다.
@@ -81,6 +82,14 @@ python .agents/skills/it-news-scrap-publisher/scripts/publish_it_news.py \
   --allow-global
 ```
 
+본문 추출 없이 요약 폴백만 사용하고 싶을 때:
+
+```bash
+python .agents/skills/it-news-scrap-publisher/scripts/publish_it_news.py \
+  --dry-run \
+  --no-article-fetch
+```
+
 ## Docker Compose 배포 서버에서 사용
 
 1. 서버에서 프로젝트 루트(`antigravity`)로 이동한다.
@@ -121,4 +130,10 @@ python3 .agents/skills/it-news-scrap-publisher/scripts/publish_it_news.py \
 
 - 본문에 원문 링크와 출처를 반드시 포함한다.
 - `dev-news` 카테고리 기존 글과 링크 중복을 피한다.
-- 기사 전문을 그대로 복제하지 않고 요약 중심으로 게시한다.
+- 본문은 기사 핵심 단락 발췌를 우선 사용하고, 추출 실패 시 요약으로 대체한다.
+
+## 실패 대응
+
+- 일부 항목만 실패할 때는 에러 로그의 `first_error`와 `title_len/content_len`을 확인한다.
+- 스크립트는 게시 실패 시 자동으로 짧은 폴백 본문으로 1회 재시도한다.
+- 계속 실패하면 `--max-items 1 --dry-run`으로 개별 항목 payload를 점검한 뒤 다시 실행한다.

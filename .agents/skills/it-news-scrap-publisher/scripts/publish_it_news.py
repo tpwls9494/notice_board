@@ -30,6 +30,12 @@ DEFAULT_ENV_FILE = REPO_ROOT / ".env"
 DEFAULT_ENV_PRODUCTION_FILE = REPO_ROOT / ".env.production"
 URL_PATTERN = re.compile(r"https?://[^\s)>\]]+")
 HANGUL_PATTERN = re.compile(r"[가-힣]")
+TAG_PATTERN = re.compile(r"<[^>]+>")
+ARTICLE_BLOCK_PATTERN = re.compile(r"(?is)<article[^>]*>(.*?)</article>")
+PARAGRAPH_PATTERN = re.compile(r"(?is)<p[^>]*>(.*?)</p>")
+TITLE_PATTERN = re.compile(r"(?is)<title[^>]*>(.*?)</title>")
+SCRIPT_STYLE_PATTERN = re.compile(r"(?is)<(script|style|noscript|svg|iframe)[^>]*>.*?</\\1>")
+CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 KOREAN_DOMAIN_HINTS = (
     ".kr",
     "naver.com",
@@ -43,6 +49,7 @@ KOREAN_DOMAIN_HINTS = (
     "mk.co.kr",
     "zdnet.co.kr",
 )
+DEFAULT_ARTICLE_MAX_CHARS = 7000
 
 
 @dataclass
@@ -65,8 +72,9 @@ def local_name(tag: str) -> str:
 
 
 def clean_text(text: str) -> str:
-    stripped = re.sub(r"<[^>]+>", " ", text or "")
+    stripped = TAG_PATTERN.sub(" ", text or "")
     stripped = unescape(stripped)
+    stripped = CONTROL_CHAR_PATTERN.sub("", stripped)
     return re.sub(r"\s+", " ", stripped).strip()
 
 
@@ -179,6 +187,92 @@ def fetch_url_text(url_or_path: str, timeout: int = DEFAULT_TIMEOUT) -> str:
     )
     with request.urlopen(req, timeout=timeout) as resp:
         return resp.read().decode("utf-8", errors="ignore")
+
+
+def fetch_article_html(url: str, timeout: int = DEFAULT_TIMEOUT) -> str:
+    req = request.Request(
+        url,
+        headers={
+            "User-Agent": HTTP_UA,
+            "Accept": "text/html,application/xhtml+xml",
+        },
+    )
+    with request.urlopen(req, timeout=timeout) as resp:
+        return resp.read().decode("utf-8", errors="ignore")
+
+
+def sanitize_plain_text(text: str) -> str:
+    return clean_text(text)
+
+
+def sanitize_post_text(text: str) -> str:
+    if not text:
+        return ""
+    normalized = unescape(text)
+    normalized = CONTROL_CHAR_PATTERN.sub("", normalized)
+    normalized = normalized.replace("\r\n", "\n").replace("\r", "\n")
+    normalized = re.sub(r"[ \t]+", " ", normalized)
+    normalized = re.sub(r"\n{3,}", "\n\n", normalized)
+    return normalized.strip()
+
+
+def normalize_article_text(text: str, max_chars: int) -> str:
+    normalized = sanitize_post_text(text)
+    normalized = normalized.strip()
+    if len(normalized) > max_chars:
+        normalized = normalized[: max_chars - 8].rstrip() + "\n\n(중략)"
+    return normalized
+
+
+def choose_best_paragraphs(paragraphs: list[str], max_chars: int) -> str:
+    kept: list[str] = []
+    total = 0
+    seen = set()
+
+    for paragraph in paragraphs:
+        line = sanitize_plain_text(paragraph)
+        if len(line) < 30:
+            continue
+        dedupe_key = line.lower()
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        if total + len(line) > max_chars and kept:
+            break
+        kept.append(line)
+        total += len(line) + 2
+
+    if kept:
+        return normalize_article_text("\n\n".join(kept), max_chars=max_chars)
+    return ""
+
+
+def extract_article_text(html: str, max_chars: int) -> str:
+    if not html:
+        return ""
+
+    cleaned_html = SCRIPT_STYLE_PATTERN.sub(" ", html)
+    article_blocks = ARTICLE_BLOCK_PATTERN.findall(cleaned_html)
+
+    # 1) Prefer explicit <article> blocks
+    for block in article_blocks:
+        paragraphs = PARAGRAPH_PATTERN.findall(block)
+        article_text = choose_best_paragraphs(paragraphs, max_chars=max_chars)
+        if article_text:
+            return article_text
+
+    # 2) Fallback to paragraph scan on full document
+    paragraphs = PARAGRAPH_PATTERN.findall(cleaned_html)
+    article_text = choose_best_paragraphs(paragraphs, max_chars=max_chars)
+    if article_text:
+        return article_text
+
+    # 3) Last fallback: title + whole document text (heavily trimmed)
+    title_match = TITLE_PATTERN.search(cleaned_html)
+    title = sanitize_plain_text(title_match.group(1)) if title_match else ""
+    body_text = sanitize_plain_text(cleaned_html)
+    merged = f"{title}\n\n{body_text}" if title else body_text
+    return normalize_article_text(merged, max_chars=max_chars)
 
 
 def child_text(element: ET.Element, names: Iterable[str]) -> str:
@@ -344,24 +438,37 @@ def fetch_existing_links(api_base: str, category_id: int, page_size: int) -> set
     return links
 
 
-def format_post(news: NewsItem) -> tuple[str, str]:
-    title = trim_title(f"[IT 뉴스] {news.title}")
-    summary = news.summary or "요약 없음"
-    scraped_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+def build_post_content(news: NewsItem, article_max_chars: int, fetch_article: bool = True) -> str:
+    article_text = ""
+    if fetch_article:
+        try:
+            html = fetch_article_html(news.link)
+            article_text = extract_article_text(html, max_chars=article_max_chars)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[WARN] Failed to fetch article body ({news.link}): {exc}", file=sys.stderr)
 
-    content = "\n".join(
+    if not article_text:
+        article_text = sanitize_plain_text(news.summary or "")
+
+    if not article_text:
+        article_text = "기사 본문을 추출하지 못했습니다. 원문 링크를 확인해주세요."
+
+    # Keep 원문 링크 for attribution while making article text the primary content.
+    return "\n\n".join(
         [
-            f"출처: {news.source}",
+            article_text,
             f"원문 링크: {news.link}",
-            f"발행 시각: {news.published or '정보 없음'}",
-            "",
-            "요약:",
-            summary,
-            "",
-            f"스크랩 시각: {scraped_at}",
         ]
     )
 
+
+def format_post(news: NewsItem, article_max_chars: int, fetch_article: bool = True) -> tuple[str, str]:
+    title = trim_title(sanitize_plain_text(f"[IT 뉴스] {news.title}"))
+    content = sanitize_post_text(
+        build_post_content(news, article_max_chars=article_max_chars, fetch_article=fetch_article)
+    )
+    if not content:
+        content = f"원문 링크: {news.link}"
     return title, content
 
 
@@ -408,6 +515,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--category-slug", default=os.getenv("IT_NEWS_CATEGORY_SLUG", DEFAULT_CATEGORY_SLUG))
     parser.add_argument("--max-items", type=int, default=5, help="Maximum posts to create in one run")
     parser.add_argument("--per-feed-limit", type=int, default=4, help="Maximum items to parse from each feed")
+    parser.add_argument(
+        "--article-max-chars",
+        type=int,
+        default=DEFAULT_ARTICLE_MAX_CHARS,
+        help="Maximum number of characters for extracted article body.",
+    )
     parser.add_argument("--dedupe-window", type=int, default=DEFAULT_DEDUPE_WINDOW, help="Recent posts to inspect for duplicate links")
     parser.add_argument("--feeds-file", default=str(DEFAULT_FEEDS_FILE), help="JSON file with default feeds")
     parser.add_argument("--feed", action="append", default=[], help="Feed override. Use URL or name|URL. Repeatable.")
@@ -415,6 +528,11 @@ def parse_args() -> argparse.Namespace:
         "--allow-global",
         action="store_true",
         help="Include non-Korean articles as well (default filters to Korean articles only).",
+    )
+    parser.add_argument(
+        "--no-article-fetch",
+        action="store_true",
+        help="Do not fetch article pages; use feed summary fallback only.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Print posts without creating them")
     parser.add_argument("--no-api", action="store_true", help="Skip API calls (for parser smoke tests)")
@@ -432,6 +550,9 @@ def main() -> int:
         return 1
     if args.per_feed_limit < 1:
         print("[ERROR] --per-feed-limit must be at least 1", file=sys.stderr)
+        return 1
+    if args.article_max_chars < 300:
+        print("[ERROR] --article-max-chars must be at least 300", file=sys.stderr)
         return 1
 
     feeds = load_feeds(Path(args.feeds_file), args.feed)
@@ -458,7 +579,11 @@ def main() -> int:
     if args.no_api:
         print("[INFO] API calls disabled (--no-api).")
         for idx, item in enumerate(items[: args.max_items], start=1):
-            title, content = format_post(item)
+            title, content = format_post(
+                item,
+                article_max_chars=args.article_max_chars,
+                fetch_article=False,
+            )
             print(f"\n[{idx}] {title}\n{content}\n")
         return 0
 
@@ -499,7 +624,11 @@ def main() -> int:
     create_url = make_url(args.api_base, "/api/v1/posts/")
 
     for item in candidates:
-        title, content = format_post(item)
+        title, content = format_post(
+            item,
+            article_max_chars=args.article_max_chars,
+            fetch_article=not args.no_article_fetch,
+        )
         payload = {"title": title, "content": content, "category_id": category_id}
 
         if args.dry_run:
@@ -512,8 +641,30 @@ def main() -> int:
             created += 1
             print(f"[OK] Posted: {title}")
         except Exception as exc:  # noqa: BLE001
-            failed += 1
-            print(f"[ERROR] Failed to post '{title}': {exc}", file=sys.stderr)
+            # Retry once with a shorter safe fallback body.
+            fallback_content = "\n\n".join(
+                [
+                    sanitize_plain_text(item.summary or "") or "기사 요약을 가져오지 못했습니다.",
+                    f"원문 링크: {item.link}",
+                ]
+            )
+            retry_payload = {
+                "title": trim_title(sanitize_plain_text(title)),
+                "content": normalize_article_text(fallback_content, max_chars=1500),
+                "category_id": category_id,
+            }
+            try:
+                api_json("POST", create_url, token=auth_token, payload=retry_payload)
+                created += 1
+                print(f"[OK] Posted after retry: {title}")
+            except Exception as retry_exc:  # noqa: BLE001
+                failed += 1
+                print(
+                    f"[ERROR] Failed to post '{title}' "
+                    f"(title_len={len(retry_payload['title'])}, content_len={len(retry_payload['content'])}): "
+                    f"{retry_exc} | first_error={exc}",
+                    file=sys.stderr,
+                )
 
     print(
         f"\n[SUMMARY] collected={len(items)} candidates={len(candidates)} "
