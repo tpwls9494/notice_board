@@ -141,6 +141,7 @@ python3 .agents/skills/it-news-scrap-publisher/scripts/publish_it_news.py \
 - `dev-news` 카테고리 기존 글과 링크 중복을 피한다.
 - 본문은 기사 핵심 단락 발췌를 우선 사용하고, 추출 실패 시 요약으로 대체한다.
 - Google News RSS 래퍼 URL은 본문 추출 품질이 낮아 기본적으로 제외한다.
+- 본문이 JS 덤프(예: `window.WIZ_global_data`)로 판단되면 자동으로 요약 폴백으로 전환한다.
 
 ## 실패 대응
 

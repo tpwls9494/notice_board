@@ -54,6 +54,14 @@ KOREAN_DOMAIN_HINTS = (
     "zdnet.co.kr",
 )
 DEFAULT_ARTICLE_MAX_CHARS = 7000
+JS_DUMP_HINTS = (
+    "window.wiz_global_data",
+    "window[\"_f_toggles",
+    "google.com/setprefs",
+    "boq_dotssplashserver",
+    "news.url.google.com",
+    "var _0x",
+)
 
 
 @dataclass
@@ -279,6 +287,22 @@ def extract_article_text(html: str, max_chars: int) -> str:
     return normalize_article_text(merged, max_chars=max_chars)
 
 
+def looks_like_javascript_dump(text: str) -> bool:
+    lowered = (text or "").lower()
+    if not lowered:
+        return False
+
+    if any(hint in lowered for hint in JS_DUMP_HINTS):
+        return True
+
+    brace_count = lowered.count("{") + lowered.count("}")
+    semicolon_count = lowered.count(";")
+    if len(lowered) > 1200 and brace_count > 80 and semicolon_count > 40:
+        return True
+
+    return False
+
+
 def child_text(element: ET.Element, names: Iterable[str]) -> str:
     name_set = {name.lower() for name in names}
     for child in element:
@@ -452,6 +476,9 @@ def build_post_content(news: NewsItem, article_max_chars: int, fetch_article: bo
             print(f"[WARN] Failed to fetch article body ({news.link}): {exc}", file=sys.stderr)
 
     if not article_text:
+        article_text = sanitize_plain_text(news.summary or "")
+
+    if looks_like_javascript_dump(article_text):
         article_text = sanitize_plain_text(news.summary or "")
 
     if not article_text:
