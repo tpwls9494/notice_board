@@ -20,6 +20,7 @@ description: RSS/Atom 피드에서 최신 IT 기사를 수집해 이 프로젝�
 - `--dry-run`으로 제목/링크/요약을 먼저 점검한다.
 - 네트워크 없이 파서만 확인할 때는 `--no-api`를 함께 쓴다.
 - 기사 페이지 본문 추출을 잠시 끄려면 `--no-article-fetch`를 사용한다.
+- Google News 래퍼 링크는 기본적으로 건너뛴다. 필요할 때만 `--allow-google-news`를 사용한다.
 
 3. 인증 후 게시한다.
 - 가능하면 `--token`(또는 `IT_NEWS_BOT_TOKEN`)을 사용한다.
@@ -82,6 +83,14 @@ python .agents/skills/it-news-scrap-publisher/scripts/publish_it_news.py \
   --allow-global
 ```
 
+Google News 래퍼 링크도 포함하고 싶을 때:
+
+```bash
+python .agents/skills/it-news-scrap-publisher/scripts/publish_it_news.py \
+  --dry-run \
+  --allow-google-news
+```
+
 본문 추출 없이 요약 폴백만 사용하고 싶을 때:
 
 ```bash
@@ -131,6 +140,7 @@ python3 .agents/skills/it-news-scrap-publisher/scripts/publish_it_news.py \
 - 본문에 원문 링크와 출처를 반드시 포함한다.
 - `dev-news` 카테고리 기존 글과 링크 중복을 피한다.
 - 본문은 기사 핵심 단락 발췌를 우선 사용하고, 추출 실패 시 요약으로 대체한다.
+- Google News RSS 래퍼 URL은 본문 추출 품질이 낮아 기본적으로 제외한다.
 
 ## 실패 대응
 

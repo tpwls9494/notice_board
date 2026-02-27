@@ -34,8 +34,12 @@ TAG_PATTERN = re.compile(r"<[^>]+>")
 ARTICLE_BLOCK_PATTERN = re.compile(r"(?is)<article[^>]*>(.*?)</article>")
 PARAGRAPH_PATTERN = re.compile(r"(?is)<p[^>]*>(.*?)</p>")
 TITLE_PATTERN = re.compile(r"(?is)<title[^>]*>(.*?)</title>")
-SCRIPT_STYLE_PATTERN = re.compile(r"(?is)<(script|style|noscript|svg|iframe)[^>]*>.*?</\\1>")
+SCRIPT_STYLE_PATTERN = re.compile(r"(?is)<(script|style|noscript|svg|iframe)[^>]*>.*?</\1>")
 CONTROL_CHAR_PATTERN = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+GOOGLE_NEWS_HOSTS = (
+    "news.google.com",
+    "news.url.google.com",
+)
 KOREAN_DOMAIN_HINTS = (
     ".kr",
     "naver.com",
@@ -472,6 +476,11 @@ def format_post(news: NewsItem, article_max_chars: int, fetch_article: bool = Tr
     return title, content
 
 
+def is_google_news_url(url: str) -> bool:
+    host = parse.urlparse(url).netloc.lower()
+    return any(host.endswith(domain) for domain in GOOGLE_NEWS_HOSTS)
+
+
 def is_probably_korean_item(item: NewsItem) -> bool:
     if HANGUL_PATTERN.search(item.title) or HANGUL_PATTERN.search(item.summary):
         return True
@@ -530,6 +539,11 @@ def parse_args() -> argparse.Namespace:
         help="Include non-Korean articles as well (default filters to Korean articles only).",
     )
     parser.add_argument(
+        "--allow-google-news",
+        action="store_true",
+        help="Include Google News wrapper URLs (default skips them to avoid JS-only pages).",
+    )
+    parser.add_argument(
         "--no-article-fetch",
         action="store_true",
         help="Do not fetch article pages; use feed summary fallback only.",
@@ -572,8 +586,15 @@ def main() -> int:
         if filtered_out > 0:
             print(f"[INFO] Filtered out {filtered_out} non-Korean item(s).")
 
+    if not args.allow_google_news:
+        non_google_items = [item for item in items if not is_google_news_url(item.link)]
+        filtered_out = len(items) - len(non_google_items)
+        items = non_google_items
+        if filtered_out > 0:
+            print(f"[INFO] Skipped {filtered_out} Google News wrapper item(s).")
+
     if not items:
-        print("[WARN] No news items left after Korean-only filtering.")
+        print("[WARN] No news items left after filtering.")
         return 0
 
     if args.no_api:
