@@ -1,0 +1,3 @@
+interface:
+  display_name: "IT News Scrap Publisher"
+  short_description: "Scrape IT news and publish to community feed"

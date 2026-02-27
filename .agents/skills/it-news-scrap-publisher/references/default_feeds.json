@@ -1,0 +1,22 @@
+[
+  {
+    "name": "ZDNet Korea",
+    "url": "https://www.zdnet.co.kr/news/news.xml"
+  },
+  {
+    "name": "IT Chosun",
+    "url": "https://it.chosun.com/rss.xml"
+  },
+  {
+    "name": "Boan News",
+    "url": "https://www.boannews.com/media/rss.xml"
+  },
+  {
+    "name": "Bloter",
+    "url": "https://www.bloter.net/feed"
+  },
+  {
+    "name": "Google News Korea IT",
+    "url": "https://news.google.com/rss/search?q=IT%20%EA%B8%B0%EC%88%A0&hl=ko&gl=KR&ceid=KR:ko"
+  }
+]

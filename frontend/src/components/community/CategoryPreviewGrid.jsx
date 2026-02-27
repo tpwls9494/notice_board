@@ -62,7 +62,7 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
     <section className="mb-5">
       <header className="mb-2.5 flex items-center justify-between gap-2">
         <h2 className="text-[17px] font-semibold tracking-tight text-ink-900">게시판별 최근 글</h2>
-        <span className="text-[12px] text-ink-400">공지 제외 6개 게시판</span>
+        <span className="text-[12px] text-ink-400">게시판</span>
       </header>
 
       {previewCards.length === 0 ? (

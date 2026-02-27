@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>샘플 IT 피드</title>
+    <item>
+      <title>국내 AI 에이전트 서비스, 대규모 업데이트 공개</title>
+      <link>https://example.kr/news/ai-agent-milestone</link>
+      <pubDate>Fri, 27 Feb 2026 09:30:00 +0000</pubDate>
+      <description><![CDATA[도구 실행 안정성과 보안 제어를 강화한 신규 버전이 출시됐다.]]></description>
+    </item>
+    <item>
+      <title>국내 클라우드 기업, 서버리스 DB 요금제 출시</title>
+      <link>https://example.kr/news/serverless-postgres-tier</link>
+      <pubDate>Fri, 27 Feb 2026 07:10:00 +0000</pubDate>
+      <description><![CDATA[저지연 워크로드 지원과 시점 복구 기능을 포함한 신규 상품을 공개했다.]]></description>
+    </item>
+  </channel>
+</rss>
