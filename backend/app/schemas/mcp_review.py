@@ -21,6 +21,7 @@ class McpReviewResponse(McpReviewBase):
     server_id: int
     user_id: int
     author_username: str | None = None
+    author_profile_image_url: str | None = None
     created_at: datetime
     updated_at: datetime
 

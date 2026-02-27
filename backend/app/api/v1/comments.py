@@ -30,6 +30,7 @@ def get_comments(post_id: int, db: Session = Depends(get_db)):
             user_id=comment.user_id,
             created_at=comment.created_at,
             author_username=comment.author.username if comment.author else None,
+            author_profile_image_url=comment.author.profile_image_url if comment.author else None,
         )
         for comment in comments
     ]
@@ -57,6 +58,7 @@ def create_comment(
         user_id=db_comment.user_id,
         created_at=db_comment.created_at,
         author_username=current_user.username,
+        author_profile_image_url=current_user.profile_image_url,
     )
 
 

@@ -6,6 +6,7 @@ import { postsAPI, commentsAPI, likesAPI, filesAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
 import { useConfirm } from '../../components/ConfirmModal';
 import LoginModal from '../../components/LoginModal';
+import { getAvatarInitial, resolveProfileImageUrl } from '../../utils/userProfile';
 
 function PostDetail() {
   const { id } = useParams();
@@ -91,6 +92,7 @@ function PostDetail() {
 
   const post = postData?.data;
   const files = filesData?.data || [];
+  const postProfileImageUrl = resolveProfileImageUrl(post?.author_profile_image_url);
 
   const handleDelete = async () => {
     if (await confirm({ title: '게시글 삭제', message: '정말 삭제하시겠습니까?', confirmText: '삭제' })) {
@@ -174,10 +176,18 @@ function PostDetail() {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-ink-200 flex items-center justify-center">
-                <span className="text-xs font-bold text-ink-600">
-                  {(post?.author_username || '?')[0].toUpperCase()}
-                </span>
+              <div className="w-8 h-8 rounded-full bg-ink-200 overflow-hidden flex items-center justify-center">
+                {postProfileImageUrl ? (
+                  <img
+                    src={postProfileImageUrl}
+                    alt={`${post?.author_username || '작성자'} 프로필`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xs font-bold text-ink-600">
+                    {getAvatarInitial(post?.author_username)}
+                  </span>
+                )}
               </div>
               <div>
                 <p className="text-sm font-semibold text-ink-800">{post?.author_username}</p>
@@ -320,41 +330,53 @@ function PostDetail() {
               {commentsData?.data?.length === 0 && (
                 <p className="text-center py-8 text-sm text-ink-400">아직 댓글이 없습니다</p>
               )}
-              {commentsData?.data?.map((comment) => (
-                <div key={comment.id} className="group px-4 py-3.5 bg-paper-50 rounded-xl hover:bg-paper-100" style={{ transition: 'background-color 0.2s ease-out' }}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-ink-200 flex items-center justify-center">
-                        <span className="text-[10px] font-bold text-ink-600">
-                          {(comment.author_username || '?')[0].toUpperCase()}
+              {commentsData?.data?.map((comment) => {
+                const commentProfileImageUrl = resolveProfileImageUrl(comment.author_profile_image_url);
+
+                return (
+                  <div key={comment.id} className="group px-4 py-3.5 bg-paper-50 rounded-xl hover:bg-paper-100" style={{ transition: 'background-color 0.2s ease-out' }}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-ink-200 overflow-hidden flex items-center justify-center">
+                          {commentProfileImageUrl ? (
+                            <img
+                              src={commentProfileImageUrl}
+                              alt={`${comment.author_username || '작성자'} 프로필`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-[10px] font-bold text-ink-600">
+                              {getAvatarInitial(comment.author_username)}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm font-semibold text-ink-800">
+                          {comment.author_username}
+                        </span>
+                        <span className="text-xs text-ink-400">
+                          {new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(comment.created_at))}
                         </span>
                       </div>
-                      <span className="text-sm font-semibold text-ink-800">
-                        {comment.author_username}
-                      </span>
-                      <span className="text-xs text-ink-400">
-                        {new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(comment.created_at))}
-                      </span>
+                      {(user?.id === comment.user_id || isAdmin) && (
+                        <button
+                          onClick={async () => {
+                            if (await confirm({ title: '댓글 삭제', message: '댓글을 삭제하시겠습니까?', confirmText: '삭제' })) {
+                              deleteCommentMutation.mutate(comment.id);
+                            }
+                          }}
+                          className="text-xs text-ink-400 hover:text-red-600 opacity-0 group-hover:opacity-100"
+                          style={{ transition: 'opacity 0.2s ease-out, color 0.2s ease-out' }}
+                        >
+                          삭제
+                        </button>
+                      )}
                     </div>
-                    {(user?.id === comment.user_id || isAdmin) && (
-                      <button
-                        onClick={async () => {
-                          if (await confirm({ title: '댓글 삭제', message: '댓글을 삭제하시겠습니까?', confirmText: '삭제' })) {
-                            deleteCommentMutation.mutate(comment.id);
-                          }
-                        }}
-                        className="text-xs text-ink-400 hover:text-red-600 opacity-0 group-hover:opacity-100"
-                        style={{ transition: 'opacity 0.2s ease-out, color 0.2s ease-out' }}
-                      >
-                        삭제
-                      </button>
-                    )}
+                    <p className="text-sm text-ink-700 whitespace-pre-wrap pl-8 leading-relaxed">
+                      {comment.content}
+                    </p>
                   </div>
-                  <p className="text-sm text-ink-700 whitespace-pre-wrap pl-8 leading-relaxed">
-                    {comment.content}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -42,6 +42,7 @@ def get_reviews(
                 server_id=r.server_id,
                 user_id=r.user_id,
                 author_username=r.author.username if r.author else None,
+                author_profile_image_url=r.author.profile_image_url if r.author else None,
                 created_at=r.created_at,
                 updated_at=r.updated_at,
             )
@@ -79,6 +80,7 @@ def create_review(
             server_id=db_review.server_id,
             user_id=db_review.user_id,
             author_username=current_user.username,
+            author_profile_image_url=current_user.profile_image_url,
             created_at=db_review.created_at,
             updated_at=db_review.updated_at,
         )
@@ -118,6 +120,7 @@ def update_review(
         server_id=updated.server_id,
         user_id=updated.user_id,
         author_username=updated.author.username if updated.author else None,
+        author_profile_image_url=updated.author.profile_image_url if updated.author else None,
         created_at=updated.created_at,
         updated_at=updated.updated_at,
     )

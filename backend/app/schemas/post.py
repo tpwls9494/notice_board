@@ -26,6 +26,7 @@ class PostResponse(PostBase):
     created_at: datetime
     updated_at: datetime
     author_username: Optional[str] = None
+    author_profile_image_url: Optional[str] = None
     comment_count: Optional[int] = 0
     likes_count: Optional[int] = 0
     is_liked: Optional[bool] = False

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { mcpServersAPI, mcpReviewsAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
 import { useConfirm } from '../../components/ConfirmModal';
+import { getAvatarInitial, resolveProfileImageUrl } from '../../utils/userProfile';
 
 // --- Inline SVG Icon Map (no library needed) ---
 const ICONS = {
@@ -661,44 +662,56 @@ function McpDetail() {
                 <p className="text-center py-8 text-sm text-ink-400">아직 리뷰가 없습니다</p>
               ) : (
                 <div className="space-y-3">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="group p-4 bg-paper-50 rounded-xl" style={{ transition: 'background-color 0.2s ease-out' }}>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-ink-200 flex items-center justify-center">
-                            <span className="text-[10px] font-bold text-ink-600">
-                              {(review.author_username || '?')[0].toUpperCase()}
+                  {reviews.map((review) => {
+                    const reviewProfileImageUrl = resolveProfileImageUrl(review.author_profile_image_url);
+
+                    return (
+                      <div key={review.id} className="group p-4 bg-paper-50 rounded-xl" style={{ transition: 'background-color 0.2s ease-out' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-ink-200 overflow-hidden flex items-center justify-center">
+                              {reviewProfileImageUrl ? (
+                                <img
+                                  src={reviewProfileImageUrl}
+                                  alt={`${review.author_username || '작성자'} 프로필`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-[10px] font-bold text-ink-600">
+                                  {getAvatarInitial(review.author_username)}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-sm font-semibold text-ink-800">{review.author_username}</span>
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <span key={star} className={`text-xs ${star <= review.rating ? 'text-amber-400' : 'text-ink-200'}`}>&#9733;</span>
+                              ))}
+                            </div>
+                            <span className="text-xs text-ink-400">
+                              {new Intl.DateTimeFormat('ko-KR').format(new Date(review.created_at))}
                             </span>
                           </div>
-                          <span className="text-sm font-semibold text-ink-800">{review.author_username}</span>
-                          <div className="flex items-center gap-0.5">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <span key={star} className={`text-xs ${star <= review.rating ? 'text-amber-400' : 'text-ink-200'}`}>&#9733;</span>
-                            ))}
-                          </div>
-                          <span className="text-xs text-ink-400">
-                            {new Intl.DateTimeFormat('ko-KR').format(new Date(review.created_at))}
-                          </span>
+                          {(user?.id === review.user_id || user?.is_admin) && (
+                            <button
+                              onClick={async () => {
+                                if (await confirm({ title: '리뷰 삭제', message: '리뷰를 삭제하시겠습니까?', confirmText: '삭제' })) {
+                                  deleteReviewMutation.mutate(review.id);
+                                }
+                              }}
+                              className="text-xs text-ink-400 hover:text-red-600 opacity-0 group-hover:opacity-100"
+                              style={{ transition: 'opacity 0.2s ease-out, color 0.2s ease-out' }}
+                            >
+                              삭제
+                            </button>
+                          )}
                         </div>
-                        {(user?.id === review.user_id || user?.is_admin) && (
-                          <button
-                            onClick={async () => {
-                              if (await confirm({ title: '리뷰 삭제', message: '리뷰를 삭제하시겠습니까?', confirmText: '삭제' })) {
-                                deleteReviewMutation.mutate(review.id);
-                              }
-                            }}
-                            className="text-xs text-ink-400 hover:text-red-600 opacity-0 group-hover:opacity-100"
-                            style={{ transition: 'opacity 0.2s ease-out, color 0.2s ease-out' }}
-                          >
-                            삭제
-                          </button>
+                        {review.content && (
+                          <p className="text-sm text-ink-700 pl-8 whitespace-pre-wrap">{review.content}</p>
                         )}
                       </div>
-                      {review.content && (
-                        <p className="text-sm text-ink-700 pl-8 whitespace-pre-wrap">{review.content}</p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

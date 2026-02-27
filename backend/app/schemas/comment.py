@@ -17,6 +17,7 @@ class CommentResponse(CommentBase):
     user_id: int
     created_at: datetime
     author_username: Optional[str] = None
+    author_profile_image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
