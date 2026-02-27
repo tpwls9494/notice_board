@@ -37,3 +37,27 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     if not verify_password(password, user.hashed_password):
         return None
     return user
+
+
+def update_username(db: Session, user: User, username: str) -> User:
+    user.username = username
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def update_password(db: Session, user: User, new_password: str) -> User:
+    user.hashed_password = get_password_hash(new_password)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def update_profile_image_url(db: Session, user: User, profile_image_url: str) -> User:
+    user.profile_image_url = profile_image_url
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user

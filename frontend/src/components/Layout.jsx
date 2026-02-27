@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
 import LoginModal from './LoginModal'
+import { getAvatarInitial, resolveProfileImageUrl } from '../utils/userProfile'
 
 function Layout() {
   const { user, logout, token } = useAuthStore()
@@ -12,6 +13,8 @@ function Layout() {
   const authActionClass = 'inline-flex h-9 items-center rounded-lg px-3.5 text-sm font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700'
 
   const isMarketplace = location.pathname.startsWith('/marketplace')
+  const avatarInitial = getAvatarInitial(user?.username)
+  const profileImageUrl = resolveProfileImageUrl(user?.profile_image_url)
 
   // 쿼리 파라미터로 로그인 모달 띄우기
   useEffect(() => {
@@ -78,15 +81,27 @@ function Layout() {
                 <>
                   {/* 로그인 상태 */}
                   <div className="hidden sm:flex items-center mr-2 px-3 py-1.5 bg-ink-50 rounded-full">
-                    <div className="w-5 h-5 rounded-full bg-ink-300 flex items-center justify-center mr-2">
-                      <span className="text-[10px] font-bold text-ink-700">
-                        {(user?.username || '?')[0].toUpperCase()}
-                      </span>
+                    <div className="w-5 h-5 rounded-full bg-ink-300 overflow-hidden flex items-center justify-center mr-2">
+                      {profileImageUrl ? (
+                        <img
+                          src={profileImageUrl}
+                          alt={`${user?.username || '사용자'} 프로필`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-[10px] font-bold text-ink-700">
+                          {avatarInitial}
+                        </span>
+                      )}
                     </div>
                     <span className="text-sm font-medium text-ink-700">
                       {user?.username || '사용자'}
                     </span>
                   </div>
+
+                  <Link to="/mypage" className={authActionClass}>
+                    마이페이지
+                  </Link>
 
                   {!isMarketplace && (
                     <Link

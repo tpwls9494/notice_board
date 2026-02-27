@@ -6,6 +6,7 @@ import Layout from './components/Layout'
 import { ConfirmProvider } from './components/ConfirmModal'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import MyPage from './pages/MyPage'
 // Marketplace
 import McpList from './pages/marketplace/McpList'
 import McpDetail from './pages/marketplace/McpDetail'
@@ -64,6 +65,16 @@ function App() {
           <Route path="community/posts" element={<CommunityPostsPage />} />
           <Route path="community/:slug" element={<CommunityBoardPage />} />
           <Route path="posts/:id" element={<PostDetail />} />
+
+          {/* Account (protected) */}
+          <Route
+            path="mypage"
+            element={
+              <ProtectedRoute>
+                <MyPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Community (protected - login required) */}
           <Route

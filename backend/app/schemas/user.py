@@ -38,6 +38,15 @@ class UserProfileUpdate(BaseModel):
     bio: Optional[str] = Field(None, max_length=200)
 
 
+class UserNicknameUpdate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+
+
+class UserPasswordUpdate(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=255)
+    new_password: str = Field(..., min_length=6, max_length=255)
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"

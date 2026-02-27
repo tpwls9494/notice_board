@@ -1,13 +1,20 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const api = axios.create({
-  baseURL: `${API_URL}/api/v1`,
+  baseURL: `${API_BASE_URL}/api/v1`,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+export const resolveApiAssetUrl = (assetPath) => {
+  if (!assetPath) return null;
+  if (/^https?:\/\//i.test(assetPath)) return assetPath;
+  if (assetPath.startsWith('/')) return `${API_BASE_URL}${assetPath}`;
+  return `${API_BASE_URL}/${assetPath}`;
+};
 
 // Request interceptor to add token
 api.interceptors.request.use(
@@ -39,6 +46,17 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
+  updateMeProfile: (data) => api.patch('/auth/me/profile', data),
+  updateMePassword: (data) => api.patch('/auth/me/password', data),
+  uploadProfileImage: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/auth/me/profile-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 // Community API
@@ -103,7 +121,7 @@ export const filesAPI = {
     });
   },
   getPostFiles: (postId) => api.get(`/files/post/${postId}`),
-  downloadFile: (fileId) => `${API_URL}/api/v1/files/download/${fileId}`,
+  downloadFile: (fileId) => `${API_BASE_URL}/api/v1/files/download/${fileId}`,
   deleteFile: (fileId) => api.delete(`/files/${fileId}`),
 };
 
