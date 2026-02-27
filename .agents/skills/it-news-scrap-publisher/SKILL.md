@@ -148,3 +148,4 @@ python3 .agents/skills/it-news-scrap-publisher/scripts/publish_it_news.py \
 - 일부 항목만 실패할 때는 에러 로그의 `first_error`와 `title_len/content_len`을 확인한다.
 - 스크립트는 게시 실패 시 자동으로 짧은 폴백 본문으로 1회 재시도한다.
 - 계속 실패하면 `--max-items 1 --dry-run`으로 개별 항목 payload를 점검한 뒤 다시 실행한다.
+- 피드 단계에서 `HTTP Error 404`가 뜨면 `references/default_feeds.json`의 RSS URL이 만료된 것이다. URL을 최신 주소로 교체한 뒤 재실행한다.

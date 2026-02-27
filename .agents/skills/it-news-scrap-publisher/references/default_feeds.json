@@ -1,18 +1,18 @@
 [
   {
-    "name": "ZDNet Korea",
-    "url": "https://www.zdnet.co.kr/news/news.xml"
+    "name": "아이뉴스24 IT",
+    "url": "https://www.inews24.com/rss/news_it.xml"
   },
   {
-    "name": "IT Chosun",
-    "url": "https://it.chosun.com/rss.xml"
+    "name": "뉴시스 IT·바이오",
+    "url": "https://www.newsis.com/RSS/health.xml"
   },
   {
-    "name": "Boan News",
-    "url": "https://www.boannews.com/media/rss.xml"
+    "name": "한국경제 IT",
+    "url": "https://www.hankyung.com/feed/it"
   },
   {
-    "name": "Bloter",
-    "url": "https://www.bloter.net/feed"
+    "name": "연합뉴스TV 최신",
+    "url": "https://www.yonhapnewstv.co.kr/browse/feed/"
   }
 ]
