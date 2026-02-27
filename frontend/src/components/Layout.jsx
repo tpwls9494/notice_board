@@ -13,6 +13,7 @@ function Layout() {
   const authActionClass = 'inline-flex h-9 items-center rounded-lg px-3.5 text-sm font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700'
 
   const isMarketplace = location.pathname.startsWith('/marketplace')
+  const isMyPage = location.pathname.startsWith('/mypage')
   const avatarInitial = getAvatarInitial(user?.username)
   const profileImageUrl = resolveProfileImageUrl(user?.profile_image_url)
 
@@ -99,11 +100,13 @@ function Layout() {
                     </span>
                   </div>
 
-                  <Link to="/mypage" className={authActionClass}>
-                    마이페이지
-                  </Link>
+                  {!isMyPage && (
+                    <Link to="/mypage" className={authActionClass}>
+                      마이페이지
+                    </Link>
+                  )}
 
-                  {!isMarketplace && (
+                  {!isMarketplace && !isMyPage && (
                     <Link
                       to="/posts/new"
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-ink-200 bg-white text-ink-600 hover:bg-paper-100 hover:text-ink-900 transition-colors"
@@ -178,7 +181,7 @@ function Layout() {
       <footer className="border-t border-subtle mt-auto">
         <div className="max-w-6xl mx-auto px-6 lg:px-8 py-6">
           <p className="text-center text-xs text-ink-400 tracking-wide">
-             MCP Marketplace
+             Jion
           </p>
         </div>
       </footer>
