@@ -52,7 +52,19 @@ def get_posts(
         window=window or "24h",
     )
 
-    # Add author username, comment count, likes count, and is_liked
+    post_ids = [post.id for post in posts]
+    (
+        comment_count_by_post_id,
+        likes_count_by_post_id,
+        liked_post_ids_for_user,
+        bookmarked_post_ids_for_user,
+    ) = crud_post.get_post_engagement_maps(
+        db,
+        post_ids=post_ids,
+        user_id=current_user.id if current_user else None,
+    )
+
+    # Add author username and engagement metrics
     post_responses = []
     for post in posts:
         post_dict = {
@@ -66,10 +78,10 @@ def get_posts(
             "updated_at": post.updated_at,
             "author_username": post.author.username if post.author else None,
             "author_profile_image_url": post.author.profile_image_url if post.author else None,
-            "comment_count": crud_post.get_comment_count(db, post.id),
-            "likes_count": crud_post.get_likes_count(db, post.id),
-            "is_liked": crud_post.check_user_liked(db, post.id, current_user.id) if current_user else False,
-            "is_bookmarked": crud_post.check_user_bookmarked(db, post.id, current_user.id) if current_user else False,
+            "comment_count": comment_count_by_post_id.get(post.id, 0),
+            "likes_count": likes_count_by_post_id.get(post.id, 0),
+            "is_liked": post.id in liked_post_ids_for_user,
+            "is_bookmarked": post.id in bookmarked_post_ids_for_user,
             "is_pinned": post.is_pinned or False,
             "category_name": post.category.name if post.category else None,
         }
@@ -99,6 +111,17 @@ def get_post(
     # Increment views
     crud_post.increment_views(db, post_id)
 
+    (
+        comment_count_by_post_id,
+        likes_count_by_post_id,
+        liked_post_ids_for_user,
+        bookmarked_post_ids_for_user,
+    ) = crud_post.get_post_engagement_maps(
+        db,
+        post_ids=[post.id],
+        user_id=current_user.id if current_user else None,
+    )
+
     return PostResponse(
         id=post.id,
         title=post.title,
@@ -110,10 +133,10 @@ def get_post(
         updated_at=post.updated_at,
         author_username=post.author.username if post.author else None,
         author_profile_image_url=post.author.profile_image_url if post.author else None,
-        comment_count=crud_post.get_comment_count(db, post.id),
-        likes_count=crud_post.get_likes_count(db, post.id),
-        is_liked=crud_post.check_user_liked(db, post.id, current_user.id) if current_user else False,
-        is_bookmarked=crud_post.check_user_bookmarked(db, post.id, current_user.id) if current_user else False,
+        comment_count=comment_count_by_post_id.get(post.id, 0),
+        likes_count=likes_count_by_post_id.get(post.id, 0),
+        is_liked=post.id in liked_post_ids_for_user,
+        is_bookmarked=post.id in bookmarked_post_ids_for_user,
         is_pinned=post.is_pinned or False,
         category_name=post.category.name if post.category else None,
     )

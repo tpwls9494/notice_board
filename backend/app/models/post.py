@@ -12,14 +12,14 @@ class Post(Base):
     content = Column(Text, nullable=False)
     views = Column(Integer, default=0)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    category_id = Column(Integer, ForeignKey("categories.id"), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    category_id = Column(Integer, ForeignKey("categories.id"), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Engagement features
-    is_pinned = Column(Boolean, default=False)
+    is_pinned = Column(Boolean, default=False, index=True)
     is_featured = Column(Boolean, default=False)
-    pinned_order = Column(Integer, nullable=True)
+    pinned_order = Column(Integer, nullable=True, index=True)
 
     author = relationship("User", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     # Monitoring
     REQUEST_LOG_ENABLED: bool = True
     SLOW_REQUEST_THRESHOLD_MS: int = 500
+    API_DOCS_ENABLED: bool = True
 
     # MCP Playground settings
     MCP_ALLOWED_SERVERS: str = "fetch-server"  # 실제 연결 허용 서버 slug (쉼표 구분)

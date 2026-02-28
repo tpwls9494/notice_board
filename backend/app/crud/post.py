@@ -1,12 +1,11 @@
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import Iterable, List, Optional, Set
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
 from app.models.post import Post
 from app.models.comment import Comment
 from app.models.like import Like
 from app.models.bookmark import Bookmark
-from app.models.category import Category
 from app.schemas.post import PostCreate, PostUpdate
 
 
@@ -149,6 +148,65 @@ def increment_views(db: Session, post_id: int) -> None:
     if db_post:
         db_post.views += 1
         db.commit()
+
+
+def get_post_engagement_maps(
+    db: Session,
+    post_ids: Iterable[int],
+    user_id: Optional[int] = None,
+) -> tuple[dict[int, int], dict[int, int], Set[int], Set[int]]:
+    """
+    Fetch engagement metrics in bulk to avoid per-post N+1 queries.
+    Returns:
+      - comment_count_by_post_id
+      - likes_count_by_post_id
+      - liked_post_ids_for_user
+      - bookmarked_post_ids_for_user
+    """
+    normalized_ids = [int(post_id) for post_id in post_ids if post_id is not None]
+    if not normalized_ids:
+        return {}, {}, set(), set()
+
+    comment_rows = (
+        db.query(Comment.post_id, func.count(Comment.id))
+        .filter(Comment.post_id.in_(normalized_ids))
+        .group_by(Comment.post_id)
+        .all()
+    )
+    comment_count_by_post_id = {post_id: count for post_id, count in comment_rows}
+
+    like_rows = (
+        db.query(Like.post_id, func.count(Like.id))
+        .filter(Like.post_id.in_(normalized_ids))
+        .group_by(Like.post_id)
+        .all()
+    )
+    likes_count_by_post_id = {post_id: count for post_id, count in like_rows}
+
+    liked_post_ids_for_user: Set[int] = set()
+    bookmarked_post_ids_for_user: Set[int] = set()
+
+    if user_id is not None:
+        liked_rows = (
+            db.query(Like.post_id)
+            .filter(Like.user_id == user_id, Like.post_id.in_(normalized_ids))
+            .all()
+        )
+        liked_post_ids_for_user = {post_id for (post_id,) in liked_rows}
+
+        bookmarked_rows = (
+            db.query(Bookmark.post_id)
+            .filter(Bookmark.user_id == user_id, Bookmark.post_id.in_(normalized_ids))
+            .all()
+        )
+        bookmarked_post_ids_for_user = {post_id for (post_id,) in bookmarked_rows}
+
+    return (
+        comment_count_by_post_id,
+        likes_count_by_post_id,
+        liked_post_ids_for_user,
+        bookmarked_post_ids_for_user,
+    )
 
 
 def get_comment_count(db: Session, post_id: int) -> int:

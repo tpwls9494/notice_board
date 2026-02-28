@@ -27,6 +27,18 @@ def get_pinned_posts(
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     posts = crud_community.get_pinned_posts(db, limit=limit)
+    post_ids = [post.id for post in posts]
+    (
+        comment_count_by_post_id,
+        likes_count_by_post_id,
+        liked_post_ids_for_user,
+        bookmarked_post_ids_for_user,
+    ) = crud_post.get_post_engagement_maps(
+        db,
+        post_ids=post_ids,
+        user_id=current_user.id if current_user else None,
+    )
+
     return [
         PostResponse(
             id=p.id,
@@ -39,10 +51,10 @@ def get_pinned_posts(
             updated_at=p.updated_at,
             author_username=p.author.username if p.author else None,
             author_profile_image_url=p.author.profile_image_url if p.author else None,
-            comment_count=crud_post.get_comment_count(db, p.id),
-            likes_count=crud_post.get_likes_count(db, p.id),
-            is_liked=crud_post.check_user_liked(db, p.id, current_user.id) if current_user else False,
-            is_bookmarked=crud_post.check_user_bookmarked(db, p.id, current_user.id) if current_user else False,
+            comment_count=comment_count_by_post_id.get(p.id, 0),
+            likes_count=likes_count_by_post_id.get(p.id, 0),
+            is_liked=p.id in liked_post_ids_for_user,
+            is_bookmarked=p.id in bookmarked_post_ids_for_user,
             is_pinned=p.is_pinned or False,
             category_name=p.category.name if p.category else None,
         )
@@ -61,6 +73,18 @@ def get_hot_posts(
     results = crud_community.get_hot_posts(
         db, window=window, limit=limit, category_id=category_id
     )
+    post_ids = [result["post"].id for result in results]
+    (
+        _comment_count_by_post_id,
+        _likes_count_by_post_id,
+        liked_post_ids_for_user,
+        bookmarked_post_ids_for_user,
+    ) = crud_post.get_post_engagement_maps(
+        db,
+        post_ids=post_ids,
+        user_id=current_user.id if current_user else None,
+    )
+
     return [
         PostResponse(
             id=r["post"].id,
@@ -75,8 +99,8 @@ def get_hot_posts(
             author_profile_image_url=r["post"].author.profile_image_url if r["post"].author else None,
             comment_count=r["comment_count"],
             likes_count=r["likes_count"],
-            is_liked=crud_post.check_user_liked(db, r["post"].id, current_user.id) if current_user else False,
-            is_bookmarked=crud_post.check_user_bookmarked(db, r["post"].id, current_user.id) if current_user else False,
+            is_liked=r["post"].id in liked_post_ids_for_user,
+            is_bookmarked=r["post"].id in bookmarked_post_ids_for_user,
             is_pinned=r["post"].is_pinned or False,
             category_name=r["post"].category.name if r["post"].category else None,
         )

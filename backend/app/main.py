@@ -18,10 +18,17 @@ from app.services.github_sync import sync_all_github_stats
 
 logger = logging.getLogger(__name__)
 
+docs_url = "/docs" if settings.API_DOCS_ENABLED else None
+redoc_url = "/redoc" if settings.API_DOCS_ENABLED else None
+openapi_url = "/openapi.json" if settings.API_DOCS_ENABLED else None
+
 app = FastAPI(
     title="jion MCP Marketplace API",
     description="MCP Marketplace and community API",
     version="2.0.0",
+    docs_url=docs_url,
+    redoc_url=redoc_url,
+    openapi_url=openapi_url,
 )
 
 
@@ -191,10 +198,35 @@ def ensure_bootstrap_admin_user(db: Session) -> None:
     logger.info("Bootstrap admin account created.")
 
 
+def ensure_performance_indexes(db: Session) -> None:
+    """Create critical read-path indexes if they do not exist."""
+    index_statements = [
+        "CREATE INDEX IF NOT EXISTS ix_posts_created_at ON posts (created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_posts_category_id ON posts (category_id)",
+        "CREATE INDEX IF NOT EXISTS ix_posts_category_created_at ON posts (category_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_posts_is_pinned_pinned_order_created_at ON posts (is_pinned, pinned_order, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_comments_post_id ON comments (post_id)",
+        "CREATE INDEX IF NOT EXISTS ix_comments_post_created_at ON comments (post_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_bookmarks_user_id ON bookmarks (user_id)",
+        "CREATE INDEX IF NOT EXISTS ix_notifications_user_created_at ON notifications (user_id, created_at)",
+        "CREATE INDEX IF NOT EXISTS ix_notifications_user_is_read ON notifications (user_id, is_read)",
+    ]
+
+    for statement in index_statements:
+        db.execute(text(statement))
+    db.commit()
+
+
 @app.on_event("startup")
 async def startup_sync_github():
     db = SessionLocal()
     try:
+        try:
+            ensure_performance_indexes(db)
+        except Exception as exc:
+            db.rollback()
+            logger.warning("Performance index bootstrap failed: %s", exc)
+
         try:
             ensure_bootstrap_admin_user(db)
         except Exception as exc:
