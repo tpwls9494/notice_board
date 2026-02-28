@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -73,7 +73,7 @@ def get_bookmark_status(
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post not found",
+            detail="게시글을 찾을 수 없습니다.",
         )
 
     is_bookmarked = crud_bookmark.get_bookmark(db, post_id, current_user.id) is not None
@@ -83,6 +83,7 @@ def get_bookmark_status(
 @router.post("/posts/{post_id}", response_model=BookmarkResponse, status_code=status.HTTP_201_CREATED)
 def create_bookmark(
     post_id: int,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -90,24 +91,26 @@ def create_bookmark(
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post not found",
+            detail="게시글을 찾을 수 없습니다.",
         )
 
     existing_bookmark = crud_bookmark.get_bookmark(db, post_id, current_user.id)
     if existing_bookmark:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Post already bookmarked",
-        )
+        response.status_code = status.HTTP_200_OK
+        return existing_bookmark
 
     try:
         bookmark = crud_bookmark.create_bookmark(db, post_id, current_user.id)
         return bookmark
     except IntegrityError:
         db.rollback()
+        existing_bookmark = crud_bookmark.get_bookmark(db, post_id, current_user.id)
+        if existing_bookmark:
+            response.status_code = status.HTTP_200_OK
+            return existing_bookmark
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Post already bookmarked",
+            detail="북마크 저장에 실패했습니다.",
         )
 
 
@@ -121,14 +124,9 @@ def delete_bookmark(
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post not found",
+            detail="게시글을 찾을 수 없습니다.",
         )
 
-    success = crud_bookmark.delete_bookmark(db, post_id, current_user.id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bookmark not found",
-        )
+    crud_bookmark.delete_bookmark(db, post_id, current_user.id)
 
     return None

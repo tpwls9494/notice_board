@@ -1,18 +1,52 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import useAuthStore from '../stores/authStore';
 import LoginModal from './LoginModal';
 import { notificationsAPI } from '../services/api';
 import { getAvatarInitial, resolveProfileImageUrl } from '../utils/userProfile';
 
+const formatNotificationContent = (notification) => {
+  const raw = notification?.content?.trim();
+  if (!raw) {
+    return '새 알림이 도착했습니다.';
+  }
+
+  if (/[가-힣]/.test(raw)) {
+    return raw;
+  }
+
+  if (notification?.type === 'like') {
+    const actor = raw.match(/^(.+?) liked your post\.?$/i)?.[1];
+    if (actor) {
+      return `${actor}님이 회원님의 게시글을 좋아합니다.`;
+    }
+    return '회원님의 게시글에 새 좋아요가 있습니다.';
+  }
+
+  if (notification?.type === 'comment') {
+    const actor = raw.match(/^(.+?) commented on your post\.?$/i)?.[1];
+    if (actor) {
+      return `${actor}님이 회원님의 게시글에 댓글을 남겼습니다.`;
+    }
+    return '회원님의 게시글에 새 댓글이 달렸습니다.';
+  }
+
+  return raw;
+};
+
 function Layout() {
   const { user, logout, token } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+
+  const notificationButtonRef = useRef(null);
+  const notificationPanelRef = useRef(null);
 
   const authActionClass =
     'inline-flex h-9 items-center rounded-lg px-3.5 text-sm font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700';
@@ -29,7 +63,31 @@ function Layout() {
     refetchInterval: 30000,
   });
 
+  const { data: notificationsData, isLoading: notificationsLoading } = useQuery({
+    queryKey: ['my-notifications'],
+    queryFn: () => notificationsAPI.getMyNotifications(1, 30),
+    enabled: !!token,
+    refetchInterval: showNotificationPanel ? 30000 : false,
+  });
+
+  const markNotificationReadMutation = useMutation({
+    mutationFn: (notificationId) => notificationsAPI.markAsRead(notificationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['my-notifications']);
+      queryClient.invalidateQueries(['notifications-unread-count']);
+    },
+  });
+
+  const markAllNotificationsReadMutation = useMutation({
+    mutationFn: () => notificationsAPI.markAllAsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['my-notifications']);
+      queryClient.invalidateQueries(['notifications-unread-count']);
+    },
+  });
+
   const unreadCount = unreadCountData?.data?.unread_count || 0;
+  const notifications = notificationsData?.data?.notifications || [];
 
   useEffect(() => {
     if (searchParams.get('login') === 'true') {
@@ -39,9 +97,63 @@ function Layout() {
     }
   }, [searchParams, setSearchParams]);
 
+  useEffect(() => {
+    setShowNotificationPanel(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!showNotificationPanel) {
+      return;
+    }
+
+    const handleOutsideClick = (event) => {
+      if (
+        notificationButtonRef.current?.contains(event.target)
+        || notificationPanelRef.current?.contains(event.target)
+      ) {
+        return;
+      }
+      setShowNotificationPanel(false);
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setShowNotificationPanel(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showNotificationPanel]);
+
   const handleLogout = () => {
+    setShowNotificationPanel(false);
     logout();
     navigate('/community', { replace: true });
+  };
+
+  const toggleNotificationPanel = () => {
+    setShowNotificationPanel((prev) => {
+      const next = !prev;
+      if (next) {
+        queryClient.invalidateQueries(['my-notifications']);
+      }
+      return next;
+    });
+  };
+
+  const handleNotificationOpen = (notification) => {
+    if (!notification?.is_read && !markNotificationReadMutation.isPending) {
+      markNotificationReadMutation.mutate(notification.id);
+    }
+    setShowNotificationPanel(false);
   };
 
   return (
@@ -103,20 +215,97 @@ function Layout() {
                     </Link>
                   )}
 
-                  <Link
-                    to="/mypage#notifications"
-                    className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700"
-                    aria-label="알림"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
-                    </svg>
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center">
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                      </span>
+                  <div className="relative">
+                    <button
+                      ref={notificationButtonRef}
+                      type="button"
+                      onClick={toggleNotificationPanel}
+                      className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700"
+                      aria-label="알림"
+                      aria-expanded={showNotificationPanel}
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                      </svg>
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold flex items-center justify-center">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
+                    </button>
+
+                    {showNotificationPanel && (
+                      <div
+                        ref={notificationPanelRef}
+                        className="absolute right-0 mt-2 w-[min(92vw,23rem)] rounded-2xl border border-ink-200 bg-white shadow-soft overflow-hidden"
+                      >
+                        <div className="px-4 py-3 border-b border-ink-100 bg-paper-50 flex items-center justify-between">
+                          <p className="text-sm font-semibold text-ink-900">알림</p>
+                          <button
+                            type="button"
+                            onClick={() => markAllNotificationsReadMutation.mutate()}
+                            disabled={markAllNotificationsReadMutation.isPending || unreadCount === 0}
+                            className="text-xs text-ink-500 hover:text-ink-800 disabled:text-ink-300"
+                          >
+                            모두 읽음
+                          </button>
+                        </div>
+
+                        <div className="max-h-[380px] overflow-y-auto p-2">
+                          {notificationsLoading && (
+                            <div className="px-3 py-5 text-center text-xs text-ink-400">알림을 불러오는 중입니다.</div>
+                          )}
+
+                          {!notificationsLoading && notifications.length === 0 && (
+                            <div className="px-3 py-5 text-center text-xs text-ink-400">새 알림이 없습니다.</div>
+                          )}
+
+                          {!notificationsLoading && notifications.map((item) => {
+                            const content = formatNotificationContent(item);
+                            const timeText = new Intl.DateTimeFormat('ko-KR', {
+                              dateStyle: 'short',
+                              timeStyle: 'short',
+                            }).format(new Date(item.created_at));
+
+                            const itemClassName = `block w-full text-left rounded-xl px-3 py-2.5 transition-colors ${
+                              item.is_read
+                                ? 'bg-white hover:bg-paper-50'
+                                : 'bg-paper-50 hover:bg-paper-100 border border-ink-100'
+                            }`;
+
+                            if (item.related_post_id) {
+                              return (
+                                <Link
+                                  key={item.id}
+                                  to={`/posts/${item.related_post_id}`}
+                                  onClick={() => handleNotificationOpen(item)}
+                                  className={itemClassName}
+                                >
+                                  <p className="text-sm text-ink-800 break-words">{content}</p>
+                                  {item.post_title && (
+                                    <p className="text-xs text-ink-500 mt-1 truncate">{item.post_title}</p>
+                                  )}
+                                  <p className="text-[11px] text-ink-400 mt-1">{timeText}</p>
+                                </Link>
+                              );
+                            }
+
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => handleNotificationOpen(item)}
+                                className={itemClassName}
+                              >
+                                <p className="text-sm text-ink-800 break-words">{content}</p>
+                                <p className="text-[11px] text-ink-400 mt-1">{timeText}</p>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
-                  </Link>
+                  </div>
 
                   {!isMarketplace && !isMyPage && (
                     <Link

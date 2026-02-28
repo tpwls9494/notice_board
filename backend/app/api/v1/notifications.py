@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -13,6 +15,28 @@ from app.schemas.notification import (
 )
 
 router = APIRouter()
+
+
+def _localize_notification_content(notification_type: str, content: str | None) -> str:
+    if not content:
+        return "새 알림이 도착했습니다."
+
+    if any("가" <= ch <= "힣" for ch in content):
+        return content
+
+    if notification_type == "like":
+        actor_match = re.match(r"^(.+?) liked your post\.?$", content, flags=re.IGNORECASE)
+        if actor_match:
+            return f"{actor_match.group(1)}님이 회원님의 게시글을 좋아합니다."
+        return "회원님의 게시글에 새 좋아요가 있습니다."
+
+    if notification_type == "comment":
+        actor_match = re.match(r"^(.+?) commented on your post\.?$", content, flags=re.IGNORECASE)
+        if actor_match:
+            return f"{actor_match.group(1)}님이 회원님의 게시글에 댓글을 남겼습니다."
+        return "회원님의 게시글에 새 댓글이 달렸습니다."
+
+    return content
 
 
 @router.get("/me", response_model=NotificationListResponse)
@@ -40,7 +64,7 @@ def get_my_notifications(
                 id=notification.id,
                 user_id=notification.user_id,
                 type=notification.type,
-                content=notification.content,
+                content=_localize_notification_content(notification.type, notification.content),
                 related_post_id=notification.related_post_id,
                 related_comment_id=notification.related_comment_id,
                 post_title=post_title,
@@ -76,19 +100,19 @@ def mark_notification_as_read(
     if not notification:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found",
+            detail="알림을 찾을 수 없습니다.",
         )
     if notification.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
+            detail="권한이 없습니다.",
         )
 
     updated = crud_notification.mark_notification_as_read(db, notification_id)
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found",
+            detail="알림을 찾을 수 없습니다.",
         )
 
     post_title = None
@@ -100,7 +124,7 @@ def mark_notification_as_read(
         id=updated.id,
         user_id=updated.user_id,
         type=updated.type,
-        content=updated.content,
+        content=_localize_notification_content(updated.type, updated.content),
         related_post_id=updated.related_post_id,
         related_comment_id=updated.related_comment_id,
         post_title=post_title,
@@ -115,7 +139,7 @@ def mark_all_notifications_as_read(
     db: Session = Depends(get_db),
 ):
     crud_notification.mark_all_notifications_as_read(db, current_user.id)
-    return {"detail": "All notifications marked as read"}
+    return {"detail": "모든 알림을 읽음 처리했습니다."}
 
 
 @router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -128,19 +152,19 @@ def delete_notification(
     if not notification:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found",
+            detail="알림을 찾을 수 없습니다.",
         )
     if notification.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
+            detail="권한이 없습니다.",
         )
 
     success = crud_notification.delete_notification(db, notification_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Notification not found",
+            detail="알림을 찾을 수 없습니다.",
         )
 
     return None

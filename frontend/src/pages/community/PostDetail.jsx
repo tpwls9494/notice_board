@@ -97,27 +97,41 @@ function PostDetail() {
     },
   });
 
-  const createBookmarkMutation = useMutation({
-    mutationFn: () => bookmarksAPI.createBookmark(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['post', id]);
-      queryClient.invalidateQueries(['my-bookmarks']);
-      toast.success('북마크에 추가했습니다.');
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.detail || '북마크 추가에 실패했습니다.');
-    },
-  });
+  const toggleBookmarkMutation = useMutation({
+    mutationFn: (nextBookmarked) => (
+      nextBookmarked
+        ? bookmarksAPI.createBookmark(id)
+        : bookmarksAPI.deleteBookmark(id)
+    ),
+    onMutate: async (nextBookmarked) => {
+      await queryClient.cancelQueries(['post', id]);
+      const previousPost = queryClient.getQueryData(['post', id]);
 
-  const deleteBookmarkMutation = useMutation({
-    mutationFn: () => bookmarksAPI.deleteBookmark(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['post', id]);
-      queryClient.invalidateQueries(['my-bookmarks']);
-      toast.success('북마크를 해제했습니다.');
+      queryClient.setQueryData(['post', id], (cached) => {
+        if (!cached?.data) return cached;
+        return {
+          ...cached,
+          data: {
+            ...cached.data,
+            is_bookmarked: nextBookmarked,
+          },
+        };
+      });
+
+      return { previousPost };
     },
-    onError: (error) => {
-      toast.error(error.response?.data?.detail || '북마크 해제에 실패했습니다.');
+    onSuccess: (_, nextBookmarked) => {
+      queryClient.invalidateQueries(['my-bookmarks']);
+      toast.success(nextBookmarked ? '북마크에 추가했습니다.' : '북마크를 해제했습니다.');
+    },
+    onError: (error, _, context) => {
+      if (context?.previousPost) {
+        queryClient.setQueryData(['post', id], context.previousPost);
+      }
+      toast.error(error.response?.data?.detail || '북마크 처리에 실패했습니다.');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries(['post', id]);
     },
   });
 
@@ -191,11 +205,7 @@ function PostDetail() {
       return;
     }
 
-    if (post.is_bookmarked) {
-      deleteBookmarkMutation.mutate();
-    } else {
-      createBookmarkMutation.mutate();
-    }
+    toggleBookmarkMutation.mutate(!post.is_bookmarked);
   };
 
   const handleFileDelete = async (fileId) => {
@@ -286,7 +296,7 @@ function PostDetail() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleBookmarkToggle}
-                disabled={createBookmarkMutation.isPending || deleteBookmarkMutation.isPending}
+                disabled={toggleBookmarkMutation.isPending}
                 aria-label={post.is_bookmarked ? '북마크 해제' : '북마크 추가'}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-medium active:scale-95 ${
                   post.is_bookmarked

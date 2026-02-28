@@ -28,7 +28,7 @@ def like_post(
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post not found"
+            detail="게시글을 찾을 수 없습니다.",
         )
 
     # Check if already liked
@@ -36,7 +36,7 @@ def like_post(
     if existing_like:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Post already liked"
+            detail="이미 좋아요한 게시글입니다.",
         )
 
     try:
@@ -48,7 +48,7 @@ def like_post(
                     NotificationCreate(
                         user_id=post.user_id,
                         type="like",
-                        content=f"{current_user.username} liked your post.",
+                        content=f"{current_user.username}님이 회원님의 게시글을 좋아합니다.",
                         related_post_id=post.id,
                     ),
                 )
@@ -59,7 +59,7 @@ def like_post(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Post already liked"
+            detail="이미 좋아요한 게시글입니다.",
         )
 
 
@@ -75,14 +75,14 @@ def unlike_post(
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post not found"
+            detail="게시글을 찾을 수 없습니다.",
         )
 
     success = crud_like.delete_like(db, post_id, current_user.id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Like not found"
+            detail="좋아요를 찾을 수 없습니다.",
         )
 
 

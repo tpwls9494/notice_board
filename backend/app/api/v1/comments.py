@@ -22,7 +22,7 @@ def get_comments(post_id: int, db: Session = Depends(get_db)):
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post not found",
+            detail="게시글을 찾을 수 없습니다.",
         )
 
     comments = crud_comment.get_comments_by_post(db, post_id)
@@ -51,7 +51,7 @@ def create_comment(
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Post not found",
+            detail="게시글을 찾을 수 없습니다.",
         )
 
     db_comment = crud_comment.create_comment(db, comment, current_user.id)
@@ -63,7 +63,7 @@ def create_comment(
                 NotificationCreate(
                     user_id=post.user_id,
                     type="comment",
-                    content=f"{current_user.username} commented on your post.",
+                    content=f"{current_user.username}님이 회원님의 게시글에 댓글을 남겼습니다.",
                     related_post_id=post.id,
                     related_comment_id=db_comment.id,
                 ),
@@ -92,14 +92,14 @@ def delete_comment(
     if not db_comment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Comment not found",
+            detail="댓글을 찾을 수 없습니다.",
         )
 
     # Check if user is the author or admin
     if db_comment.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
+            detail="권한이 없습니다.",
         )
 
     crud_comment.delete_comment(db, comment_id)
