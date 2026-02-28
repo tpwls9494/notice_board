@@ -72,22 +72,105 @@ function Layout() {
 
   const markNotificationReadMutation = useMutation({
     mutationFn: (notificationId) => notificationsAPI.markAsRead(notificationId),
+    onMutate: async (notificationId) => {
+      await queryClient.cancelQueries(['my-notifications']);
+      await queryClient.cancelQueries(['notifications-unread-count']);
+
+      const previousNotifications = queryClient.getQueryData(['my-notifications']);
+      const previousUnreadCount = queryClient.getQueryData(['notifications-unread-count']);
+
+      queryClient.setQueryData(['my-notifications'], (cached) => {
+        if (!cached?.data?.notifications) return cached;
+        return {
+          ...cached,
+          data: {
+            ...cached.data,
+            notifications: cached.data.notifications.map((item) => (
+              item.id === notificationId
+                ? { ...item, is_read: true }
+                : item
+            )),
+          },
+        };
+      });
+
+      queryClient.setQueryData(['notifications-unread-count'], (cached) => {
+        if (!cached?.data) return cached;
+        return {
+          ...cached,
+          data: {
+            ...cached.data,
+            unread_count: Math.max(0, (cached.data.unread_count || 0) - 1),
+          },
+        };
+      });
+
+      return { previousNotifications, previousUnreadCount };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(['my-notifications']);
       queryClient.invalidateQueries(['notifications-unread-count']);
+    },
+    onError: (_error, _notificationId, context) => {
+      if (context?.previousNotifications) {
+        queryClient.setQueryData(['my-notifications'], context.previousNotifications);
+      }
+      if (context?.previousUnreadCount) {
+        queryClient.setQueryData(['notifications-unread-count'], context.previousUnreadCount);
+      }
     },
   });
 
   const markAllNotificationsReadMutation = useMutation({
     mutationFn: () => notificationsAPI.markAllAsRead(),
+    onMutate: async () => {
+      await queryClient.cancelQueries(['my-notifications']);
+      await queryClient.cancelQueries(['notifications-unread-count']);
+
+      const previousNotifications = queryClient.getQueryData(['my-notifications']);
+      const previousUnreadCount = queryClient.getQueryData(['notifications-unread-count']);
+
+      queryClient.setQueryData(['my-notifications'], (cached) => {
+        if (!cached?.data?.notifications) return cached;
+        return {
+          ...cached,
+          data: {
+            ...cached.data,
+            notifications: cached.data.notifications.map((item) => ({ ...item, is_read: true })),
+          },
+        };
+      });
+
+      queryClient.setQueryData(['notifications-unread-count'], (cached) => {
+        if (!cached?.data) return cached;
+        return {
+          ...cached,
+          data: {
+            ...cached.data,
+            unread_count: 0,
+          },
+        };
+      });
+
+      return { previousNotifications, previousUnreadCount };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries(['my-notifications']);
       queryClient.invalidateQueries(['notifications-unread-count']);
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousNotifications) {
+        queryClient.setQueryData(['my-notifications'], context.previousNotifications);
+      }
+      if (context?.previousUnreadCount) {
+        queryClient.setQueryData(['notifications-unread-count'], context.previousUnreadCount);
+      }
     },
   });
 
   const unreadCount = unreadCountData?.data?.unread_count || 0;
   const notifications = notificationsData?.data?.notifications || [];
+  const unreadNotifications = notifications.filter((item) => !item.is_read);
 
   useEffect(() => {
     if (searchParams.get('login') === 'true') {
@@ -149,11 +232,13 @@ function Layout() {
     });
   };
 
-  const handleNotificationOpen = (notification) => {
+  const handleNotificationOpen = (notification, closePanel = false) => {
     if (!notification?.is_read && !markNotificationReadMutation.isPending) {
       markNotificationReadMutation.mutate(notification.id);
     }
-    setShowNotificationPanel(false);
+    if (closePanel) {
+      setShowNotificationPanel(false);
+    }
   };
 
   return (
@@ -244,7 +329,7 @@ function Layout() {
                           <button
                             type="button"
                             onClick={() => markAllNotificationsReadMutation.mutate()}
-                            disabled={markAllNotificationsReadMutation.isPending || unreadCount === 0}
+                            disabled={markAllNotificationsReadMutation.isPending || unreadNotifications.length === 0}
                             className="text-xs text-ink-500 hover:text-ink-800 disabled:text-ink-300"
                           >
                             모두 읽음
@@ -256,29 +341,25 @@ function Layout() {
                             <div className="px-3 py-5 text-center text-xs text-ink-400">알림을 불러오는 중입니다.</div>
                           )}
 
-                          {!notificationsLoading && notifications.length === 0 && (
+                          {!notificationsLoading && unreadNotifications.length === 0 && (
                             <div className="px-3 py-5 text-center text-xs text-ink-400">새 알림이 없습니다.</div>
                           )}
 
-                          {!notificationsLoading && notifications.map((item) => {
+                          {!notificationsLoading && unreadNotifications.map((item) => {
                             const content = formatNotificationContent(item);
                             const timeText = new Intl.DateTimeFormat('ko-KR', {
                               dateStyle: 'short',
                               timeStyle: 'short',
                             }).format(new Date(item.created_at));
 
-                            const itemClassName = `block w-full text-left rounded-xl px-3 py-2.5 transition-colors ${
-                              item.is_read
-                                ? 'bg-white hover:bg-paper-50'
-                                : 'bg-paper-50 hover:bg-paper-100 border border-ink-100'
-                            }`;
+                            const itemClassName = 'block w-full text-left rounded-xl px-3 py-2.5 transition-colors bg-paper-50 hover:bg-paper-100 border border-ink-100';
 
                             if (item.related_post_id) {
                               return (
                                 <Link
                                   key={item.id}
                                   to={`/posts/${item.related_post_id}`}
-                                  onClick={() => handleNotificationOpen(item)}
+                                  onClick={() => handleNotificationOpen(item, true)}
                                   className={itemClassName}
                                 >
                                   <p className="text-sm text-ink-800 break-words">{content}</p>
