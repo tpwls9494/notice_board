@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
+import SocialLoginButtons from './SocialLoginButtons'
 
 function LoginModal({ isOpen, onClose, onSuccess }) {
   const [email, setEmail] = useState('')
@@ -117,6 +117,8 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
               placeholder="비밀번호를 입력하세요…"
             />
           </div>
+
+          <SocialLoginButtons className="pt-1" />
 
           <button
             type="submit"

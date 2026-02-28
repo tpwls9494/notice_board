@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
+import SocialLoginButtons from '../components/SocialLoginButtons'
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -112,6 +113,8 @@ function Login() {
                 placeholder="비밀번호를 입력하세요&#x2026;"
               />
             </div>
+
+            <SocialLoginButtons className="pt-2" />
 
             <button
               type="submit"

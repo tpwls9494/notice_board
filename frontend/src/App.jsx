@@ -7,6 +7,7 @@ import { ConfirmProvider } from './components/ConfirmModal'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import MyPage from './pages/MyPage'
+import OAuthCallback from './pages/OAuthCallback'
 // Marketplace
 import McpList from './pages/marketplace/McpList'
 import McpDetail from './pages/marketplace/McpDetail'
@@ -56,6 +57,7 @@ function App() {
         {/* Standalone auth pages (fallback) */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
 
         {/* Main app with public Layout */}
         <Route path="/" element={<Layout />}>
