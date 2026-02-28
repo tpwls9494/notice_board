@@ -13,8 +13,6 @@ build/
 
 # Backend
 backend/.env
-backend/alembic/versions/*.py
-!backend/alembic/versions/__init__.py
 
 # Frontend
 frontend/node_modules/
