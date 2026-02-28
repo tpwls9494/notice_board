@@ -109,6 +109,25 @@ export const likesAPI = {
   getLikesCount: (postId) => api.get(`/likes/posts/${postId}/likes/count`),
 };
 
+// Bookmarks API
+export const bookmarksAPI = {
+  getMyBookmarks: (page = 1, pageSize = 20) =>
+    api.get(`/bookmarks/me?page=${page}&page_size=${pageSize}`),
+  getStatus: (postId) => api.get(`/bookmarks/posts/${postId}/status`),
+  createBookmark: (postId) => api.post(`/bookmarks/posts/${postId}`),
+  deleteBookmark: (postId) => api.delete(`/bookmarks/posts/${postId}`),
+};
+
+// Notifications API
+export const notificationsAPI = {
+  getMyNotifications: (page = 1, pageSize = 20) =>
+    api.get(`/notifications/me?page=${page}&page_size=${pageSize}`),
+  getUnreadCount: () => api.get('/notifications/me/unread-count'),
+  markAsRead: (notificationId) => api.patch(`/notifications/${notificationId}/read`),
+  markAllAsRead: () => api.patch('/notifications/me/read-all'),
+  deleteNotification: (notificationId) => api.delete(`/notifications/${notificationId}`),
+};
+
 // Files API
 export const filesAPI = {
   uploadFile: (postId, file) => {

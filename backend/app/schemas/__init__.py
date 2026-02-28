@@ -12,6 +12,21 @@ from app.schemas.comment import CommentCreate, CommentResponse
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 from app.schemas.like import LikeCreate, LikeResponse
 from app.schemas.file import FileResponse
+from app.schemas.bookmark import (
+    BookmarkCreate,
+    BookmarkResponse,
+    BookmarkPostSummary,
+    BookmarkListItem,
+    BookmarkListResponse,
+    BookmarkStatusResponse,
+)
+from app.schemas.notification import (
+    NotificationCreate,
+    NotificationResponse,
+    NotificationUpdate,
+    NotificationListResponse,
+    NotificationUnreadCountResponse,
+)
 from app.schemas.mcp_category import McpCategoryCreate, McpCategoryUpdate, McpCategoryResponse
 from app.schemas.mcp_server import (
     McpServerCreate, McpServerUpdate, McpServerResponse, McpServerListResponse,
@@ -44,6 +59,17 @@ __all__ = [
     "LikeCreate",
     "LikeResponse",
     "FileResponse",
+    "BookmarkCreate",
+    "BookmarkResponse",
+    "BookmarkPostSummary",
+    "BookmarkListItem",
+    "BookmarkListResponse",
+    "BookmarkStatusResponse",
+    "NotificationCreate",
+    "NotificationResponse",
+    "NotificationUpdate",
+    "NotificationListResponse",
+    "NotificationUnreadCountResponse",
     "McpCategoryCreate",
     "McpCategoryUpdate",
     "McpCategoryResponse",

@@ -2,7 +2,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
-import { postsAPI, commentsAPI, likesAPI, filesAPI } from '../../services/api';
+
+import {
+  postsAPI,
+  commentsAPI,
+  likesAPI,
+  filesAPI,
+  bookmarksAPI,
+} from '../../services/api';
 import useAuthStore from '../../stores/authStore';
 import { useConfirm } from '../../components/ConfirmModal';
 import LoginModal from '../../components/LoginModal';
@@ -10,6 +17,7 @@ import { getAvatarInitial, resolveProfileImageUrl } from '../../utils/userProfil
 
 function PostDetail() {
   const { id } = useParams();
+  const postId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, token } = useAuthStore();
@@ -36,16 +44,23 @@ function PostDetail() {
   const deletePostMutation = useMutation({
     mutationFn: () => postsAPI.deletePost(id),
     onSuccess: () => {
-      toast.success('게시글이 삭제되었습니다.');
+      toast.success('Post deleted.');
       navigate('/community');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to delete post.');
     },
   });
 
   const createCommentMutation = useMutation({
-    mutationFn: (content) => commentsAPI.createComment({ post_id: parseInt(id), content }),
+    mutationFn: (content) => commentsAPI.createComment({ post_id: postId, content }),
     onSuccess: () => {
       queryClient.invalidateQueries(['comments', id]);
+      queryClient.invalidateQueries(['post', id]);
       setComment('');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to create comment.');
     },
   });
 
@@ -53,6 +68,10 @@ function PostDetail() {
     mutationFn: (commentId) => commentsAPI.deleteComment(commentId),
     onSuccess: () => {
       queryClient.invalidateQueries(['comments', id]);
+      queryClient.invalidateQueries(['post', id]);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to delete comment.');
     },
   });
 
@@ -60,9 +79,11 @@ function PostDetail() {
     mutationFn: () => likesAPI.likePost(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['post', id]);
+      queryClient.invalidateQueries(['notifications-unread-count']);
+      queryClient.invalidateQueries(['my-notifications']);
     },
     onError: (error) => {
-      toast.error(error.response?.data?.detail || '좋아요에 실패했습니다.');
+      toast.error(error.response?.data?.detail || 'Failed to like post.');
     },
   });
 
@@ -71,39 +92,84 @@ function PostDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries(['post', id]);
     },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to unlike post.');
+    },
+  });
+
+  const createBookmarkMutation = useMutation({
+    mutationFn: () => bookmarksAPI.createBookmark(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['post', id]);
+      queryClient.invalidateQueries(['my-bookmarks']);
+      toast.success('Bookmark added.');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to add bookmark.');
+    },
+  });
+
+  const deleteBookmarkMutation = useMutation({
+    mutationFn: () => bookmarksAPI.deleteBookmark(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['post', id]);
+      queryClient.invalidateQueries(['my-bookmarks']);
+      toast.success('Bookmark removed.');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to remove bookmark.');
+    },
   });
 
   const deleteFileMutation = useMutation({
     mutationFn: (fileId) => filesAPI.deleteFile(fileId),
     onSuccess: () => {
       queryClient.invalidateQueries(['files', id]);
-      toast.success('파일이 삭제되었습니다.');
+      toast.success('File deleted.');
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || 'Failed to delete file.');
     },
   });
+
+  const post = postData?.data;
+  const files = filesData?.data || [];
+  const comments = commentsData?.data || [];
 
   if (postLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <div className="w-8 h-8 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
-        <p className="text-sm text-ink-400">로딩 중&#x2026;</p>
+        <p className="text-sm text-ink-400">Loading post...</p>
       </div>
     );
   }
 
-  const post = postData?.data;
-  const files = filesData?.data || [];
-  const postProfileImageUrl = resolveProfileImageUrl(post?.author_profile_image_url);
+  if (!post) {
+    return (
+      <div className="card p-8 text-center">
+        <p className="text-ink-600">Post not found.</p>
+      </div>
+    );
+  }
+
+  const postProfileImageUrl = resolveProfileImageUrl(post.author_profile_image_url);
 
   const handleDelete = async () => {
-    if (await confirm({ title: '게시글 삭제', message: '정말 삭제하시겠습니까?', confirmText: '삭제' })) {
+    const ok = await confirm({
+      title: 'Delete Post',
+      message: 'Are you sure you want to delete this post?',
+      confirmText: 'Delete',
+    });
+    if (ok) {
       deletePostMutation.mutate();
     }
   };
 
-  const handleCommentSubmit = (e) => {
-    e.preventDefault();
+  const handleCommentSubmit = (event) => {
+    event.preventDefault();
     if (!comment.trim()) return;
-    createCommentMutation.mutate(comment);
+    createCommentMutation.mutate(comment.trim());
   };
 
   const handleLikeToggle = () => {
@@ -112,63 +178,76 @@ function PostDetail() {
       return;
     }
 
-    if (post?.is_liked) {
+    if (post.is_liked) {
       unlikeMutation.mutate();
     } else {
       likeMutation.mutate();
     }
   };
 
+  const handleBookmarkToggle = () => {
+    if (!token) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (post.is_bookmarked) {
+      deleteBookmarkMutation.mutate();
+    } else {
+      createBookmarkMutation.mutate();
+    }
+  };
+
   const handleFileDelete = async (fileId) => {
-    if (await confirm({ title: '파일 삭제', message: '파일을 삭제하시겠습니까?', confirmText: '삭제' })) {
+    const ok = await confirm({
+      title: 'Delete File',
+      message: 'Delete this file?',
+      confirmText: 'Delete',
+    });
+    if (ok) {
       deleteFileMutation.mutate(fileId);
     }
   };
 
-  const isAuthor = user?.id === post?.user_id;
+  const isAuthor = user?.id === post.user_id;
   const isAdmin = user?.is_admin;
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-up">
-      {/* Back Navigation */}
       <Link
         to="/community"
         className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
-        style={{ transition: 'color 0.2s ease-out' }}
       >
-        <svg className="w-4 h-4 group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true" style={{ transition: 'transform 0.2s ease-out' }}>
+        <svg className="w-4 h-4 group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        목록으로
+        Back to list
       </Link>
 
       <article className="card overflow-hidden">
-        {/* Post Header */}
         <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-5 border-b border-ink-100">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex-1">
-              {post?.category_name && (
+              {post.category_name && (
                 <span className="badge-default text-[11px] mb-3 inline-block">
                   {post.category_name}
                 </span>
               )}
               <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink-950 tracking-tight leading-snug text-balance">
-                {post?.title}
+                {post.title}
               </h1>
             </div>
+
             {(isAuthor || isAdmin) && (
               <div className="flex items-center gap-1 flex-shrink-0">
-                <Link
-                  to={`/posts/${id}/edit`}
-                  className="btn-ghost text-sm"
-                >
-                  수정
+                <Link to={`/posts/${id}/edit`} className="btn-ghost text-sm">
+                  Edit
                 </Link>
                 <button
                   onClick={handleDelete}
                   className="btn-ghost text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
-                  삭제
+                  Delete
                 </button>
               </div>
             )}
@@ -180,95 +259,99 @@ function PostDetail() {
                 {postProfileImageUrl ? (
                   <img
                     src={postProfileImageUrl}
-                    alt={`${post?.author_username || '작성자'} 프로필`}
+                    alt={`${post.author_username || 'Author'} profile`}
                     className="w-full h-full object-cover"
                   />
                 ) : (
                   <span className="text-xs font-bold text-ink-600">
-                    {getAvatarInitial(post?.author_username)}
+                    {getAvatarInitial(post.author_username)}
                   </span>
                 )}
               </div>
               <div>
-                <p className="text-sm font-semibold text-ink-800">{post?.author_username}</p>
+                <p className="text-sm font-semibold text-ink-800">{post.author_username}</p>
                 <div className="flex items-center gap-2 text-xs text-ink-400">
-                  <span>{new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(post?.created_at))}</span>
+                  <span>
+                    {new Intl.DateTimeFormat('ko-KR', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    }).format(new Date(post.created_at))}
+                  </span>
                   <span className="w-0.5 h-0.5 rounded-full bg-ink-300" />
-                  <span>조회 {post?.views}</span>
+                  <span>Views {post.views}</span>
                 </div>
               </div>
             </div>
 
-            <button
-              onClick={handleLikeToggle}
-              disabled={likeMutation.isLoading || unlikeMutation.isLoading}
-              aria-label={post?.is_liked ? "좋아요 취소" : "좋아요"}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium active:scale-95 ${
-                post?.is_liked
-                  ? 'bg-ink-100 text-ink-800 border border-ink-300 hover:bg-ink-200'
-                  : 'bg-paper-200 text-ink-500 border border-ink-200 hover:bg-paper-300 hover:text-ink-700'
-              }`}
-              style={{ transition: 'background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, transform 0.2s ease-out' }}
-            >
-              <svg className="w-4 h-4" fill={post?.is_liked ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-              </svg>
-              <span>{post?.likes_count || 0}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleBookmarkToggle}
+                disabled={createBookmarkMutation.isPending || deleteBookmarkMutation.isPending}
+                aria-label={post.is_bookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-medium active:scale-95 ${
+                  post.is_bookmarked
+                    ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200'
+                    : 'bg-paper-200 text-ink-500 border border-ink-200 hover:bg-paper-300 hover:text-ink-700'
+                }`}
+              >
+                <svg className="w-4 h-4" fill={post.is_bookmarked ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 3.75H6.75A2.25 2.25 0 004.5 6v14.25a.75.75 0 001.219.585L12 15.75l6.281 5.085a.75.75 0 001.219-.585V6a2.25 2.25 0 00-2.25-2.25z" />
+                </svg>
+                <span>Bookmark</span>
+              </button>
+
+              <button
+                onClick={handleLikeToggle}
+                disabled={likeMutation.isPending || unlikeMutation.isPending}
+                aria-label={post.is_liked ? 'Unlike post' : 'Like post'}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium active:scale-95 ${
+                  post.is_liked
+                    ? 'bg-ink-100 text-ink-800 border border-ink-300 hover:bg-ink-200'
+                    : 'bg-paper-200 text-ink-500 border border-ink-200 hover:bg-paper-300 hover:text-ink-700'
+                }`}
+              >
+                <svg className="w-4 h-4" fill={post.is_liked ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                </svg>
+                <span>{post.likes_count || 0}</span>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Post Content */}
         <div className="px-6 sm:px-8 py-8">
           <div className="prose prose-ink max-w-none whitespace-pre-wrap text-ink-800 leading-relaxed">
-            {post?.content}
+            {post.content}
           </div>
         </div>
 
-        {/* Files Section */}
         {files.length > 0 && (
           <div className="px-6 sm:px-8 py-5 border-t border-ink-100 bg-paper-50">
-            <h3 className="text-sm font-semibold text-ink-700 mb-3 flex items-center gap-2">
-              <svg className="w-4 h-4 text-ink-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
-              </svg>
-              첨부파일 ({files.length})
-            </h3>
-
+            <h3 className="text-sm font-semibold text-ink-700 mb-3">Attached files ({files.length})</h3>
             <div className="space-y-1.5">
               {files.map((file) => (
                 <div
                   key={file.id}
                   className="flex items-center justify-between px-3 py-2.5 bg-white rounded-lg border border-ink-100 group hover:border-ink-200"
-                  style={{ transition: 'border-color 0.2s ease-out' }}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded bg-ink-100 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-ink-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                      </svg>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm text-ink-800 truncate">{file.original_filename}</p>
-                      <p className="text-xs text-ink-400">{(file.file_size / 1024).toFixed(1)} KB</p>
-                    </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-ink-800 truncate">{file.original_filename}</p>
+                    <p className="text-xs text-ink-400">{(file.file_size / 1024).toFixed(1)} KB</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <a
                       href={filesAPI.downloadFile(file.id)}
                       download
                       className="text-xs font-medium text-ink-700 hover:text-ink-900 underline underline-offset-2"
-                      style={{ transition: 'color 0.2s ease-out' }}
                     >
-                      다운로드
+                      Download
                     </a>
                     {(isAuthor || isAdmin) && (
                       <button
                         onClick={() => handleFileDelete(file.id)}
                         className="text-xs text-ink-400 hover:text-red-600"
-                        style={{ transition: 'color 0.2s ease-out' }}
                       >
-                        삭제
+                        Delete
                       </button>
                     )}
                   </div>
@@ -278,33 +361,26 @@ function PostDetail() {
           </div>
         )}
 
-        {/* Comments Section */}
         <div className="px-6 sm:px-8 py-6 border-t border-ink-100">
-          <h2 className="text-sm font-semibold text-ink-700 mb-5 flex items-center gap-2">
-            <svg className="w-4 h-4 text-ink-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-            </svg>
-            댓글 {commentsData?.data?.length || 0}개
-          </h2>
+          <h2 className="text-sm font-semibold text-ink-700 mb-5">Comments {comments.length}</h2>
 
-          {/* Comment Form */}
           {token ? (
             <form onSubmit={handleCommentSubmit} className="mb-6">
               <textarea
                 ref={commentInputRef}
                 value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="댓글을 입력하세요&#x2026;"
+                onChange={(event) => setComment(event.target.value)}
+                placeholder="Write a comment..."
                 className="input-field resize-none"
                 rows="3"
               />
               <div className="mt-2 flex justify-end">
                 <button
                   type="submit"
-                  disabled={createCommentMutation.isLoading || !comment.trim()}
+                  disabled={createCommentMutation.isPending || !comment.trim()}
                   className="btn-primary text-sm"
                 >
-                  {createCommentMutation.isLoading ? '작성 중\u2026' : '댓글 작성'}
+                  {createCommentMutation.isPending ? 'Posting...' : 'Post Comment'}
                 </button>
               </div>
             </form>
@@ -312,7 +388,7 @@ function PostDetail() {
             <div className="mb-6">
               <textarea
                 onClick={() => setShowLoginModal(true)}
-                placeholder="로그인 후 댓글을 작성할 수 있습니다"
+                placeholder="Login to write a comment"
                 className="input-field resize-none cursor-pointer"
                 rows="3"
                 readOnly
@@ -320,59 +396,65 @@ function PostDetail() {
             </div>
           )}
 
-          {/* Comments List */}
           {commentsLoading ? (
             <div className="flex justify-center py-6">
               <div className="w-6 h-6 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
             </div>
           ) : (
             <div className="space-y-3">
-              {commentsData?.data?.length === 0 && (
-                <p className="text-center py-8 text-sm text-ink-400">아직 댓글이 없습니다</p>
+              {comments.length === 0 && (
+                <p className="text-center py-8 text-sm text-ink-400">No comments yet.</p>
               )}
-              {commentsData?.data?.map((comment) => {
-                const commentProfileImageUrl = resolveProfileImageUrl(comment.author_profile_image_url);
 
+              {comments.map((item) => {
+                const commentProfileImageUrl = resolveProfileImageUrl(item.author_profile_image_url);
                 return (
-                  <div key={comment.id} className="group px-4 py-3.5 bg-paper-50 rounded-xl hover:bg-paper-100" style={{ transition: 'background-color 0.2s ease-out' }}>
+                  <div key={item.id} className="group px-4 py-3.5 bg-paper-50 rounded-xl hover:bg-paper-100">
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-ink-200 overflow-hidden flex items-center justify-center">
                           {commentProfileImageUrl ? (
                             <img
                               src={commentProfileImageUrl}
-                              alt={`${comment.author_username || '작성자'} 프로필`}
+                              alt={`${item.author_username || 'Author'} profile`}
                               className="w-full h-full object-cover"
                             />
                           ) : (
                             <span className="text-[10px] font-bold text-ink-600">
-                              {getAvatarInitial(comment.author_username)}
+                              {getAvatarInitial(item.author_username)}
                             </span>
                           )}
                         </div>
-                        <span className="text-sm font-semibold text-ink-800">
-                          {comment.author_username}
-                        </span>
+                        <span className="text-sm font-semibold text-ink-800">{item.author_username}</span>
                         <span className="text-xs text-ink-400">
-                          {new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(comment.created_at))}
+                          {new Intl.DateTimeFormat('ko-KR', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          }).format(new Date(item.created_at))}
                         </span>
                       </div>
-                      {(user?.id === comment.user_id || isAdmin) && (
+
+                      {(user?.id === item.user_id || isAdmin) && (
                         <button
                           onClick={async () => {
-                            if (await confirm({ title: '댓글 삭제', message: '댓글을 삭제하시겠습니까?', confirmText: '삭제' })) {
-                              deleteCommentMutation.mutate(comment.id);
+                            const ok = await confirm({
+                              title: 'Delete Comment',
+                              message: 'Delete this comment?',
+                              confirmText: 'Delete',
+                            });
+                            if (ok) {
+                              deleteCommentMutation.mutate(item.id);
                             }
                           }}
                           className="text-xs text-ink-400 hover:text-red-600 opacity-0 group-hover:opacity-100"
-                          style={{ transition: 'opacity 0.2s ease-out, color 0.2s ease-out' }}
                         >
-                          삭제
+                          Delete
                         </button>
                       )}
                     </div>
+
                     <p className="text-sm text-ink-700 whitespace-pre-wrap pl-8 leading-relaxed">
-                      {comment.content}
+                      {item.content}
                     </p>
                   </div>
                 );
@@ -382,16 +464,14 @@ function PostDetail() {
         </div>
       </article>
 
-      {/* Login Modal */}
       <LoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onSuccess={() => {
-          setShowLoginModal(false)
-          // 로그인 성공 후 댓글 입력창에 포커스
+          setShowLoginModal(false);
           setTimeout(() => {
-            commentInputRef.current?.focus()
-          }, 100)
+            commentInputRef.current?.focus();
+          }, 100);
         }}
       />
     </div>

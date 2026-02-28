@@ -1,14 +1,18 @@
+import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.api.deps import get_current_user
 from app.schemas.comment import CommentCreate, CommentResponse
+from app.schemas.notification import NotificationCreate
 from app.models.user import User
 from app.crud import comment as crud_comment
+from app.crud import notification as crud_notification
 from app.crud import post as crud_post
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/post/{post_id}", response_model=List[CommentResponse])
@@ -51,6 +55,22 @@ def create_comment(
         )
 
     db_comment = crud_comment.create_comment(db, comment, current_user.id)
+
+    if post.user_id != current_user.id:
+        try:
+            crud_notification.create_notification(
+                db,
+                NotificationCreate(
+                    user_id=post.user_id,
+                    type="comment",
+                    content=f"{current_user.username} commented on your post.",
+                    related_post_id=post.id,
+                    related_comment_id=db_comment.id,
+                ),
+            )
+        except Exception as exc:
+            logger.warning("Failed to create comment notification: %s", exc)
+
     return CommentResponse(
         id=db_comment.id,
         content=db_comment.content,

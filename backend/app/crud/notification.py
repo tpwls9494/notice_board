@@ -6,7 +6,7 @@ from sqlalchemy import desc
 
 def create_notification(db: Session, notification: NotificationCreate):
     """Create a notification"""
-    db_notification = Notification(**notification.dict())
+    db_notification = Notification(**notification.model_dump())
     db.add(db_notification)
     db.commit()
     db.refresh(db_notification)
@@ -23,6 +23,11 @@ def get_user_notifications(db: Session, user_id: int, skip: int = 0, limit: int 
     return db.query(Notification).filter(
         Notification.user_id == user_id
     ).order_by(desc(Notification.created_at)).offset(skip).limit(limit).all()
+
+
+def get_user_notifications_count(db: Session, user_id: int):
+    """Get all notifications count for a user"""
+    return db.query(Notification).filter(Notification.user_id == user_id).count()
 
 
 def get_unread_notifications_count(db: Session, user_id: int):

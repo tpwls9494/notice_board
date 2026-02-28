@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -18,6 +18,7 @@ class NotificationResponse(BaseModel):
     content: str
     related_post_id: Optional[int]
     related_comment_id: Optional[int]
+    post_title: Optional[str] = None
     is_read: bool
     created_at: datetime
 
@@ -27,3 +28,14 @@ class NotificationResponse(BaseModel):
 
 class NotificationUpdate(BaseModel):
     is_read: bool
+
+
+class NotificationListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    notifications: List[NotificationResponse]
+
+
+class NotificationUnreadCountResponse(BaseModel):
+    unread_count: int

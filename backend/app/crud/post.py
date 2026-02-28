@@ -5,6 +5,7 @@ from sqlalchemy import func, desc, or_
 from app.models.post import Post
 from app.models.comment import Comment
 from app.models.like import Like
+from app.models.bookmark import Bookmark
 from app.models.category import Category
 from app.schemas.post import PostCreate, PostUpdate
 
@@ -160,3 +161,12 @@ def get_likes_count(db: Session, post_id: int) -> int:
 
 def check_user_liked(db: Session, post_id: int, user_id: int) -> bool:
     return db.query(Like).filter(Like.post_id == post_id, Like.user_id == user_id).first() is not None
+
+
+def check_user_bookmarked(db: Session, post_id: int, user_id: int) -> bool:
+    return (
+        db.query(Bookmark)
+        .filter(Bookmark.post_id == post_id, Bookmark.user_id == user_id)
+        .first()
+        is not None
+    )

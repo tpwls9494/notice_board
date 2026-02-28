@@ -1,15 +1,19 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.db.session import get_db
 from app.schemas.like import LikeResponse
+from app.schemas.notification import NotificationCreate
 from app.crud import like as crud_like
+from app.crud import notification as crud_notification
 from app.crud import post as crud_post
 from app.api.deps import get_current_user
 from app.models.user import User
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/posts/{post_id}/like", response_model=LikeResponse)
@@ -37,6 +41,19 @@ def like_post(
 
     try:
         like = crud_like.create_like(db, post_id, current_user.id)
+        if post.user_id != current_user.id:
+            try:
+                crud_notification.create_notification(
+                    db,
+                    NotificationCreate(
+                        user_id=post.user_id,
+                        type="like",
+                        content=f"{current_user.username} liked your post.",
+                        related_post_id=post.id,
+                    ),
+                )
+            except Exception as exc:
+                logger.warning("Failed to create like notification: %s", exc)
         return like
     except IntegrityError:
         db.rollback()
