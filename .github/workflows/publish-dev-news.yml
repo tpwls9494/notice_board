@@ -1,0 +1,90 @@
+name: Publish Dev News
+
+on:
+  schedule:
+    # UTC: 00:00, 08:00, 16:00 (KST 09:00, 17:00, 01:00)
+    - cron: "0 0,8,16 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run in dry-run mode"
+        required: false
+        default: false
+        type: boolean
+      max_items:
+        description: "Override max items (3-10 recommended)"
+        required: false
+        type: string
+
+concurrency:
+  group: publish-dev-news
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      IT_NEWS_API_BASE: ${{ secrets.IT_NEWS_API_BASE }}
+      IT_NEWS_BOT_TOKEN: ${{ secrets.IT_NEWS_BOT_TOKEN }}
+      IT_NEWS_BOT_EMAIL: ${{ secrets.IT_NEWS_BOT_EMAIL }}
+      IT_NEWS_BOT_PASSWORD: ${{ secrets.IT_NEWS_BOT_PASSWORD }}
+      IT_NEWS_CATEGORY_SLUG: dev-news
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Resolve publish options
+        id: options
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${{ inputs.max_items || '' }}" ]]; then
+            max_items="${{ inputs.max_items }}"
+          else
+            max_items="$(shuf -i 3-10 -n 1)"
+          fi
+
+          dry_run="false"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.dry_run || 'false' }}" == "true" ]]; then
+            dry_run="true"
+          fi
+
+          echo "max_items=${max_items}" >> "$GITHUB_OUTPUT"
+          echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate credentials
+        if: steps.options.outputs.dry_run != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${IT_NEWS_API_BASE:-}" ]]; then
+            echo "Missing secret: IT_NEWS_API_BASE"
+            exit 1
+          fi
+          if [[ -z "${IT_NEWS_BOT_TOKEN:-}" && ( -z "${IT_NEWS_BOT_EMAIL:-}" || -z "${IT_NEWS_BOT_PASSWORD:-}" ) ]]; then
+            echo "Provide IT_NEWS_BOT_TOKEN or IT_NEWS_BOT_EMAIL + IT_NEWS_BOT_PASSWORD"
+            exit 1
+          fi
+
+      - name: Publish IT news
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cmd=(
+            python
+            .agents/skills/it-news-scrap-publisher/scripts/publish_it_news.py
+            --max-items "${{ steps.options.outputs.max_items }}"
+          )
+
+          if [[ "${{ steps.options.outputs.dry_run }}" == "true" ]]; then
+            cmd+=(--dry-run)
+          fi
+
+          echo "Running: ${cmd[*]}"
+          "${cmd[@]}"

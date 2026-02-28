@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import useCategoriesStore from '../../stores/categoriesStore';
 import PostListPage from '../../components/community/PostListPage';
+import { useSeo } from '../../utils/seo';
 
 function CommunityBoardPage() {
   const { slug } = useParams();
@@ -38,6 +39,12 @@ function CommunityBoardPage() {
     [sortedCategories, slug]
   );
 
+  useSeo({
+    title: activeCategory ? `${activeCategory.name} 게시판` : '게시판',
+    description: activeCategory?.description || '카테고리별 커뮤니티 게시글 목록',
+    url: activeCategory ? `/community/${activeCategory.slug}` : '/community',
+  });
+
   if (hasFetchedCategories && !activeCategory) {
     return <Navigate to="/community" replace />;
   }
@@ -46,7 +53,7 @@ function CommunityBoardPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <div className="w-8 h-8 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
-        <p className="text-sm text-ink-400">게시판 정보를 불러오는 중...</p>
+        <p className="text-sm text-ink-400">게시판 정보를 불러오는 중입니다.</p>
       </div>
     );
   }

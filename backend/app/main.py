@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
+from app.api import seo as seo_routes
 from app.api.v1 import auth, bookmarks, categories, comments, community, files, likes, notifications, posts
 from app.api.v1 import mcp_categories, mcp_playground, mcp_reviews, mcp_servers
 from app.core.config import settings
@@ -129,6 +130,8 @@ app.include_router(bookmarks.router, prefix="/api/v1/bookmarks", tags=["bookmark
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
 app.include_router(community.router, prefix="/api/v1/community", tags=["community"])
+app.include_router(seo_routes.public_router)
+app.include_router(seo_routes.api_router, prefix="/api/v1/seo", tags=["seo"])
 app.include_router(
     mcp_categories.router, prefix="/api/v1/mcp-categories", tags=["mcp-categories"]
 )

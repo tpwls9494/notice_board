@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 
 import {
+  API_BASE_URL,
   postsAPI,
   commentsAPI,
   likesAPI,
@@ -14,6 +15,7 @@ import useAuthStore from '../../stores/authStore';
 import { useConfirm } from '../../components/ConfirmModal';
 import LoginModal from '../../components/LoginModal';
 import { getAvatarInitial, resolveProfileImageUrl } from '../../utils/userProfile';
+import { createMetaDescription, useSeo } from '../../utils/seo';
 
 function PostDetail() {
   const { id } = useParams();
@@ -149,6 +151,19 @@ function PostDetail() {
   const post = postData?.data;
   const files = filesData?.data || [];
   const comments = commentsData?.data || [];
+  const postDescription = createMetaDescription(post?.content || '');
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const publicPostUrl = post ? `${currentOrigin}/posts/${post.id}` : `${currentOrigin}/posts/${postId}`;
+  const sharePreviewUrl = post ? `${currentOrigin}/share/posts/${post.id}` : `${currentOrigin}/share/posts/${postId}`;
+  const ogImageUrl = `${API_BASE_URL}/api/v1/seo/og/posts/${postId}.svg`;
+
+  useSeo({
+    title: post?.title || '게시글',
+    description: postDescription,
+    url: post ? `/posts/${post.id}` : `/posts/${postId}`,
+    image: ogImageUrl,
+    type: 'article',
+  });
 
   if (postLoading) {
     return (
@@ -217,6 +232,26 @@ function PostDetail() {
     if (ok) {
       deleteFileMutation.mutate(fileId);
     }
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(publicPostUrl);
+      toast.success('게시글 링크를 복사했습니다.');
+    } catch (_error) {
+      toast.error('링크 복사에 실패했습니다.');
+    }
+  };
+
+  const handleXShare = () => {
+    const shareText = `${post?.title || '게시글'} | jion community`;
+    const shareIntent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(sharePreviewUrl)}`;
+    window.open(shareIntent, '_blank', 'noopener,noreferrer,width=640,height=720');
+  };
+
+  const handleKakaoShare = () => {
+    const shareIntent = `https://story.kakao.com/share?url=${encodeURIComponent(sharePreviewUrl)}`;
+    window.open(shareIntent, '_blank', 'noopener,noreferrer,width=540,height=720');
   };
 
   const isAuthor = user?.id === post.user_id;
@@ -293,7 +328,33 @@ function PostDetail() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium bg-white text-ink-600 border border-ink-200 hover:bg-paper-100 active:scale-95"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 010 6.364l-1.59 1.59a4.5 4.5 0 01-6.364-6.364l1.591-1.59m6.363 6.364a4.5 4.5 0 010-6.364l1.59-1.59a4.5 4.5 0 016.364 6.364l-1.59 1.59" />
+                </svg>
+                <span>링크복사</span>
+              </button>
+
+              <button
+                onClick={handleKakaoShare}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium bg-[#FEE500] text-[#1f1f1f] border border-[#F2DA00] hover:brightness-95 active:scale-95"
+              >
+                <span className="text-xs font-extrabold">K</span>
+                <span>카카오</span>
+              </button>
+
+              <button
+                onClick={handleXShare}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium bg-ink-950 text-white border border-ink-900 hover:bg-ink-900 active:scale-95"
+              >
+                <span className="text-xs font-bold">X</span>
+                <span>트위터</span>
+              </button>
+
               <button
                 onClick={handleBookmarkToggle}
                 disabled={toggleBookmarkMutation.isPending}
