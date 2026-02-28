@@ -249,11 +249,6 @@ function PostDetail() {
     window.open(shareIntent, '_blank', 'noopener,noreferrer,width=640,height=720');
   };
 
-  const handleKakaoShare = () => {
-    const shareIntent = `https://story.kakao.com/share?url=${encodeURIComponent(sharePreviewUrl)}`;
-    window.open(shareIntent, '_blank', 'noopener,noreferrer,width=540,height=720');
-  };
-
   const isAuthor = user?.id === post.user_id;
   const isAdmin = user?.is_admin;
 
@@ -337,14 +332,6 @@ function PostDetail() {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 010 6.364l-1.59 1.59a4.5 4.5 0 01-6.364-6.364l1.591-1.59m6.363 6.364a4.5 4.5 0 010-6.364l1.59-1.59a4.5 4.5 0 016.364 6.364l-1.59 1.59" />
                 </svg>
                 <span>링크복사</span>
-              </button>
-
-              <button
-                onClick={handleKakaoShare}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm font-medium bg-[#FEE500] text-[#1f1f1f] border border-[#F2DA00] hover:brightness-95 active:scale-95"
-              >
-                <span className="text-xs font-extrabold">K</span>
-                <span>카카오</span>
               </button>
 
               <button
