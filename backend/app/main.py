@@ -1,10 +1,12 @@
 import logging
+import time
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from app.api.v1 import auth, bookmarks, categories, comments, community, files, likes, notifications, posts
 from app.api.v1 import mcp_categories, mcp_playground, mcp_reviews, mcp_servers
@@ -21,6 +23,38 @@ app = FastAPI(
     description="MCP Marketplace and community API",
     version="2.0.0",
 )
+
+
+@app.middleware("http")
+async def request_metrics_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = (time.perf_counter() - start) * 1000
+        if settings.REQUEST_LOG_ENABLED:
+            logger.exception(
+                "request_error method=%s path=%s duration_ms=%.2f",
+                request.method,
+                request.url.path,
+                duration_ms,
+            )
+        raise
+
+    duration_ms = (time.perf_counter() - start) * 1000
+    response.headers["X-Process-Time-Ms"] = f"{duration_ms:.2f}"
+
+    if settings.REQUEST_LOG_ENABLED:
+        log_fn = logger.warning if duration_ms >= settings.SLOW_REQUEST_THRESHOLD_MS else logger.info
+        log_fn(
+            "request method=%s path=%s status=%s duration_ms=%.2f",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
+
+    return response
 
 
 @app.exception_handler(RequestValidationError)
@@ -190,3 +224,29 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "healthy"}
+
+
+@app.get("/health/detailed")
+def detailed_health():
+    db_status = "ok"
+    db_error = None
+
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as exc:
+        db_status = "error"
+        db_error = str(exc)
+    finally:
+        db.close()
+
+    service_status = "healthy" if db_status == "ok" else "degraded"
+    payload = {
+        "status": service_status,
+        "checks": {
+            "database": db_status,
+        },
+    }
+    if db_error:
+        payload["checks"]["database_error"] = db_error
+    return payload

@@ -2,11 +2,13 @@ import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.api.deps import get_current_user
 from app.crud import notification as crud_notification
 from app.crud import post as crud_post
 from app.db.session import get_db
+from app.models.post import Post
 from app.models.user import User
 from app.schemas.notification import (
     NotificationListResponse,
@@ -52,12 +54,25 @@ def get_my_notifications(
     )
     total = crud_notification.get_user_notifications_count(db, current_user.id)
 
+    related_post_ids = {
+        item.related_post_id
+        for item in notifications
+        if item.related_post_id is not None
+    }
+    post_title_map: dict[int, str] = {}
+    if related_post_ids:
+        post_rows = db.execute(
+            select(Post.id, Post.title).where(Post.id.in_(related_post_ids))
+        ).all()
+        post_title_map = {post_id: title for post_id, title in post_rows}
+
     notification_items = []
     for notification in notifications:
-        post_title = None
-        if notification.related_post_id:
-            post = crud_post.get_post(db, notification.related_post_id)
-            post_title = post.title if post else None
+        post_title = (
+            post_title_map.get(notification.related_post_id)
+            if notification.related_post_id
+            else None
+        )
 
         notification_items.append(
             NotificationResponse(

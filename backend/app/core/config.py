@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     BOOTSTRAP_ADMIN_USERNAME: Optional[str] = None
     BOOTSTRAP_ADMIN_PASSWORD: Optional[str] = None
 
+    # Monitoring
+    REQUEST_LOG_ENABLED: bool = True
+    SLOW_REQUEST_THRESHOLD_MS: int = 500
+
     # MCP Playground settings
     MCP_ALLOWED_SERVERS: str = "fetch-server"  # 실제 연결 허용 서버 slug (쉼표 구분)
     MCP_CONNECT_TIMEOUT: int = 30  # 연결 타임아웃 (초)

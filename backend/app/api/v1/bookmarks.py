@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.api.deps import get_current_user
 from app.crud import bookmark as crud_bookmark
 from app.crud import post as crud_post
 from app.db.session import get_db
+from app.models.comment import Comment
+from app.models.like import Like
 from app.models.user import User
 from app.schemas.bookmark import (
     BookmarkListItem,
@@ -31,6 +34,31 @@ def get_my_bookmarks(
     )
     total = crud_bookmark.get_user_bookmarks_count(db, current_user.id)
 
+    post_ids = [
+        item.post_id
+        for item in bookmarks
+        if item.post is not None
+    ]
+
+    likes_count_map: dict[int, int] = {}
+    comments_count_map: dict[int, int] = {}
+    if post_ids:
+        likes_rows = (
+            db.query(Like.post_id, func.count(Like.id))
+            .filter(Like.post_id.in_(post_ids))
+            .group_by(Like.post_id)
+            .all()
+        )
+        likes_count_map = {post_id: count for post_id, count in likes_rows}
+
+        comment_rows = (
+            db.query(Comment.post_id, func.count(Comment.id))
+            .filter(Comment.post_id.in_(post_ids))
+            .group_by(Comment.post_id)
+            .all()
+        )
+        comments_count_map = {post_id: count for post_id, count in comment_rows}
+
     bookmark_items: list[BookmarkListItem] = []
     for bookmark in bookmarks:
         post = bookmark.post
@@ -49,8 +77,8 @@ def get_my_bookmarks(
                     author_username=post.author.username if post.author else None,
                     created_at=post.created_at,
                     views=post.views,
-                    likes_count=crud_post.get_likes_count(db, post.id),
-                    comment_count=crud_post.get_comment_count(db, post.id),
+                    likes_count=likes_count_map.get(post.id, 0),
+                    comment_count=comments_count_map.get(post.id, 0),
                 ),
             )
         )
