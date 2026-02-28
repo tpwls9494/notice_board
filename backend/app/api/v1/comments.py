@@ -13,6 +13,17 @@ from app.crud import post as crud_post
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+COMMENT_NOTIFICATION_PREVIEW_LIMIT = 30
+
+
+def _build_comment_preview(content: str, limit: int = COMMENT_NOTIFICATION_PREVIEW_LIMIT) -> str:
+    """Create a one-line preview text for comment notifications."""
+    normalized = " ".join((content or "").split())
+    if not normalized:
+        return ""
+    if len(normalized) <= limit:
+        return normalized
+    return f"{normalized[:limit]}..."
 
 
 @router.get("/post/{post_id}", response_model=List[CommentResponse])
@@ -58,12 +69,18 @@ def create_comment(
 
     if post.user_id != current_user.id:
         try:
+            preview = _build_comment_preview(db_comment.content)
+            notification_content = (
+                f"{current_user.username}님이 댓글을 남겼습니다: {preview}"
+                if preview
+                else f"{current_user.username}님이 회원님의 게시글에 댓글을 남겼습니다."
+            )
             crud_notification.create_notification(
                 db,
                 NotificationCreate(
                     user_id=post.user_id,
                     type="comment",
-                    content=f"{current_user.username}님이 회원님의 게시글에 댓글을 남겼습니다.",
+                    content=notification_content,
                     related_post_id=post.id,
                     related_comment_id=db_comment.id,
                 ),
