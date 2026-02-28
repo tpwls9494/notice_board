@@ -61,6 +61,9 @@ services:
       args:
         - VITE_API_URL=${VITE_API_URL}
     container_name: company_board_nginx
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot
     ports:
       - "80:80"
       - "443:443"

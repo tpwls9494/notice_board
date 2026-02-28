@@ -77,7 +77,7 @@ if docker compose -f docker-compose.prod.yml ps | grep -q "Up"; then
     docker compose -f docker-compose.prod.yml ps
     echo ""
     echo -e "${GREEN}🌐 Application is running!${NC}"
-    echo "Access your application at: http://jionc.com"
+    echo "Access your application at: https://jionc.com"
     echo ""
     echo "Useful commands:"
     echo "  View logs: docker compose -f docker-compose.prod.yml logs -f"
