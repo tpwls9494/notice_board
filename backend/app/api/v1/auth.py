@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 import mimetypes
 import os
@@ -22,6 +23,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 PROFILE_IMAGE_DIR = "/app/uploads/profile_images"
 PROFILE_IMAGE_URL_PREFIX = "/api/v1/auth/profile-images"
@@ -184,9 +186,10 @@ async def upload_me_profile_image(
         with open(file_path, "wb") as output_file:
             output_file.write(content)
     except Exception as exc:
+        logger.exception("Profile image write failed for user_id=%s", current_user.id)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save profile image: {exc}",
+            detail="Failed to save profile image",
         )
 
     old_profile_image_url = current_user.profile_image_url

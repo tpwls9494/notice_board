@@ -46,6 +46,9 @@ docker compose -f docker-compose.prod.yml up -d
 echo -e "${YELLOW}⏳ Waiting for services to be ready...${NC}"
 sleep 10
 
+echo -e "${YELLOW}🛠 Running database migrations...${NC}"
+docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
+
 echo -e "${YELLOW}🌱 Seeding category data...${NC}"
 if CATEGORY_COUNT_RAW=$(docker exec company_board_backend python -c "from app.db.session import SessionLocal; from app.models.category import Category; db=SessionLocal(); print(db.query(Category).count()); db.close()" 2>/dev/null); then
     CATEGORY_COUNT=$(echo "${CATEGORY_COUNT_RAW}" | tr -dc '0-9')

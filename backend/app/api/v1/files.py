@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File as FastAPIFile
@@ -13,6 +14,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Configure upload directory
 UPLOAD_DIR = "/app/uploads"
@@ -83,9 +85,12 @@ async def upload_file(
         with open(file_path, "wb") as f:
             f.write(content)
     except Exception as e:
+        logger.exception(
+            "File write failed for user_id=%s post_id=%s", current_user.id, post_id
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save file: {str(e)}"
+            detail="Failed to save file"
         )
 
     # Create file record in database

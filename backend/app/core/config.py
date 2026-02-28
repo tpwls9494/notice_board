@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     # GitHub API (optional, for higher rate limits)
     GITHUB_TOKEN: Optional[str] = None
 
+    # Optional startup admin bootstrap (disabled unless all 3 values are set)
+    BOOTSTRAP_ADMIN_EMAIL: Optional[str] = None
+    BOOTSTRAP_ADMIN_USERNAME: Optional[str] = None
+    BOOTSTRAP_ADMIN_PASSWORD: Optional[str] = None
+
     # MCP Playground settings
     MCP_ALLOWED_SERVERS: str = "fetch-server"  # 실제 연결 허용 서버 slug (쉼표 구분)
     MCP_CONNECT_TIMEOUT: int = 30  # 연결 타임아웃 (초)
