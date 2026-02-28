@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
@@ -65,7 +65,7 @@ function Layout() {
                     : 'text-ink-500 hover:text-ink-700 hover:bg-ink-50'
                 }`}
               >
-                Community
+                커뮤니티
               </Link>
               <Link
                 to="/marketplace"
@@ -75,7 +75,7 @@ function Layout() {
                     : 'text-ink-500 hover:text-ink-700 hover:bg-ink-50'
                 }`}
               >
-                Marketplace
+                마켓플레이스
               </Link>
             </div>
 
@@ -87,26 +87,26 @@ function Layout() {
                       {profileImageUrl ? (
                         <img
                           src={profileImageUrl}
-                          alt={`${user?.username || 'User'} profile`}
+                          alt={`${user?.username || '사용자'} 프로필`}
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <span className="text-[10px] font-bold text-ink-700">{avatarInitial}</span>
                       )}
                     </div>
-                    <span className="text-sm font-medium text-ink-700">{user?.username || 'User'}</span>
+                    <span className="text-sm font-medium text-ink-700">{user?.username || '사용자'}</span>
                   </div>
 
                   {!isMyPage && (
                     <Link to="/mypage" className={authActionClass}>
-                      My Page
+                      마이페이지
                     </Link>
                   )}
 
                   <Link
                     to="/mypage#notifications"
                     className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700"
-                    aria-label="Notifications"
+                    aria-label="알림"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
@@ -122,26 +122,26 @@ function Layout() {
                     <Link
                       to="/posts/new"
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md border border-ink-200 bg-white text-ink-600 hover:bg-paper-100 hover:text-ink-900 transition-colors"
-                      aria-label="Write post"
+                      aria-label="글쓰기"
                     >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                       </svg>
-                      <span className="hidden sm:inline">Write</span>
+                      <span className="hidden sm:inline">글쓰기</span>
                     </Link>
                   )}
 
                   <button onClick={handleLogout} className="btn-ghost text-sm text-ink-500">
-                    Logout
+                    로그아웃
                   </button>
                 </>
               ) : (
                 <>
                   <button onClick={() => setShowLoginModal(true)} className={authActionClass}>
-                    Login
+                    로그인
                   </button>
                   <Link to="/register" className={authActionClass}>
-                    Register
+                    회원가입
                   </Link>
                 </>
               )}
@@ -155,7 +155,7 @@ function Layout() {
                 !isMarketplace ? 'bg-ink-100 text-ink-900' : 'text-ink-500'
               }`}
             >
-              Community
+              커뮤니티
             </Link>
             <Link
               to="/marketplace"
@@ -163,7 +163,7 @@ function Layout() {
                 isMarketplace ? 'bg-ink-100 text-ink-900' : 'text-ink-500'
               }`}
             >
-              Marketplace
+              마켓플레이스
             </Link>
           </div>
         </div>

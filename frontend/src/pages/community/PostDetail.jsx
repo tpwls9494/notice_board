@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
@@ -44,11 +44,11 @@ function PostDetail() {
   const deletePostMutation = useMutation({
     mutationFn: () => postsAPI.deletePost(id),
     onSuccess: () => {
-      toast.success('Post deleted.');
+      toast.success('게시글을 삭제했습니다.');
       navigate('/community');
     },
     onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to delete post.');
+      toast.error(error.response?.data?.detail || '게시글 삭제에 실패했습니다.');
     },
   });
 
@@ -60,7 +60,7 @@ function PostDetail() {
       setComment('');
     },
     onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to create comment.');
+      toast.error(error.response?.data?.detail || '댓글 작성에 실패했습니다.');
     },
   });
 
@@ -71,7 +71,7 @@ function PostDetail() {
       queryClient.invalidateQueries(['post', id]);
     },
     onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to delete comment.');
+      toast.error(error.response?.data?.detail || '댓글 삭제에 실패했습니다.');
     },
   });
 
@@ -83,7 +83,7 @@ function PostDetail() {
       queryClient.invalidateQueries(['my-notifications']);
     },
     onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to like post.');
+      toast.error(error.response?.data?.detail || '좋아요에 실패했습니다.');
     },
   });
 
@@ -93,7 +93,7 @@ function PostDetail() {
       queryClient.invalidateQueries(['post', id]);
     },
     onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to unlike post.');
+      toast.error(error.response?.data?.detail || '좋아요 취소에 실패했습니다.');
     },
   });
 
@@ -102,10 +102,10 @@ function PostDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries(['post', id]);
       queryClient.invalidateQueries(['my-bookmarks']);
-      toast.success('Bookmark added.');
+      toast.success('북마크에 추가했습니다.');
     },
     onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to add bookmark.');
+      toast.error(error.response?.data?.detail || '북마크 추가에 실패했습니다.');
     },
   });
 
@@ -114,10 +114,10 @@ function PostDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries(['post', id]);
       queryClient.invalidateQueries(['my-bookmarks']);
-      toast.success('Bookmark removed.');
+      toast.success('북마크를 해제했습니다.');
     },
     onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to remove bookmark.');
+      toast.error(error.response?.data?.detail || '북마크 해제에 실패했습니다.');
     },
   });
 
@@ -125,10 +125,10 @@ function PostDetail() {
     mutationFn: (fileId) => filesAPI.deleteFile(fileId),
     onSuccess: () => {
       queryClient.invalidateQueries(['files', id]);
-      toast.success('File deleted.');
+      toast.success('첨부파일을 삭제했습니다.');
     },
     onError: (error) => {
-      toast.error(error.response?.data?.detail || 'Failed to delete file.');
+      toast.error(error.response?.data?.detail || '첨부파일 삭제에 실패했습니다.');
     },
   });
 
@@ -140,7 +140,7 @@ function PostDetail() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <div className="w-8 h-8 border-2 border-ink-200 border-t-ink-600 rounded-full animate-spin" />
-        <p className="text-sm text-ink-400">Loading post...</p>
+        <p className="text-sm text-ink-400">게시글을 불러오는 중입니다.</p>
       </div>
     );
   }
@@ -148,7 +148,7 @@ function PostDetail() {
   if (!post) {
     return (
       <div className="card p-8 text-center">
-        <p className="text-ink-600">Post not found.</p>
+        <p className="text-ink-600">게시글을 찾을 수 없습니다.</p>
       </div>
     );
   }
@@ -157,9 +157,9 @@ function PostDetail() {
 
   const handleDelete = async () => {
     const ok = await confirm({
-      title: 'Delete Post',
-      message: 'Are you sure you want to delete this post?',
-      confirmText: 'Delete',
+      title: '게시글 삭제',
+      message: '게시글을 삭제하시겠습니까?',
+      confirmText: '삭제',
     });
     if (ok) {
       deletePostMutation.mutate();
@@ -200,9 +200,9 @@ function PostDetail() {
 
   const handleFileDelete = async (fileId) => {
     const ok = await confirm({
-      title: 'Delete File',
-      message: 'Delete this file?',
-      confirmText: 'Delete',
+      title: '첨부파일 삭제',
+      message: '첨부파일을 삭제하시겠습니까?',
+      confirmText: '삭제',
     });
     if (ok) {
       deleteFileMutation.mutate(fileId);
@@ -221,7 +221,7 @@ function PostDetail() {
         <svg className="w-4 h-4 group-hover:-translate-x-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        Back to list
+        목록으로
       </Link>
 
       <article className="card overflow-hidden">
@@ -241,13 +241,13 @@ function PostDetail() {
             {(isAuthor || isAdmin) && (
               <div className="flex items-center gap-1 flex-shrink-0">
                 <Link to={`/posts/${id}/edit`} className="btn-ghost text-sm">
-                  Edit
+                  수정
                 </Link>
                 <button
                   onClick={handleDelete}
                   className="btn-ghost text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
                 >
-                  Delete
+                  삭제
                 </button>
               </div>
             )}
@@ -259,7 +259,7 @@ function PostDetail() {
                 {postProfileImageUrl ? (
                   <img
                     src={postProfileImageUrl}
-                    alt={`${post.author_username || 'Author'} profile`}
+                    alt={`${post.author_username || '작성자'} 프로필`}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -278,7 +278,7 @@ function PostDetail() {
                     }).format(new Date(post.created_at))}
                   </span>
                   <span className="w-0.5 h-0.5 rounded-full bg-ink-300" />
-                  <span>Views {post.views}</span>
+                  <span>조회 {post.views}</span>
                 </div>
               </div>
             </div>
@@ -287,7 +287,7 @@ function PostDetail() {
               <button
                 onClick={handleBookmarkToggle}
                 disabled={createBookmarkMutation.isPending || deleteBookmarkMutation.isPending}
-                aria-label={post.is_bookmarked ? 'Remove bookmark' : 'Add bookmark'}
+                aria-label={post.is_bookmarked ? '북마크 해제' : '북마크 추가'}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-sm font-medium active:scale-95 ${
                   post.is_bookmarked
                     ? 'bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200'
@@ -297,13 +297,13 @@ function PostDetail() {
                 <svg className="w-4 h-4" fill={post.is_bookmarked ? 'currentColor' : 'none'} viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 3.75H6.75A2.25 2.25 0 004.5 6v14.25a.75.75 0 001.219.585L12 15.75l6.281 5.085a.75.75 0 001.219-.585V6a2.25 2.25 0 00-2.25-2.25z" />
                 </svg>
-                <span>Bookmark</span>
+                <span>북마크</span>
               </button>
 
               <button
                 onClick={handleLikeToggle}
                 disabled={likeMutation.isPending || unlikeMutation.isPending}
-                aria-label={post.is_liked ? 'Unlike post' : 'Like post'}
+                aria-label={post.is_liked ? '좋아요 취소' : '좋아요'}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium active:scale-95 ${
                   post.is_liked
                     ? 'bg-ink-100 text-ink-800 border border-ink-300 hover:bg-ink-200'
@@ -327,7 +327,7 @@ function PostDetail() {
 
         {files.length > 0 && (
           <div className="px-6 sm:px-8 py-5 border-t border-ink-100 bg-paper-50">
-            <h3 className="text-sm font-semibold text-ink-700 mb-3">Attached files ({files.length})</h3>
+            <h3 className="text-sm font-semibold text-ink-700 mb-3">첨부파일 ({files.length})</h3>
             <div className="space-y-1.5">
               {files.map((file) => (
                 <div
@@ -344,14 +344,14 @@ function PostDetail() {
                       download
                       className="text-xs font-medium text-ink-700 hover:text-ink-900 underline underline-offset-2"
                     >
-                      Download
+                      다운로드
                     </a>
                     {(isAuthor || isAdmin) && (
                       <button
                         onClick={() => handleFileDelete(file.id)}
                         className="text-xs text-ink-400 hover:text-red-600"
                       >
-                        Delete
+                        삭제
                       </button>
                     )}
                   </div>
@@ -362,7 +362,7 @@ function PostDetail() {
         )}
 
         <div className="px-6 sm:px-8 py-6 border-t border-ink-100">
-          <h2 className="text-sm font-semibold text-ink-700 mb-5">Comments {comments.length}</h2>
+          <h2 className="text-sm font-semibold text-ink-700 mb-5">댓글 {comments.length}개</h2>
 
           {token ? (
             <form onSubmit={handleCommentSubmit} className="mb-6">
@@ -370,7 +370,7 @@ function PostDetail() {
                 ref={commentInputRef}
                 value={comment}
                 onChange={(event) => setComment(event.target.value)}
-                placeholder="Write a comment..."
+                placeholder="댓글을 입력하세요..."
                 className="input-field resize-none"
                 rows="3"
               />
@@ -380,7 +380,7 @@ function PostDetail() {
                   disabled={createCommentMutation.isPending || !comment.trim()}
                   className="btn-primary text-sm"
                 >
-                  {createCommentMutation.isPending ? 'Posting...' : 'Post Comment'}
+                  {createCommentMutation.isPending ? '등록 중...' : '댓글 등록'}
                 </button>
               </div>
             </form>
@@ -388,7 +388,7 @@ function PostDetail() {
             <div className="mb-6">
               <textarea
                 onClick={() => setShowLoginModal(true)}
-                placeholder="Login to write a comment"
+                placeholder="댓글을 작성하려면 로그인하세요"
                 className="input-field resize-none cursor-pointer"
                 rows="3"
                 readOnly
@@ -403,7 +403,7 @@ function PostDetail() {
           ) : (
             <div className="space-y-3">
               {comments.length === 0 && (
-                <p className="text-center py-8 text-sm text-ink-400">No comments yet.</p>
+                <p className="text-center py-8 text-sm text-ink-400">댓글이 없습니다.</p>
               )}
 
               {comments.map((item) => {
@@ -416,7 +416,7 @@ function PostDetail() {
                           {commentProfileImageUrl ? (
                             <img
                               src={commentProfileImageUrl}
-                              alt={`${item.author_username || 'Author'} profile`}
+                              alt={`${item.author_username || '작성자'} 프로필`}
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -438,9 +438,9 @@ function PostDetail() {
                         <button
                           onClick={async () => {
                             const ok = await confirm({
-                              title: 'Delete Comment',
-                              message: 'Delete this comment?',
-                              confirmText: 'Delete',
+                              title: '댓글 삭제',
+                              message: '댓글을 삭제하시겠습니까?',
+                              confirmText: '삭제',
                             });
                             if (ok) {
                               deleteCommentMutation.mutate(item.id);
@@ -448,7 +448,7 @@ function PostDetail() {
                           }}
                           className="text-xs text-ink-400 hover:text-red-600 opacity-0 group-hover:opacity-100"
                         >
-                          Delete
+                          삭제
                         </button>
                       )}
                     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -67,7 +67,7 @@ function MyPage() {
       queryClient.invalidateQueries(['notifications-unread-count']);
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, 'Failed to mark notification as read.'));
+      toast.error(getErrorMessage(error, '알림 읽음 처리에 실패했습니다.'));
     },
   });
 
@@ -76,10 +76,10 @@ function MyPage() {
     onSuccess: () => {
       queryClient.invalidateQueries(['my-notifications']);
       queryClient.invalidateQueries(['notifications-unread-count']);
-      toast.success('All notifications marked as read.');
+      toast.success('모든 알림을 읽음 처리했습니다.');
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, 'Failed to mark all notifications as read.'));
+      toast.error(getErrorMessage(error, '전체 읽음 처리에 실패했습니다.'));
     },
   });
 
@@ -88,10 +88,10 @@ function MyPage() {
     onSuccess: () => {
       queryClient.invalidateQueries(['my-notifications']);
       queryClient.invalidateQueries(['notifications-unread-count']);
-      toast.success('Notification deleted.');
+      toast.success('알림을 삭제했습니다.');
     },
     onError: (error) => {
-      toast.error(getErrorMessage(error, 'Failed to delete notification.'));
+      toast.error(getErrorMessage(error, '알림 삭제에 실패했습니다.'));
     },
   });
 
@@ -100,12 +100,12 @@ function MyPage() {
 
     const nextUsername = username.trim();
     if (nextUsername.length < 3) {
-      toast.error('Nickname must be at least 3 characters.');
+      toast.error('닉네임은 3자 이상이어야 합니다.');
       return;
     }
 
     if (nextUsername === user?.username) {
-      toast('No changes detected.');
+      toast('변경된 내용이 없습니다.');
       return;
     }
 
@@ -114,9 +114,9 @@ function MyPage() {
     try {
       const response = await authAPI.updateMeProfile({ username: nextUsername });
       setUser(response.data);
-      toast.success('Nickname updated.');
+      toast.success('닉네임을 변경했습니다.');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to update nickname.'));
+      toast.error(getErrorMessage(error, '닉네임 변경에 실패했습니다.'));
     } finally {
       setIsSavingNickname(false);
     }
@@ -126,17 +126,17 @@ function MyPage() {
     event.preventDefault();
 
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error('Please fill all password fields.');
+      toast.error('비밀번호 항목을 모두 입력해 주세요.');
       return;
     }
 
     if (newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters.');
+      toast.error('새 비밀번호는 6자 이상이어야 합니다.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error('New password and confirmation do not match.');
+      toast.error('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
       return;
     }
 
@@ -151,9 +151,9 @@ function MyPage() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      toast.success('Password updated.');
+      toast.success('비밀번호를 변경했습니다.');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to update password.'));
+      toast.error(getErrorMessage(error, '비밀번호 변경에 실패했습니다.'));
     } finally {
       setIsChangingPassword(false);
     }
@@ -166,12 +166,12 @@ function MyPage() {
     if (!file) return;
 
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error('Only JPG, PNG, GIF, WEBP are allowed.');
+      toast.error('JPG, PNG, GIF, WEBP 파일만 업로드할 수 있습니다.');
       return;
     }
 
     if (file.size > MAX_IMAGE_SIZE) {
-      toast.error('Profile image must be 5MB or smaller.');
+      toast.error('프로필 이미지는 5MB 이하만 가능합니다.');
       return;
     }
 
@@ -180,9 +180,9 @@ function MyPage() {
     try {
       const response = await authAPI.uploadProfileImage(file);
       setUser(response.data);
-      toast.success('Profile image updated.');
+      toast.success('프로필 사진을 변경했습니다.');
     } catch (error) {
-      toast.error(getErrorMessage(error, 'Failed to update profile image.'));
+      toast.error(getErrorMessage(error, '프로필 사진 변경에 실패했습니다.'));
     } finally {
       setIsUploadingImage(false);
     }
@@ -193,7 +193,7 @@ function MyPage() {
       <section className="max-w-3xl mx-auto">
         <div className="card p-8 flex items-center gap-3">
           <div className="w-5 h-5 border-2 border-ink-300 border-t-ink-700 rounded-full animate-spin" />
-          <p className="text-sm text-ink-600">Loading my page...</p>
+          <p className="text-sm text-ink-600">마이페이지 정보를 불러오는 중입니다.</p>
         </div>
       </section>
     );
@@ -206,24 +206,24 @@ function MyPage() {
   return (
     <section className="max-w-5xl mx-auto space-y-6">
       <header className="card p-6 md:p-8 bg-gradient-to-br from-paper-50 via-paper-100 to-paper-200">
-        <p className="text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold">Account</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink-950">My Page</h1>
+        <p className="text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold">내 계정</p>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink-950">마이페이지</h1>
         <p className="mt-2 text-sm text-ink-600">
-          Manage profile, passwords, bookmarks, and notifications from one place.
+          프로필, 비밀번호, 북마크, 알림을 한 곳에서 관리할 수 있습니다.
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr,1fr]">
         <article className="card p-6 md:p-7">
-          <h2 className="font-display text-xl font-semibold text-ink-900">Profile Photo</h2>
-          <p className="mt-1 text-sm text-ink-500">This image appears in comments and posts.</p>
+          <h2 className="font-display text-xl font-semibold text-ink-900">프로필 사진</h2>
+          <p className="mt-1 text-sm text-ink-500">댓글과 게시글 작성자 영역에 표시됩니다.</p>
 
           <div className="mt-6 flex items-center gap-4">
             <div className="relative w-24 h-24 rounded-2xl border border-ink-200 bg-ink-100 overflow-hidden shadow-soft">
               {profileImageUrl ? (
                 <img
                   src={profileImageUrl}
-                  alt={`${user.username} profile`}
+                  alt={`${user.username} 프로필`}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -248,9 +248,9 @@ function MyPage() {
                 disabled={isUploadingImage}
                 className="btn-secondary text-sm"
               >
-                {isUploadingImage ? 'Uploading...' : 'Upload Photo'}
+                {isUploadingImage ? '업로드 중...' : '사진 업로드'}
               </button>
-              <p className="text-xs text-ink-400">JPG, PNG, GIF, WEBP / max 5MB</p>
+              <p className="text-xs text-ink-400">JPG, PNG, GIF, WEBP / 최대 5MB</p>
             </div>
           </div>
 
@@ -263,19 +263,19 @@ function MyPage() {
           />
 
           <div className="mt-7 pt-5 border-t border-ink-100">
-            <p className="text-xs uppercase tracking-[0.16em] text-ink-400 font-semibold">Current Email</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-ink-400 font-semibold">현재 이메일</p>
             <p className="mt-1 text-sm text-ink-700">{user.email}</p>
           </div>
         </article>
 
         <article className="card p-6 md:p-7">
-          <h2 className="font-display text-xl font-semibold text-ink-900">Nickname</h2>
-          <p className="mt-1 text-sm text-ink-500">Update how your name appears to others.</p>
+          <h2 className="font-display text-xl font-semibold text-ink-900">닉네임 변경</h2>
+          <p className="mt-1 text-sm text-ink-500">커뮤니티에 표시될 이름을 수정합니다.</p>
 
           <form onSubmit={handleNicknameUpdate} className="mt-6 space-y-4">
             <div>
               <label htmlFor="nickname" className="block text-sm font-semibold text-ink-700 mb-2">
-                Nickname
+                닉네임
               </label>
               <input
                 id="nickname"
@@ -285,25 +285,25 @@ function MyPage() {
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
                 className="input-field"
-                placeholder="Enter nickname"
+                placeholder="닉네임을 입력해 주세요"
               />
             </div>
 
             <button type="submit" disabled={isSavingNickname} className="btn-accent w-full">
-              {isSavingNickname ? 'Saving...' : 'Save Nickname'}
+              {isSavingNickname ? '저장 중...' : '닉네임 저장'}
             </button>
           </form>
         </article>
       </div>
 
       <article className="card p-6 md:p-7">
-        <h2 className="font-display text-xl font-semibold text-ink-900">Password</h2>
-        <p className="mt-1 text-sm text-ink-500">Change your password securely.</p>
+        <h2 className="font-display text-xl font-semibold text-ink-900">비밀번호 변경</h2>
+        <p className="mt-1 text-sm text-ink-500">현재 비밀번호 확인 후 새 비밀번호로 변경합니다.</p>
 
         <form onSubmit={handlePasswordUpdate} className="mt-6 grid gap-4 md:grid-cols-3">
           <div>
             <label htmlFor="current-password" className="block text-sm font-semibold text-ink-700 mb-2">
-              Current Password
+              현재 비밀번호
             </label>
             <input
               id="current-password"
@@ -312,13 +312,13 @@ function MyPage() {
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
               className="input-field"
-              placeholder="Current password"
+              placeholder="현재 비밀번호"
             />
           </div>
 
           <div>
             <label htmlFor="new-password" className="block text-sm font-semibold text-ink-700 mb-2">
-              New Password
+              새 비밀번호
             </label>
             <input
               id="new-password"
@@ -328,13 +328,13 @@ function MyPage() {
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
               className="input-field"
-              placeholder="At least 6 chars"
+              placeholder="최소 6자"
             />
           </div>
 
           <div>
             <label htmlFor="confirm-password" className="block text-sm font-semibold text-ink-700 mb-2">
-              Confirm Password
+              비밀번호 확인
             </label>
             <input
               id="confirm-password"
@@ -348,13 +348,13 @@ function MyPage() {
                   ? 'border-red-300 focus:border-red-400 focus:ring-red-200/50'
                   : ''
               }`}
-              placeholder="Repeat password"
+              placeholder="새 비밀번호를 다시 입력"
             />
           </div>
 
           <div className="md:col-span-3 flex justify-end pt-2">
             <button type="submit" disabled={isChangingPassword} className="btn-primary min-w-[180px]">
-              {isChangingPassword ? 'Updating...' : 'Change Password'}
+              {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
             </button>
           </div>
         </form>
@@ -364,25 +364,25 @@ function MyPage() {
         <article className="card p-6 md:p-7" id="notifications">
           <div className="flex items-center justify-between gap-2">
             <div>
-              <h2 className="font-display text-xl font-semibold text-ink-900">Notifications</h2>
-              <p className="mt-1 text-sm text-ink-500">Unread: {unreadCount}</p>
+              <h2 className="font-display text-xl font-semibold text-ink-900">알림</h2>
+              <p className="mt-1 text-sm text-ink-500">읽지 않음: {unreadCount}</p>
             </div>
             <button
               onClick={() => markAllNotificationsReadMutation.mutate()}
               disabled={markAllNotificationsReadMutation.isPending || notifications.length === 0}
               className="btn-ghost text-sm"
             >
-              Mark all read
+              모두 읽음
             </button>
           </div>
 
           <div className="mt-4 space-y-2 max-h-[360px] overflow-auto pr-1">
             {notificationsLoading && (
-              <p className="text-sm text-ink-400">Loading notifications...</p>
+              <p className="text-sm text-ink-400">알림을 불러오는 중입니다.</p>
             )}
 
             {!notificationsLoading && notifications.length === 0 && (
-              <p className="text-sm text-ink-400">No notifications yet.</p>
+              <p className="text-sm text-ink-400">알림이 없습니다.</p>
             )}
 
             {notifications.map((item) => (
@@ -412,7 +412,7 @@ function MyPage() {
                         }}
                         className="inline-block text-xs mt-1 text-ink-700 underline underline-offset-2"
                       >
-                        Open post
+                        게시글 보기
                       </Link>
                     )}
                   </div>
@@ -423,14 +423,14 @@ function MyPage() {
                         onClick={() => markNotificationReadMutation.mutate(item.id)}
                         className="text-xs text-ink-500 hover:text-ink-800"
                       >
-                        Read
+                        읽음
                       </button>
                     )}
                     <button
                       onClick={() => deleteNotificationMutation.mutate(item.id)}
                       className="text-xs text-red-500 hover:text-red-700"
                     >
-                      Delete
+                      삭제
                     </button>
                   </div>
                 </div>
@@ -440,16 +440,16 @@ function MyPage() {
         </article>
 
         <article className="card p-6 md:p-7">
-          <h2 className="font-display text-xl font-semibold text-ink-900">Bookmarks</h2>
-          <p className="mt-1 text-sm text-ink-500">Your saved posts for later.</p>
+          <h2 className="font-display text-xl font-semibold text-ink-900">북마크</h2>
+          <p className="mt-1 text-sm text-ink-500">나중에 보기 위해 저장한 게시글입니다.</p>
 
           <div className="mt-4 space-y-2 max-h-[360px] overflow-auto pr-1">
             {bookmarksLoading && (
-              <p className="text-sm text-ink-400">Loading bookmarks...</p>
+              <p className="text-sm text-ink-400">북마크를 불러오는 중입니다.</p>
             )}
 
             {!bookmarksLoading && bookmarks.length === 0 && (
-              <p className="text-sm text-ink-400">No bookmarks yet.</p>
+              <p className="text-sm text-ink-400">북마크한 게시글이 없습니다.</p>
             )}
 
             {bookmarks.map((item) => (
@@ -460,10 +460,10 @@ function MyPage() {
               >
                 <p className="text-sm font-semibold text-ink-900 truncate">{item.post?.title}</p>
                 <p className="text-xs text-ink-500 mt-1">
-                  {item.post?.category_name || 'General'} ? {item.post?.author_username || 'Unknown'}
+                  {item.post?.category_name || '일반'} / {item.post?.author_username || '알 수 없음'}
                 </p>
                 <p className="text-xs text-ink-400 mt-1">
-                  Views {item.post?.views || 0} ? Likes {item.post?.likes_count || 0} ? Comments {item.post?.comment_count || 0}
+                  조회 {item.post?.views || 0} / 좋아요 {item.post?.likes_count || 0} / 댓글 {item.post?.comment_count || 0}
                 </p>
               </Link>
             ))}
