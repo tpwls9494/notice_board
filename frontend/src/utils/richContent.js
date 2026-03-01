@@ -249,3 +249,15 @@ export const normalizeStoredContentForEditor = (value = '') => {
 
   return convertPlainTextToHtml(raw)
 }
+
+export const hasInlineAttachmentInContent = (value = '') => {
+  const raw = String(value || '')
+  if (!raw) return false
+
+  if (/<img\b/i.test(raw)) return true
+  if (/data-editor-image\s*=\s*["']true["']/i.test(raw)) return true
+  if (/\/api\/v1\/files\/download\/\d+/i.test(raw)) return true
+  if (/!\[[^\]]*]\(([^)]+)\)/.test(raw)) return true
+
+  return false
+}

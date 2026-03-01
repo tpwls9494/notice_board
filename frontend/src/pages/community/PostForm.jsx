@@ -398,7 +398,7 @@ function PostForm() {
 
         const imageId = `img-${token}`
         insertHtmlAtCursor(
-          `<figure data-editor-image="true" data-image-id="${imageId}" class="editor-image-frame" style="width: 420px; max-width: 100%;">
+          `<figure data-editor-image="true" data-image-id="${imageId}" class="editor-image-frame">
             <img src="${previewSrc}" alt="${escapedName}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />
             <figcaption contenteditable="false">${escapedName}</figcaption>
           </figure><p><br></p>`,
@@ -678,7 +678,7 @@ function PostForm() {
               id="category"
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="input-field"
+              className="input-field h-[52px]"
               required
             >
               <option value="">커뮤니티를 선택하세요</option>
@@ -701,7 +701,7 @@ function PostForm() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="제목을 입력하세요&#x2026;"
-              className="input-field text-lg font-medium"
+              className="input-field h-[52px] text-lg font-medium"
               required
             />
           </div>
@@ -726,7 +726,7 @@ function PostForm() {
             />
 
             <p className="mt-2 text-xs text-ink-400">
-              이미지는 드래그/붙여넣기하면 바로 보입니다. 이미지 박스의 오른쪽 아래 모서리를 드래그해 크기를 조절할 수 있습니다.
+              이미지는 드래그/붙여넣기하면 바로 보이며, 동일한 고정 프레임으로 표시됩니다.
             </p>
 
             {activeInlineUploadCount > 0 && (
