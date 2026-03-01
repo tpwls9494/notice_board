@@ -5,6 +5,11 @@ import { toast } from 'sonner'
 import { postsAPI, filesAPI } from '../../services/api'
 import useCategoriesStore from '../../stores/categoriesStore'
 import useAuthStore from '../../stores/authStore'
+import {
+  extractPlainTextFromRichContent,
+  normalizeStoredContentForEditor,
+  sanitizeRichHtml,
+} from '../../utils/richContent'
 
 const NOTICE_CATEGORY_SLUG = 'notice'
 const IMAGE_MIME_PREFIX = 'image/'
@@ -24,11 +29,13 @@ const INLINE_FILE_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xls
 
 const isImageMimeType = (mimeType = '') => mimeType.startsWith(IMAGE_MIME_PREFIX)
 
-const escapeMarkdownText = (value = '') => (
+const escapeHtml = (value = '') => (
   value
-    .replace(/\\/g, '\\\\')
-    .replace(/\[/g, '\\[')
-    .replace(/\]/g, '\\]')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 )
 
 const createUploadToken = () => (
@@ -38,7 +45,7 @@ const createUploadToken = () => (
 const replaceUploadPlaceholders = (baseContent, replacements) => (
   replacements.reduce(
     (contentText, replacement) => contentText.split(replacement.placeholder).join(replacement.url),
-    baseContent
+    baseContent,
   )
 )
 
@@ -50,13 +57,17 @@ function PostForm() {
   const postId = Number(id)
 
   const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [uploadProgress, setUploadProgress] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
   const [pendingInlineUploads, setPendingInlineUploads] = useState([])
+  const [selectedImageId, setSelectedImageId] = useState('')
+  const [selectedImageWidth, setSelectedImageWidth] = useState(420)
+  const [editorHtmlSnapshot, setEditorHtmlSnapshot] = useState('<p><br></p>')
 
-  const contentInputRef = useRef(null)
+  const editorRef = useRef(null)
   const inlineFileInputRef = useRef(null)
+  const pendingInlineUploadsRef = useRef([])
 
   const { categories, fetchCategories } = useCategoriesStore()
   const user = useAuthStore((state) => state.user)
@@ -72,16 +83,19 @@ function PostForm() {
   })
 
   useEffect(() => {
-    if (postData?.data) {
-      setTitle(postData.data.title)
-      setContent(postData.data.content)
-      setCategoryId(postData.data.category_id || '')
-      setPendingInlineUploads([])
-    }
-  }, [postData])
+    pendingInlineUploadsRef.current = pendingInlineUploads
+  }, [pendingInlineUploads])
+
+  useEffect(() => () => {
+    pendingInlineUploadsRef.current.forEach((upload) => {
+      if (upload.objectUrl) {
+        URL.revokeObjectURL(upload.objectUrl)
+      }
+    })
+  }, [])
 
   const selectableCategories = categories.filter(
-    (category) => user?.is_admin || category.slug !== NOTICE_CATEGORY_SLUG
+    (category) => user?.is_admin || category.slug !== NOTICE_CATEGORY_SLUG,
   )
 
   const createMutation = useMutation({
@@ -99,46 +113,164 @@ function PostForm() {
     ])
   }
 
-  const insertAtCursor = (snippet) => {
-    const textarea = contentInputRef.current
-
-    setContent((previous) => {
-      if (!textarea) {
-        return `${previous}${snippet}`
-      }
-
-      const start = textarea.selectionStart ?? previous.length
-      const end = textarea.selectionEnd ?? previous.length
-      const next = `${previous.slice(0, start)}${snippet}${previous.slice(end)}`
-
-      requestAnimationFrame(() => {
-        textarea.focus()
-        const cursor = start + snippet.length
-        textarea.setSelectionRange(cursor, cursor)
+  const clearPendingInlineUploads = () => {
+    setPendingInlineUploads((previous) => {
+      previous.forEach((upload) => {
+        if (upload.objectUrl) {
+          URL.revokeObjectURL(upload.objectUrl)
+        }
       })
-
-      return next
+      return []
     })
   }
 
-  const handleInsertLink = () => {
-    insertAtCursor('[링크 텍스트](https://example.com)')
+  const syncEditorImagesSelection = (activeImageId = '') => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    const frames = Array.from(editor.querySelectorAll('[data-editor-image="true"]'))
+    frames.forEach((frame) => {
+      if ((frame.getAttribute('data-image-id') || '') === activeImageId) {
+        frame.classList.add('is-selected')
+      } else {
+        frame.classList.remove('is-selected')
+      }
+    })
   }
 
-  const handleInsertInlineFormula = () => {
-    insertAtCursor('$E = mc^2$')
+  const getImageFrameById = (imageId) => {
+    const editor = editorRef.current
+    if (!editor || !imageId) return null
+
+    const frames = Array.from(editor.querySelectorAll('[data-editor-image="true"]'))
+    return frames.find((frame) => (frame.getAttribute('data-image-id') || '') === imageId) || null
   }
 
-  const handleInsertBlockFormula = () => {
-    insertAtCursor('\n$$\n\\int_0^1 x^2\\,dx\n$$\n')
+  const setEditorHtml = (nextHtml) => {
+    const editor = editorRef.current
+    if (!editor) return
+    editor.innerHTML = nextHtml
+    setEditorHtmlSnapshot(nextHtml)
+    syncEditorImagesSelection(selectedImageId)
+  }
+
+  useEffect(() => {
+    if (!editorRef.current) return
+
+    if (postData?.data) {
+      setTitle(postData.data.title || '')
+      setCategoryId(String(postData.data.category_id || ''))
+      setEditorHtml(normalizeStoredContentForEditor(postData.data.content || ''))
+      setSelectedImageId('')
+      setSelectedImageWidth(420)
+      clearPendingInlineUploads()
+      return
+    }
+
+    if (!isEdit) {
+      setEditorHtml('<p><br></p>')
+    }
+  }, [postData, isEdit])
+
+  const ensureEditorRange = () => {
+    const editor = editorRef.current
+    if (!editor) return null
+
+    editor.focus()
+    const selection = window.getSelection()
+    if (!selection) return null
+
+    if (selection.rangeCount === 0) {
+      const fallbackRange = document.createRange()
+      fallbackRange.selectNodeContents(editor)
+      fallbackRange.collapse(false)
+      selection.addRange(fallbackRange)
+      return fallbackRange
+    }
+
+    const activeRange = selection.getRangeAt(0)
+    if (editor.contains(activeRange.commonAncestorContainer)) {
+      return activeRange
+    }
+
+    const fallbackRange = document.createRange()
+    fallbackRange.selectNodeContents(editor)
+    fallbackRange.collapse(false)
+    selection.removeAllRanges()
+    selection.addRange(fallbackRange)
+    return fallbackRange
+  }
+
+  const insertHtmlAtCursor = (htmlSnippet) => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    const range = ensureEditorRange()
+    if (!range) return
+
+    const fragment = range.createContextualFragment(htmlSnippet)
+    const nodes = Array.from(fragment.childNodes)
+    if (nodes.length === 0) return
+
+    const lastNode = nodes[nodes.length - 1]
+    range.deleteContents()
+    range.insertNode(fragment)
+
+    const selection = window.getSelection()
+    if (selection && lastNode) {
+      const nextRange = document.createRange()
+      nextRange.setStartAfter(lastNode)
+      nextRange.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(nextRange)
+    }
+
+    syncEditorImagesSelection(selectedImageId)
+    setEditorHtmlSnapshot(editor.innerHTML)
   }
 
   const handleOpenInlineFilePicker = () => {
     inlineFileInputRef.current?.click()
   }
 
-  const handleInlineFileChange = (event) => {
-    const files = Array.from(event.target.files || [])
+  const hasFileDragPayload = (event) => {
+    const types = Array.from(event.dataTransfer?.types || [])
+    return types.includes('Files')
+  }
+
+  const sanitizeEditorSnapshotForUpload = () => {
+    const rawHtml = editorRef.current?.innerHTML || ''
+
+    return sanitizeRichHtml(rawHtml, {
+      allowTemporaryUrls: true,
+      keepUploadPlaceholders: true,
+    })
+  }
+
+  const serializeContentWithPlaceholders = () => {
+    const sanitizedSnapshot = sanitizeEditorSnapshotForUpload()
+    const parser = new DOMParser()
+    const documentNode = parser.parseFromString(sanitizedSnapshot, 'text/html')
+    const body = documentNode.body
+
+    Array.from(body.querySelectorAll('[data-upload-placeholder]')).forEach((element) => {
+      const placeholder = element.getAttribute('data-upload-placeholder')
+      if (!placeholder) return
+
+      if (element.tagName.toLowerCase() === 'img') {
+        element.setAttribute('src', placeholder)
+      }
+
+      if (element.tagName.toLowerCase() === 'a') {
+        element.setAttribute('href', placeholder)
+      }
+    })
+
+    return body.innerHTML || '<p><br></p>'
+  }
+
+  const handleInsertFiles = (incomingFiles) => {
+    const files = Array.from(incomingFiles || [])
     if (files.length === 0) return
 
     const validFiles = []
@@ -162,38 +294,216 @@ function PostForm() {
       toast.warning(`일부 파일은 삽입되지 않았습니다: ${rejectedFiles.join(', ')}`)
     }
 
-    if (validFiles.length === 0) {
-      event.target.value = ''
-      return
-    }
+    if (validFiles.length === 0) return
 
-    const uploads = validFiles.map((file) => {
-      const placeholder = `upload://${createUploadToken()}`
-      const escapedName = escapeMarkdownText(file.name)
-      const markdown = isImageMimeType(file.type)
-        ? `![${escapedName}](${placeholder})`
-        : `[${escapedName}](${placeholder})`
+    const uploads = []
+    validFiles.forEach((file) => {
+      const token = createUploadToken()
+      const placeholder = `upload://${token}`
+      const objectUrl = URL.createObjectURL(file)
+      const escapedName = escapeHtml(file.name)
 
-      return {
-        file,
+      uploads.push({
+        token,
         placeholder,
-        markdown,
+        objectUrl,
+        file,
         originalFilename: file.name,
+        isImage: isImageMimeType(file.type),
+      })
+
+      if (isImageMimeType(file.type)) {
+        const imageId = `img-${token}`
+        insertHtmlAtCursor(
+          `<figure data-editor-image="true" data-image-id="${imageId}" class="editor-image-frame" style="width: 420px; max-width: 100%;">
+            <img src="${objectUrl}" alt="${escapedName}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />
+            <figcaption contenteditable="false">${escapedName}</figcaption>
+          </figure><p><br></p>`,
+        )
+      } else {
+        insertHtmlAtCursor(
+          `<p><a href="${placeholder}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" target="_blank" rel="noopener noreferrer">${escapedName}</a></p>`,
+        )
       }
     })
 
-    const snippet = uploads.map((upload) => upload.markdown).join('\n\n')
-    insertAtCursor(`${snippet}\n`)
     setPendingInlineUploads((previous) => [...previous, ...uploads])
+  }
+
+  const handleInlineFileChange = (event) => {
+    handleInsertFiles(event.target.files || [])
     event.target.value = ''
   }
 
-  const uploadInlineFiles = async (targetPostId, rawContent) => {
-    const targets = pendingInlineUploads.filter((upload) => rawContent.includes(upload.placeholder))
+  const handleEditorDragEnter = (event) => {
+    if (!hasFileDragPayload(event)) return
+    event.preventDefault()
+    setIsDragOver(true)
+  }
+
+  const handleEditorDragOver = (event) => {
+    if (!hasFileDragPayload(event)) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+    if (!isDragOver) {
+      setIsDragOver(true)
+    }
+  }
+
+  const handleEditorDragLeave = (event) => {
+    if (!hasFileDragPayload(event)) return
+    event.preventDefault()
+
+    const editor = editorRef.current
+    if (!editor) {
+      setIsDragOver(false)
+      return
+    }
+
+    if (event.relatedTarget && editor.contains(event.relatedTarget)) {
+      return
+    }
+
+    setIsDragOver(false)
+  }
+
+  const handleEditorDrop = (event) => {
+    if (!hasFileDragPayload(event)) return
+    event.preventDefault()
+    setIsDragOver(false)
+    handleInsertFiles(event.dataTransfer?.files || [])
+  }
+
+  const handleEditorPaste = (event) => {
+    const items = Array.from(event.clipboardData?.items || [])
+    const files = items
+      .filter((item) => item.kind === 'file')
+      .map((item) => item.getAsFile())
+      .filter(Boolean)
+
+    if (files.length === 0) return
+
+    event.preventDefault()
+    handleInsertFiles(files)
+  }
+
+  const handleInsertLink = () => {
+    insertHtmlAtCursor('<a href="https://example.com" target="_blank" rel="noopener noreferrer">링크 텍스트</a>')
+  }
+
+  const handleInsertInlineFormula = () => {
+    insertHtmlAtCursor('<span>\\(E = mc^2\\)</span>')
+  }
+
+  const handleInsertBlockFormula = () => {
+    insertHtmlAtCursor('<p>\\[\\int_0^1 x^2\\,dx\\]</p>')
+  }
+
+  const handleEditorClick = (event) => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    const clickedFrame = event.target.closest('[data-editor-image="true"]')
+    if (!clickedFrame || !editor.contains(clickedFrame)) {
+      setSelectedImageId('')
+      setSelectedImageWidth(420)
+      syncEditorImagesSelection('')
+      return
+    }
+
+    let imageId = clickedFrame.getAttribute('data-image-id') || ''
+    if (!imageId) {
+      imageId = `img-${createUploadToken()}`
+      clickedFrame.setAttribute('data-image-id', imageId)
+      setEditorHtmlSnapshot(editor.innerHTML)
+    }
+    setSelectedImageId(imageId)
+    const measuredWidth = Math.round(clickedFrame.getBoundingClientRect().width)
+    const nextWidth = Number.isFinite(measuredWidth) ? measuredWidth : 420
+    setSelectedImageWidth(Math.max(120, Math.min(1000, nextWidth)))
+    syncEditorImagesSelection(imageId)
+  }
+
+  const handleEditorInput = () => {
+    const editor = editorRef.current
+    if (editor) {
+      setEditorHtmlSnapshot(editor.innerHTML)
+    }
+
+    if (selectedImageId) {
+      const frame = getImageFrameById(selectedImageId)
+      if (!frame) {
+        setSelectedImageId('')
+        setSelectedImageWidth(420)
+      }
+    }
+  }
+
+  const handleSelectedImageWidthChange = (event) => {
+    const nextWidth = Number(event.target.value || 420)
+    setSelectedImageWidth(nextWidth)
+
+    const frame = getImageFrameById(selectedImageId)
+    if (!frame) return
+
+    frame.style.width = `${nextWidth}px`
+    setEditorHtmlSnapshot(editorRef.current?.innerHTML || '')
+  }
+
+  const handleRemoveSelectedImage = () => {
+    const frame = getImageFrameById(selectedImageId)
+    if (!frame) return
+    frame.remove()
+    setSelectedImageId('')
+    setSelectedImageWidth(420)
+    setEditorHtmlSnapshot(editorRef.current?.innerHTML || '')
+  }
+
+  const hasMeaningfulContent = (htmlText) => {
+    const plainText = extractPlainTextFromRichContent(htmlText).trim()
+    if (plainText) return true
+
+    const parser = new DOMParser()
+    const parsed = parser.parseFromString(htmlText, 'text/html')
+    return Boolean(parsed.body.querySelector('img, a[href], figure[data-editor-image="true"]'))
+  }
+
+  const removeFailedUploadNodes = (htmlText, failedUploads) => {
+    if (failedUploads.length === 0) return htmlText
+
+    const parser = new DOMParser()
+    const parsed = parser.parseFromString(htmlText, 'text/html')
+    const body = parsed.body
+
+    failedUploads.forEach((upload) => {
+      Array.from(body.querySelectorAll('img')).forEach((imageElement) => {
+        if ((imageElement.getAttribute('src') || '') !== upload.placeholder) return
+        const frame = imageElement.closest('[data-editor-image="true"]')
+        if (frame) {
+          frame.remove()
+        } else {
+          imageElement.remove()
+        }
+      })
+
+      Array.from(body.querySelectorAll('a')).forEach((linkElement) => {
+        if ((linkElement.getAttribute('href') || '') !== upload.placeholder) return
+        const fallbackText = parsed.createTextNode(`[업로드 실패: ${upload.originalFilename}]`)
+        linkElement.replaceWith(fallbackText)
+      })
+    })
+
+    return body.innerHTML
+  }
+
+  const uploadInlineFiles = async (targetPostId, contentWithPlaceholders) => {
+    const targets = pendingInlineUploads.filter((upload) => (
+      contentWithPlaceholders.includes(upload.placeholder)
+    ))
 
     if (targets.length === 0) {
       return {
-        resolvedContent: rawContent,
+        resolvedContent: sanitizeRichHtml(contentWithPlaceholders),
         uploadedCount: 0,
         failedUploads: [],
       }
@@ -221,16 +531,9 @@ function PostForm() {
       }
     }
 
-    let resolvedContent = replaceUploadPlaceholders(rawContent, replacements)
-
-    for (const failedUpload of failedUploads) {
-      resolvedContent = resolvedContent
-        .split(failedUpload.markdown)
-        .join(`[업로드 실패: ${failedUpload.originalFilename}]`)
-      resolvedContent = resolvedContent
-        .split(failedUpload.placeholder)
-        .join('')
-    }
+    let resolvedContent = replaceUploadPlaceholders(contentWithPlaceholders, replacements)
+    resolvedContent = removeFailedUploadNodes(resolvedContent, failedUploads)
+    resolvedContent = sanitizeRichHtml(resolvedContent)
 
     return {
       resolvedContent,
@@ -243,9 +546,9 @@ function PostForm() {
     e.preventDefault()
 
     const trimmedTitle = title.trim()
-    const trimmedContent = content.trim()
+    const serializedContent = serializeContentWithPlaceholders()
 
-    if (!trimmedTitle || !trimmedContent) {
+    if (!trimmedTitle || !hasMeaningfulContent(serializedContent)) {
       toast.error('제목과 내용을 모두 입력해주세요.')
       return
     }
@@ -257,7 +560,7 @@ function PostForm() {
 
     const data = {
       title: trimmedTitle,
-      content: trimmedContent,
+      content: serializedContent,
       category_id: parseInt(categoryId, 10),
     }
 
@@ -265,8 +568,8 @@ function PostForm() {
 
     try {
       if (isEdit) {
-        const { resolvedContent, uploadedCount, failedUploads } = await uploadInlineFiles(postId, trimmedContent)
-        const normalizedContent = resolvedContent.trim() || trimmedContent
+        const { resolvedContent, uploadedCount, failedUploads } = await uploadInlineFiles(postId, serializedContent)
+        const normalizedContent = resolvedContent.trim() || serializedContent
 
         await updateMutation.mutateAsync({
           ...data,
@@ -282,10 +585,10 @@ function PostForm() {
         toast.success(
           uploadedCount > 0
             ? `게시글이 수정되었습니다. (인라인 파일 ${uploadedCount}개 반영)`
-            : '게시글이 수정되었습니다.'
+            : '게시글이 수정되었습니다.',
         )
 
-        setPendingInlineUploads([])
+        clearPendingInlineUploads()
         navigate(`/posts/${id}`)
         return
       }
@@ -293,10 +596,10 @@ function PostForm() {
       const response = await createMutation.mutateAsync(data)
       const createdPostId = response.data.id
 
-      const { resolvedContent, uploadedCount, failedUploads } = await uploadInlineFiles(createdPostId, trimmedContent)
-      const normalizedContent = resolvedContent.trim() || trimmedContent
+      const { resolvedContent, uploadedCount, failedUploads } = await uploadInlineFiles(createdPostId, serializedContent)
+      const normalizedContent = resolvedContent.trim() || serializedContent
 
-      if (normalizedContent !== trimmedContent) {
+      if (normalizedContent !== serializedContent) {
         await postsAPI.updatePost(createdPostId, { content: normalizedContent })
       }
 
@@ -309,15 +612,15 @@ function PostForm() {
       toast.success(
         uploadedCount > 0
           ? `게시글이 작성되었습니다. (인라인 파일 ${uploadedCount}개 반영)`
-          : '게시글이 작성되었습니다.'
+          : '게시글이 작성되었습니다.',
       )
 
-      setPendingInlineUploads([])
+      clearPendingInlineUploads()
       navigate(`/posts/${createdPostId}`)
     } catch (error) {
       toast.error(
         error.response?.data?.detail
-          || (isEdit ? '게시글 수정에 실패했습니다.' : '게시글 작성에 실패했습니다.')
+          || (isEdit ? '게시글 수정에 실패했습니다.' : '게시글 작성에 실패했습니다.'),
       )
     } finally {
       setUploadProgress(false)
@@ -326,7 +629,7 @@ function PostForm() {
 
   const isLoading = createMutation.isLoading || updateMutation.isLoading
   const activeInlineUploadCount = pendingInlineUploads.filter(
-    (upload) => content.includes(upload.placeholder)
+    (upload) => editorHtmlSnapshot.includes(upload.placeholder),
   ).length
 
   return (
@@ -348,7 +651,7 @@ function PostForm() {
             {isEdit ? '게시글 수정' : '새 게시글 작성'}
           </h1>
           <p className="text-sm text-ink-400 mt-1">
-            {isEdit ? '내용을 수정하고 저장하세요' : '글 내용 안에서 이미지, 파일, 수식을 함께 작성할 수 있습니다.'}
+            {isEdit ? '내용을 수정하고 저장하세요' : '드래그앤드롭으로 이미지와 파일을 본문에 바로 삽입할 수 있습니다.'}
           </p>
         </div>
 
@@ -391,7 +694,7 @@ function PostForm() {
 
           <div>
             <div className="flex items-start justify-between gap-3 mb-2">
-              <label htmlFor="content" className="block text-sm font-semibold text-ink-700">
+              <label htmlFor="rich-editor" className="block text-sm font-semibold text-ink-700">
                 내용
               </label>
               <div className="flex flex-wrap justify-end gap-1.5">
@@ -435,21 +738,54 @@ function PostForm() {
               className="hidden"
             />
 
-            <textarea
-              ref={contentInputRef}
-              id="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="내용을 입력하세요&#x2026;"
-              className="input-field resize-y leading-relaxed"
-              rows="18"
-              required
+            <div
+              id="rich-editor"
+              ref={editorRef}
+              contentEditable
+              suppressContentEditableWarning
+              className={`rich-editor ${isDragOver ? 'is-drag-over' : ''}`}
+              onInput={handleEditorInput}
+              onClick={handleEditorClick}
+              onPaste={handleEditorPaste}
+              onDragEnter={handleEditorDragEnter}
+              onDragOver={handleEditorDragOver}
+              onDragLeave={handleEditorDragLeave}
+              onDrop={handleEditorDrop}
             />
 
             <p className="mt-2 text-xs text-ink-400">
-              본문에서 이미지/파일/링크/수식을 직접 삽입할 수 있습니다.
-              {' '}이미지와 파일은 저장 시 자동 업로드되어 본문 링크로 치환됩니다.
+              파일을 에디터로 드래그하면 본문에 바로 들어갑니다. 이미지를 클릭하면 너비를 조절할 수 있습니다.
             </p>
+
+            {selectedImageId && (
+              <div className="mt-3 rounded-lg border border-ink-200 bg-paper-50 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="image-width" className="text-xs font-medium text-ink-700">
+                    이미지 너비
+                  </label>
+                  <span className="text-xs text-ink-500">{selectedImageWidth}px</span>
+                </div>
+                <div className="mt-2 flex items-center gap-3">
+                  <input
+                    id="image-width"
+                    type="range"
+                    min="120"
+                    max="1000"
+                    step="10"
+                    value={selectedImageWidth}
+                    onChange={handleSelectedImageWidthChange}
+                    className="w-full"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveSelectedImage}
+                    className="px-2.5 py-1 text-xs rounded-md border border-red-200 text-red-600 hover:bg-red-50"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
+            )}
 
             {activeInlineUploadCount > 0 && (
               <p className="mt-1 text-xs text-ink-500">

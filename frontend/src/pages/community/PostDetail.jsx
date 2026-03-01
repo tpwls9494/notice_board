@@ -19,6 +19,11 @@ import LoginModal from '../../components/LoginModal';
 import { getAvatarInitial, resolveProfileImageUrl } from '../../utils/userProfile';
 import { createMetaDescription, useSeo } from '../../utils/seo';
 import { trackAnalyticsEvent } from '../../utils/analytics';
+import {
+  extractPlainTextFromRichContent,
+  isLikelyHtml,
+  sanitizeRichHtml,
+} from '../../utils/richContent';
 
 const markdownComponents = {
   h1: ({ node, ...props }) => (
@@ -205,7 +210,10 @@ function PostDetail() {
   const post = postData?.data;
   const files = filesData?.data || [];
   const comments = commentsData?.data || [];
-  const postDescription = createMetaDescription(post?.content || '');
+  const postContent = post?.content || '';
+  const isHtmlPostContent = isLikelyHtml(postContent);
+  const sanitizedHtmlContent = isHtmlPostContent ? sanitizeRichHtml(postContent) : '';
+  const postDescription = createMetaDescription(extractPlainTextFromRichContent(postContent));
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
   const publicPostUrl = post ? `${currentOrigin}/posts/${post.id}` : `${currentOrigin}/posts/${postId}`;
   const sharePreviewUrl = post ? `${currentOrigin}/share/posts/${post.id}` : `${currentOrigin}/share/posts/${postId}`;
@@ -440,11 +448,18 @@ function PostDetail() {
         </div>
 
         <div className="px-6 sm:px-8 py-8">
-          <div className="max-w-none text-ink-800 leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {post.content || ''}
-            </ReactMarkdown>
-          </div>
+          {isHtmlPostContent ? (
+            <div
+              className="rich-content max-w-none text-ink-800 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: sanitizedHtmlContent }}
+            />
+          ) : (
+            <div className="max-w-none text-ink-800 leading-relaxed">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                {postContent}
+              </ReactMarkdown>
+            </div>
+          )}
         </div>
 
         {files.length > 0 && (

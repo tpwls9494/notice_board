@@ -79,6 +79,87 @@
            hover:-translate-y-0.5;
   }
 
+  .rich-editor {
+    @apply w-full min-h-[420px] px-4 py-3 bg-white border border-ink-200 rounded-lg text-ink-900 leading-relaxed;
+    transition: border-color 0.2s ease-out, box-shadow 0.2s ease-out, background-color 0.2s ease-out;
+  }
+
+  .rich-editor:focus {
+    @apply outline-none border-ink-400 ring-2 ring-ink-200/50;
+  }
+
+  .rich-editor.is-drag-over {
+    @apply border-ink-500 bg-paper-50;
+  }
+
+  .rich-editor p {
+    margin: 0 0 0.75rem;
+  }
+
+  .rich-editor p:last-child {
+    margin-bottom: 0;
+  }
+
+  .rich-editor a,
+  .rich-content a {
+    @apply text-ink-800 underline underline-offset-2;
+  }
+
+  .rich-editor a:hover,
+  .rich-content a:hover {
+    @apply text-ink-950;
+  }
+
+  .rich-editor figure[data-editor-image="true"] {
+    resize: horizontal;
+    overflow: auto;
+    min-width: 120px;
+    max-width: 100%;
+    margin: 0.8rem 0;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.75rem;
+    background: #fafafa;
+  }
+
+  .rich-editor figure[data-editor-image="true"].is-selected {
+    border-color: #737373;
+    box-shadow: 0 0 0 2px rgba(115, 115, 115, 0.2);
+  }
+
+  .rich-editor figure[data-editor-image="true"] img,
+  .rich-content figure[data-editor-image="true"] img,
+  .rich-content img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 0.7rem;
+  }
+
+  .rich-editor figure[data-editor-image="true"] figcaption,
+  .rich-content figure[data-editor-image="true"] figcaption {
+    @apply text-xs text-ink-500;
+    padding: 0.35rem 0.5rem 0.45rem;
+  }
+
+  .rich-content figure[data-editor-image="true"] {
+    max-width: 100%;
+    margin: 1rem 0;
+  }
+
+  .rich-content p {
+    margin: 0 0 0.9rem;
+  }
+
+  .rich-content p:last-child {
+    margin-bottom: 0;
+  }
+
+  .rich-content ul,
+  .rich-content ol {
+    margin: 0.6rem 0 0.9rem;
+    padding-left: 1.25rem;
+  }
+
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full
            text-xs font-medium tracking-wide;
