@@ -23,6 +23,7 @@ class UserResponse(UserBase):
     email: str
     id: int
     is_admin: bool
+    has_local_password: bool = True
     created_at: datetime
     profile_image_url: Optional[str] = None
     bio: Optional[str] = None

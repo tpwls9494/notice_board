@@ -183,6 +183,7 @@ def _get_or_create_oauth_user(db: Session, email: str, username_hint: str) -> Us
         email=email,
         username=username,
         hashed_password=get_password_hash(random_password),
+        has_local_password=False,
     )
     db.add(user)
     db.commit()
@@ -468,6 +469,12 @@ def update_me_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not current_user.has_local_password:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password change is not available for social login accounts",
+        )
+
     if not verify_password(password_update.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

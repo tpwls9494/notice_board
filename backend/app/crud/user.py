@@ -23,6 +23,7 @@ def create_user(db: Session, user: UserCreate) -> User:
         email=user.email,
         username=user.username,
         hashed_password=hashed_password,
+        has_local_password=True,
     )
     db.add(db_user)
     db.commit()
@@ -49,6 +50,7 @@ def update_username(db: Session, user: User, username: str) -> User:
 
 def update_password(db: Session, user: User, new_password: str) -> User:
     user.hashed_password = get_password_hash(new_password)
+    user.has_local_password = True
     db.add(user)
     db.commit()
     db.refresh(user)

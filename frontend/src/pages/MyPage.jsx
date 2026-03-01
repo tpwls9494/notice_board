@@ -46,6 +46,7 @@ function MyPage() {
     queryFn: () => bookmarksAPI.getMyBookmarks(1, 50),
     enabled: !!token,
   });
+  const canChangePassword = user?.has_local_password !== false;
 
   const handleNicknameUpdate = async (event) => {
     event.preventDefault();
@@ -76,6 +77,11 @@ function MyPage() {
 
   const handlePasswordUpdate = async (event) => {
     event.preventDefault();
+
+    if (!canChangePassword) {
+      toast.error('소셜 로그인 계정은 비밀번호 변경을 지원하지 않습니다.');
+      return;
+    }
 
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error('비밀번호 항목을 모두 입력해 주세요.');
@@ -159,7 +165,9 @@ function MyPage() {
         <p className="text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold">내 계정</p>
         <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink-950">마이페이지</h1>
         <p className="mt-2 text-sm text-ink-600">
-          프로필과 비밀번호를 관리하고, 저장한 북마크를 빠르게 다시 볼 수 있습니다.
+          {canChangePassword
+            ? '프로필과 비밀번호를 관리하고, 저장한 북마크를 빠르게 다시 볼 수 있습니다.'
+            : '프로필을 관리하고, 저장한 북마크를 빠르게 다시 볼 수 있습니다.'}
         </p>
       </header>
 
@@ -246,69 +254,78 @@ function MyPage() {
         </article>
       </div>
 
-      <article className="card p-6 md:p-7">
-        <h2 className="font-display text-xl font-semibold text-ink-900">비밀번호 변경</h2>
-        <p className="mt-1 text-sm text-ink-500">현재 비밀번호 확인 후 새 비밀번호로 변경합니다.</p>
+      {canChangePassword ? (
+        <article className="card p-6 md:p-7">
+          <h2 className="font-display text-xl font-semibold text-ink-900">비밀번호 변경</h2>
+          <p className="mt-1 text-sm text-ink-500">현재 비밀번호 확인 후 새 비밀번호로 변경합니다.</p>
 
-        <form onSubmit={handlePasswordUpdate} className="mt-6 grid gap-4 md:grid-cols-3">
-          <div>
-            <label htmlFor="current-password" className="block text-sm font-semibold text-ink-700 mb-2">
-              현재 비밀번호
-            </label>
-            <input
-              id="current-password"
-              type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              onChange={(event) => setCurrentPassword(event.target.value)}
-              className="input-field"
-              placeholder="현재 비밀번호"
-            />
-          </div>
+          <form onSubmit={handlePasswordUpdate} className="mt-6 grid gap-4 md:grid-cols-3">
+            <div>
+              <label htmlFor="current-password" className="block text-sm font-semibold text-ink-700 mb-2">
+                현재 비밀번호
+              </label>
+              <input
+                id="current-password"
+                type="password"
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                className="input-field"
+                placeholder="현재 비밀번호"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="new-password" className="block text-sm font-semibold text-ink-700 mb-2">
-              새 비밀번호
-            </label>
-            <input
-              id="new-password"
-              type="password"
-              autoComplete="new-password"
-              minLength={6}
-              value={newPassword}
-              onChange={(event) => setNewPassword(event.target.value)}
-              className="input-field"
-              placeholder="최소 6자"
-            />
-          </div>
+            <div>
+              <label htmlFor="new-password" className="block text-sm font-semibold text-ink-700 mb-2">
+                새 비밀번호
+              </label>
+              <input
+                id="new-password"
+                type="password"
+                autoComplete="new-password"
+                minLength={6}
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                className="input-field"
+                placeholder="최소 6자"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="confirm-password" className="block text-sm font-semibold text-ink-700 mb-2">
-              비밀번호 확인
-            </label>
-            <input
-              id="confirm-password"
-              type="password"
-              autoComplete="new-password"
-              minLength={6}
-              value={confirmPassword}
-              onChange={(event) => setConfirmPassword(event.target.value)}
-              className={`input-field ${
-                confirmPassword && newPassword !== confirmPassword
-                  ? 'border-red-300 focus:border-red-400 focus:ring-red-200/50'
-                  : ''
-              }`}
-              placeholder="새 비밀번호를 다시 입력"
-            />
-          </div>
+            <div>
+              <label htmlFor="confirm-password" className="block text-sm font-semibold text-ink-700 mb-2">
+                비밀번호 확인
+              </label>
+              <input
+                id="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                minLength={6}
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                className={`input-field ${
+                  confirmPassword && newPassword !== confirmPassword
+                    ? 'border-red-300 focus:border-red-400 focus:ring-red-200/50'
+                    : ''
+                }`}
+                placeholder="새 비밀번호를 다시 입력"
+              />
+            </div>
 
-          <div className="md:col-span-3 flex justify-end pt-2">
-            <button type="submit" disabled={isChangingPassword} className="btn-primary min-w-[180px]">
-              {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
-            </button>
-          </div>
-        </form>
-      </article>
+            <div className="md:col-span-3 flex justify-end pt-2">
+              <button type="submit" disabled={isChangingPassword} className="btn-primary min-w-[180px]">
+                {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
+              </button>
+            </div>
+          </form>
+        </article>
+      ) : (
+        <article className="card p-6 md:p-7 border border-ink-100 bg-paper-50">
+          <h2 className="font-display text-xl font-semibold text-ink-900">비밀번호 관리</h2>
+          <p className="mt-2 text-sm text-ink-600">
+            이 계정은 소셜 로그인 전용 계정입니다. 비밀번호 변경은 지원하지 않습니다.
+          </p>
+        </article>
+      )}
 
       <article className="card p-6 md:p-7">
         <div className="flex items-center justify-between gap-3">

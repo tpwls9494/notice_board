@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import useAuthStore from '../stores/authStore'
+import SocialLoginButtons from '../components/SocialLoginButtons'
 
 function Register() {
   const [email, setEmail] = useState('')
@@ -143,6 +144,8 @@ function Register() {
                 <p className="text-xs text-red-500 mt-1.5">비밀번호가 일치하지 않습니다</p>
               )}
             </div>
+
+            <SocialLoginButtons className="pt-2" />
 
             <button
               type="submit"
