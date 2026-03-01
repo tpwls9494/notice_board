@@ -10,7 +10,6 @@ import {
   postsAPI,
   commentsAPI,
   likesAPI,
-  filesAPI,
   bookmarksAPI,
 } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
@@ -95,11 +94,6 @@ function PostDetail() {
   const { data: commentsData, isLoading: commentsLoading } = useQuery({
     queryKey: ['comments', id],
     queryFn: () => commentsAPI.getComments(id),
-  });
-
-  const { data: filesData } = useQuery({
-    queryKey: ['files', id],
-    queryFn: () => filesAPI.getPostFiles(id),
   });
 
   const deletePostMutation = useMutation({
@@ -196,19 +190,7 @@ function PostDetail() {
     },
   });
 
-  const deleteFileMutation = useMutation({
-    mutationFn: (fileId) => filesAPI.deleteFile(fileId),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['files', id]);
-      toast.success('첨부파일을 삭제했습니다.');
-    },
-    onError: (error) => {
-      toast.error(error.response?.data?.detail || '첨부파일 삭제에 실패했습니다.');
-    },
-  });
-
   const post = postData?.data;
-  const files = filesData?.data || [];
   const comments = commentsData?.data || [];
   const postContent = post?.content || '';
   const isHtmlPostContent = isLikelyHtml(postContent);
@@ -291,17 +273,6 @@ function PostDetail() {
     }
 
     toggleBookmarkMutation.mutate(!post.is_bookmarked);
-  };
-
-  const handleFileDelete = async (fileId) => {
-    const ok = await confirm({
-      title: '첨부파일 삭제',
-      message: '첨부파일을 삭제하시겠습니까?',
-      confirmText: '삭제',
-    });
-    if (ok) {
-      deleteFileMutation.mutate(fileId);
-    }
   };
 
   const handleCopyLink = async () => {
@@ -461,42 +432,6 @@ function PostDetail() {
             </div>
           )}
         </div>
-
-        {files.length > 0 && (
-          <div className="px-6 sm:px-8 py-5 border-t border-ink-100 bg-paper-50">
-            <h3 className="text-sm font-semibold text-ink-700 mb-3">첨부파일 ({files.length})</h3>
-            <div className="space-y-1.5">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center justify-between px-3 py-2.5 bg-white rounded-lg border border-ink-100 group hover:border-ink-200"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm text-ink-800 truncate">{file.original_filename}</p>
-                    <p className="text-xs text-ink-400">{(file.file_size / 1024).toFixed(1)} KB</p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <a
-                      href={filesAPI.downloadFile(file.id)}
-                      download
-                      className="text-xs font-medium text-ink-700 hover:text-ink-900 underline underline-offset-2"
-                    >
-                      다운로드
-                    </a>
-                    {(isAuthor || isAdmin) && (
-                      <button
-                        onClick={() => handleFileDelete(file.id)}
-                        className="text-xs text-ink-400 hover:text-red-600"
-                      >
-                        삭제
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="px-6 sm:px-8 py-6 border-t border-ink-100">
           <h2 className="text-sm font-semibold text-ink-700 mb-5">댓글 {comments.length}개</h2>

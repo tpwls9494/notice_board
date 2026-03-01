@@ -726,7 +726,7 @@ function PostForm() {
             />
 
             <p className="mt-2 text-xs text-ink-400">
-              이미지는 드래그/붙여넣기하면 바로 보이며, 동일한 고정 프레임으로 표시됩니다.
+              이미지는 드래그/붙여넣기하면 바로 보이며, 원본 비율을 유지해 자동으로 맞춰집니다. 드래그 핸들은 표시되지 않습니다.
             </p>
 
             {activeInlineUploadCount > 0 && (
