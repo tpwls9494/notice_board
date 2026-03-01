@@ -254,7 +254,7 @@ function MyPage() {
         </article>
       </div>
 
-      {canChangePassword ? (
+      {canChangePassword && (
         <article className="card p-6 md:p-7">
           <h2 className="font-display text-xl font-semibold text-ink-900">비밀번호 변경</h2>
           <p className="mt-1 text-sm text-ink-500">현재 비밀번호 확인 후 새 비밀번호로 변경합니다.</p>
@@ -318,20 +318,12 @@ function MyPage() {
             </div>
           </form>
         </article>
-      ) : (
-        <article className="card p-6 md:p-7 border border-ink-100 bg-paper-50">
-          <h2 className="font-display text-xl font-semibold text-ink-900">비밀번호 관리</h2>
-          <p className="mt-2 text-sm text-ink-600">
-            이 계정은 소셜 로그인 전용 계정입니다. 비밀번호 변경은 지원하지 않습니다.
-          </p>
-        </article>
       )}
 
       <article className="card p-6 md:p-7">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-xl font-semibold text-ink-900">북마크</h2>
-            <p className="mt-1 text-sm text-ink-500">계정에 저장되어 기기와 브라우저가 바뀌어도 동일하게 유지됩니다.</p>
           </div>
           <span className="text-xs text-ink-400">총 {bookmarks.length}개</span>
         </div>
