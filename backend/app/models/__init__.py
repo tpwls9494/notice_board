@@ -12,9 +12,10 @@ from app.models.mcp_tool import McpTool
 from app.models.mcp_review import McpReview
 from app.models.mcp_install_guide import McpInstallGuide
 from app.models.playground_usage import PlaygroundUsage
+from app.models.analytics_event import AnalyticsEvent
 
 __all__ = [
     "User", "Post", "Comment", "Category", "Like", "File", "Bookmark", "Notification",
     "McpCategory", "McpServer", "McpTool", "McpReview", "McpInstallGuide",
-    "PlaygroundUsage",
+    "PlaygroundUsage", "AnalyticsEvent",
 ]

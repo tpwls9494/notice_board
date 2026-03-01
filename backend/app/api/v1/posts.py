@@ -84,6 +84,7 @@ def get_posts(
             "is_bookmarked": post.id in bookmarked_post_ids_for_user,
             "is_pinned": post.is_pinned or False,
             "category_name": post.category.name if post.category else None,
+            "category_slug": post.category.slug if post.category else None,
         }
         post_responses.append(PostResponse(**post_dict))
 
@@ -139,6 +140,7 @@ def get_post(
         is_bookmarked=post.id in bookmarked_post_ids_for_user,
         is_pinned=post.is_pinned or False,
         category_name=post.category.name if post.category else None,
+        category_slug=post.category.slug if post.category else None,
     )
 
 
@@ -169,6 +171,7 @@ def create_post(
         is_bookmarked=False,
         is_pinned=db_post.is_pinned or False,
         category_name=db_post.category.name if db_post.category else None,
+        category_slug=db_post.category.slug if db_post.category else None,
     )
 
 
@@ -217,6 +220,7 @@ def update_post(
         is_bookmarked=crud_post.check_user_bookmarked(db, post_id, current_user.id),
         is_pinned=updated_post.is_pinned or False,
         category_name=updated_post.category.name if updated_post.category else None,
+        category_slug=updated_post.category.slug if updated_post.category else None,
     )
 
 

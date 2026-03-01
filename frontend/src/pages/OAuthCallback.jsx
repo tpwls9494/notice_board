@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import { trackAnalyticsEvent } from '../utils/analytics';
 
 const OAUTH_ERROR_MESSAGES = {
   oauth_access_denied: '소셜 로그인 권한이 거부되었습니다.',
@@ -43,6 +44,7 @@ function OAuthCallback() {
     const processCallback = async () => {
       const token = searchParams.get('token');
       const nextPath = normalizeNextPath(searchParams.get('next'));
+      const provider = searchParams.get('provider') || 'oauth';
 
       if (!token) {
         if (mounted) {
@@ -54,6 +56,11 @@ function OAuthCallback() {
       try {
         setToken(token);
         await fetchUser();
+        trackAnalyticsEvent('login_success', {
+          method: 'oauth',
+          provider,
+          source: 'oauth_callback',
+        });
         if (mounted) {
           setStatus('success');
           navigate(nextPath, { replace: true });

@@ -38,6 +38,12 @@ from app.schemas.mcp_playground import (
     PlaygroundInvokeRequest, PlaygroundInvokeResponse,
 )
 from app.schemas.community import CommunityStatsResponse, CommunityWeeklySummaryResponse
+from app.schemas.analytics import (
+    AnalyticsEventCreate,
+    AnalyticsEventCreateResponse,
+    AnalyticsSummaryItem,
+    AnalyticsSummaryResponse,
+)
 
 __all__ = [
     "UserCreate",
@@ -90,4 +96,8 @@ __all__ = [
     "PlaygroundInvokeResponse",
     "CommunityStatsResponse",
     "CommunityWeeklySummaryResponse",
+    "AnalyticsEventCreate",
+    "AnalyticsEventCreateResponse",
+    "AnalyticsSummaryItem",
+    "AnalyticsSummaryResponse",
 ]

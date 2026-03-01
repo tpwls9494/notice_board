@@ -33,6 +33,7 @@ class PostResponse(PostBase):
     is_bookmarked: Optional[bool] = False
     is_pinned: Optional[bool] = False
     category_name: Optional[str] = None
+    category_slug: Optional[str] = None
 
     class Config:
         from_attributes = True

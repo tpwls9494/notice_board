@@ -1,23 +1,22 @@
 import { useState, useEffect } from 'react'
 import useAuthStore from '../stores/authStore'
 import SocialLoginButtons from './SocialLoginButtons'
+import { trackAnalyticsEvent } from '../utils/analytics'
 
 function LoginModal({ isOpen, onClose, onSuccess }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const { login, isLoading, error } = useAuthStore()
 
-  // Escape 키로 닫기
   useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === 'Escape' && isOpen) {
+    const handleEscape = (event) => {
+      if (event.key === 'Escape' && isOpen) {
         onClose()
       }
     }
 
     if (isOpen) {
       document.addEventListener('keydown', handleEscape)
-      // 모달 열릴 때 body 스크롤 방지
       document.body.style.overflow = 'hidden'
     }
 
@@ -27,21 +26,22 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
     }
   }, [isOpen, onClose])
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     const success = await login(email, password)
     if (success) {
-      // 폼 초기화
+      trackAnalyticsEvent('login_success', {
+        method: 'password',
+        source: 'login_modal',
+      })
       setEmail('')
       setPassword('')
-      // 성공 콜백 실행
       if (onSuccess) onSuccess()
     }
   }
 
-  // 배경 클릭으로 닫기
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) {
+  const handleBackdropClick = (event) => {
+    if (event.target === event.currentTarget) {
       onClose()
     }
   }
@@ -54,14 +54,11 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
       onClick={handleBackdropClick}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-fade-up">
-        {/* 헤더 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-ink-100">
           <div>
-            <h2 className="font-display text-xl font-bold text-ink-950">
-              로그인
-            </h2>
+            <h2 className="font-display text-xl font-bold text-ink-950">로그인</h2>
             <p className="text-xs text-ink-500 mt-0.5">
-              계정에 로그인하여 게시판을 이용하세요
+              계정으로 로그인하면 커뮤니티 기능을 사용할 수 있습니다.
             </p>
           </div>
           <button
@@ -75,7 +72,6 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
           </button>
         </div>
 
-        {/* 폼 */}
         <form className="px-6 py-6 space-y-4" onSubmit={handleSubmit}>
           {error && (
             <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl animate-scale-in" role="alert">
@@ -96,7 +92,7 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
               required
               autoComplete="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               className="input-field"
               placeholder="name@company.com"
             />
@@ -112,9 +108,9 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
               required
               autoComplete="current-password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               className="input-field"
-              placeholder="비밀번호를 입력하세요…"
+              placeholder="비밀번호를 입력하세요..."
             />
           </div>
 
@@ -128,7 +124,7 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                로그인 중…
+                로그인 중...
               </span>
             ) : (
               '로그인'

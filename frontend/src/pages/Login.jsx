@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
 import SocialLoginButtons from '../components/SocialLoginButtons'
+import { trackAnalyticsEvent } from '../utils/analytics'
 
 function Login() {
   const [email, setEmail] = useState('')
@@ -13,6 +14,10 @@ function Login() {
     e.preventDefault()
     const success = await login(email, password)
     if (success) {
+      trackAnalyticsEvent('login_success', {
+        method: 'password',
+        source: 'login_page',
+      })
       navigate('/')
     }
   }

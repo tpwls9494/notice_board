@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { communityAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
+import { trackAnalyticsEvent } from '../../utils/analytics';
 
 const WEEKLY_SUMMARY_DISMISS_KEY = 'community-weekly-summary-dismissed-week';
 const COMMUNITY_LAST_VISIT_KEY = 'community-last-visit-at';
@@ -37,6 +38,7 @@ function WeeklySummaryCard() {
   const currentWeekKey = useMemo(() => getWeekStartKey(), []);
   const [isReady, setIsReady] = useState(false);
   const [isInactiveUser, setIsInactiveUser] = useState(false);
+  const hasTrackedImpressionRef = useRef(false);
   const [isDismissed, setIsDismissed] = useState(() => {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(WEEKLY_SUMMARY_DISMISS_KEY) === getWeekStartKey();
@@ -65,6 +67,31 @@ function WeeklySummaryCard() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const summary = data?.data;
+  const posts = (summary?.posts || []).slice(0, SUMMARY_LIMIT);
+
+  useEffect(() => {
+    if (!token || !isReady || !isInactiveUser || isDismissed) return;
+    if (isLoading || !summary || posts.length === 0) return;
+    if (hasTrackedImpressionRef.current) return;
+
+    trackAnalyticsEvent('weekly_summary_impression', {
+      posts_count: posts.length,
+      period_start: summary.period_start,
+      period_end: summary.period_end,
+    });
+    hasTrackedImpressionRef.current = true;
+  }, [
+    isDismissed,
+    isInactiveUser,
+    isLoading,
+    isReady,
+    posts.length,
+    summary?.period_end,
+    summary?.period_start,
+    token,
+  ]);
+
   if (!token || !isReady || !isInactiveUser || isDismissed) return null;
 
   if (isLoading) {
@@ -75,8 +102,6 @@ function WeeklySummaryCard() {
     );
   }
 
-  const summary = data?.data;
-  const posts = (summary?.posts || []).slice(0, SUMMARY_LIMIT);
   if (!summary || posts.length === 0) return null;
 
   const periodLabel = formatPeriod(summary.period_start, summary.period_end);
@@ -110,6 +135,12 @@ function WeeklySummaryCard() {
           <li key={post.id}>
             <Link
               to={`/posts/${post.id}`}
+              onClick={() =>
+                trackAnalyticsEvent('weekly_summary_click', {
+                  action: 'open_post',
+                  post_id: post.id,
+                })
+              }
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink-700 transition-colors hover:bg-paper-100 hover:text-ink-900"
             >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink-400" aria-hidden="true" />
@@ -122,6 +153,11 @@ function WeeklySummaryCard() {
       <div className="mt-1.5 flex justify-end">
         <Link
           to="/community/posts?sort=hot&window=7d"
+          onClick={() =>
+            trackAnalyticsEvent('weekly_summary_click', {
+              action: 'open_full_list',
+            })
+          }
           className="text-[11px] font-medium text-ink-500 underline underline-offset-2 hover:text-ink-700"
         >
           7일 인기글 보기

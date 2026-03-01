@@ -49,6 +49,7 @@ def _build_hot_post_responses(
             is_bookmarked=r["post"].id in bookmarked_post_ids_for_user,
             is_pinned=r["post"].is_pinned or False,
             category_name=r["post"].category.name if r["post"].category else None,
+            category_slug=r["post"].category.slug if r["post"].category else None,
         )
         for r in results
     ]
@@ -98,6 +99,7 @@ def get_pinned_posts(
             is_bookmarked=p.id in bookmarked_post_ids_for_user,
             is_pinned=p.is_pinned or False,
             category_name=p.category.name if p.category else None,
+            category_slug=p.category.slug if p.category else None,
         )
         for p in posts
     ]

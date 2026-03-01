@@ -4,11 +4,17 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import useAuthStore from '../stores/authStore';
-import { authAPI, bookmarksAPI } from '../services/api';
+import { analyticsAPI, authAPI, bookmarksAPI } from '../services/api';
 import { getAvatarInitial, resolveProfileImageUrl } from '../utils/userProfile';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const TRACKED_EVENTS = [
+  ['weekly_summary_impression', '주간 요약 노출'],
+  ['weekly_summary_click', '주간 요약 클릭'],
+  ['dev_news_post_view', 'IT 뉴스 상세 조회'],
+  ['login_success', '로그인 성공'],
+];
 
 const getErrorMessage = (error, fallback) => error?.response?.data?.detail || fallback;
 
@@ -46,7 +52,21 @@ function MyPage() {
     queryFn: () => bookmarksAPI.getMyBookmarks(1, 50),
     enabled: !!token,
   });
+  const { data: analyticsSummaryData, isLoading: analyticsSummaryLoading } = useQuery({
+    queryKey: ['analytics-summary', 7],
+    queryFn: () => analyticsAPI.getSummary(7, 20),
+    enabled: !!token && !!user?.is_admin,
+    staleTime: 1000 * 60 * 3,
+  });
   const canChangePassword = user?.has_local_password !== false;
+  const analyticsSummary = analyticsSummaryData?.data;
+  const analyticsEventCounts = useMemo(() => {
+    const counts = {};
+    for (const item of analyticsSummary?.by_event || []) {
+      counts[item.event_name] = item.count;
+    }
+    return counts;
+  }, [analyticsSummary?.by_event]);
 
   const handleNicknameUpdate = async (event) => {
     event.preventDefault();
@@ -317,6 +337,54 @@ function MyPage() {
               </button>
             </div>
           </form>
+        </article>
+      )}
+
+      {user?.is_admin && (
+        <article className="card p-6 md:p-7">
+          <h2 className="font-display text-xl font-semibold text-ink-900">운영 지표 (최근 7일)</h2>
+          <p className="mt-1 text-sm text-ink-500">주간 요약, IT 뉴스, 로그인 전환 이벤트를 집계합니다.</p>
+
+          {analyticsSummaryLoading && (
+            <p className="mt-4 text-sm text-ink-400">지표를 불러오는 중입니다.</p>
+          )}
+
+          {!analyticsSummaryLoading && !analyticsSummary && (
+            <p className="mt-4 text-sm text-ink-400">집계 데이터가 없습니다.</p>
+          )}
+
+          {!analyticsSummaryLoading && analyticsSummary && (
+            <>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-ink-100 bg-paper-50 px-4 py-3">
+                  <p className="text-xs text-ink-500">총 이벤트</p>
+                  <p className="mt-1 text-lg font-semibold text-ink-900">
+                    {analyticsSummary.total_events.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-ink-100 bg-paper-50 px-4 py-3">
+                  <p className="text-xs text-ink-500">고유 로그인 유저</p>
+                  <p className="mt-1 text-lg font-semibold text-ink-900">
+                    {analyticsSummary.unique_users.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                {TRACKED_EVENTS.map(([eventName, label]) => (
+                  <div
+                    key={eventName}
+                    className="rounded-lg border border-ink-100 bg-white px-3 py-2 flex items-center justify-between"
+                  >
+                    <p className="text-sm text-ink-600">{label}</p>
+                    <p className="text-sm font-semibold text-ink-900">
+                      {(analyticsEventCounts[eventName] || 0).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </article>
       )}
 

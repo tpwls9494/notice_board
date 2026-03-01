@@ -137,6 +137,12 @@ export const notificationsAPI = {
   deleteNotification: (notificationId) => api.delete(`/notifications/${notificationId}`),
 };
 
+// Analytics API
+export const analyticsAPI = {
+  trackEvent: (data) => api.post('/analytics/events', data),
+  getSummary: (days = 7, limit = 20) => api.get(`/analytics/summary?days=${days}&limit=${limit}`),
+};
+
 // Files API
 export const filesAPI = {
   uploadFile: (postId, file) => {

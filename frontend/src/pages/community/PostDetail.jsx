@@ -1,6 +1,6 @@
 ﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -16,6 +16,7 @@ import { useConfirm } from '../../components/ConfirmModal';
 import LoginModal from '../../components/LoginModal';
 import { getAvatarInitial, resolveProfileImageUrl } from '../../utils/userProfile';
 import { createMetaDescription, useSeo } from '../../utils/seo';
+import { trackAnalyticsEvent } from '../../utils/analytics';
 
 function PostDetail() {
   const { id } = useParams();
@@ -164,6 +165,14 @@ function PostDetail() {
     image: ogImageUrl,
     type: 'article',
   });
+
+  useEffect(() => {
+    if (!post?.id || post?.category_slug !== 'dev-news') return;
+    trackAnalyticsEvent('dev_news_post_view', {
+      post_id: post.id,
+      category_slug: post.category_slug,
+    });
+  }, [post?.id, post?.category_slug]);
 
   if (postLoading) {
     return (
