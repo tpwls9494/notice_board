@@ -76,6 +76,7 @@ export const communityAPI = {
     if (categoryId) url += `&category_id=${categoryId}`;
     return api.get(url);
   },
+  getWeeklySummary: (limit = 5) => api.get(`/community/weekly-summary?limit=${limit}`),
 };
 
 // Posts API

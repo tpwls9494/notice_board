@@ -37,7 +37,7 @@ from app.schemas.mcp_playground import (
     PlaygroundConnectRequest, PlaygroundConnectResponse,
     PlaygroundInvokeRequest, PlaygroundInvokeResponse,
 )
-from app.schemas.community import CommunityStatsResponse
+from app.schemas.community import CommunityStatsResponse, CommunityWeeklySummaryResponse
 
 __all__ = [
     "UserCreate",
@@ -89,4 +89,5 @@ __all__ = [
     "PlaygroundInvokeRequest",
     "PlaygroundInvokeResponse",
     "CommunityStatsResponse",
+    "CommunityWeeklySummaryResponse",
 ]

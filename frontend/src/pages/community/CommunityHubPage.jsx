@@ -4,6 +4,7 @@ import useCategoriesStore from '../../stores/categoriesStore';
 import CommunityHero from '../../components/community/CommunityHero';
 import CommunityTopFeeds from '../../components/community/CommunityTopFeeds';
 import CategoryPreviewGrid from '../../components/community/CategoryPreviewGrid';
+import WeeklySummaryCard from '../../components/community/WeeklySummaryCard';
 import { useSeo } from '../../utils/seo';
 
 function CommunityHubPage() {
@@ -30,6 +31,7 @@ function CommunityHubPage() {
   return (
     <div className="animate-fade-up">
       <CommunityHero />
+      <WeeklySummaryCard />
 
       <section className="mb-3.5">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
