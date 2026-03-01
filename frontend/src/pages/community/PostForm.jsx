@@ -16,6 +16,7 @@ const IMAGE_MIME_PREFIX = 'image/'
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const IMAGE_RESIZE_MIN_WIDTH = 140
 const IMAGE_RESIZE_EDGE_HITBOX = 14
+const INLINE_IMAGE_DRAG_MIME = 'application/x-notice-board-inline-image'
 
 const ALLOWED_UPLOAD_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -182,6 +183,7 @@ function PostForm() {
   const resizeSessionRef = useRef(null)
   const resizeHoverImageRef = useRef(null)
   const selectedImageRef = useRef(null)
+  const draggingImageRef = useRef(null)
 
   const { categories, fetchCategories } = useCategoriesStore()
   const user = useAuthStore((state) => state.user)
@@ -216,6 +218,11 @@ function PostForm() {
     if (selectedImage) {
       selectedImage.classList.remove('is-selected')
       selectedImageRef.current = null
+    }
+    const draggingImage = draggingImageRef.current
+    if (draggingImage) {
+      draggingImage.classList.remove('is-dragging')
+      draggingImageRef.current = null
     }
     document.body.style.cursor = ''
     if (editorRef.current) {
@@ -447,12 +454,18 @@ function PostForm() {
   }
 
   const handleEditorDragOver = (event) => {
-    if (!hasFileDragPayload(event)) return
-    event.preventDefault()
-    event.dataTransfer.dropEffect = 'copy'
-    if (!isDragOver) {
-      setIsDragOver(true)
+    if (hasFileDragPayload(event)) {
+      event.preventDefault()
+      event.dataTransfer.dropEffect = 'copy'
+      if (!isDragOver) {
+        setIsDragOver(true)
+      }
+      return
     }
+
+    if (!draggingImageRef.current) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
   }
 
   const handleEditorDragLeave = (event) => {
@@ -473,10 +486,49 @@ function PostForm() {
   }
 
   const handleEditorDrop = (event) => {
-    if (!hasFileDragPayload(event)) return
+    if (hasFileDragPayload(event)) {
+      event.preventDefault()
+      setIsDragOver(false)
+      void handleInsertFiles(event.dataTransfer?.files || [])
+      return
+    }
+
+    const editor = editorRef.current
+    const draggingImage = draggingImageRef.current
+    if (!editor || !draggingImage) return
+
     event.preventDefault()
+    event.stopPropagation()
     setIsDragOver(false)
-    void handleInsertFiles(event.dataTransfer?.files || [])
+
+    const targetImage = findEditorImageElement(event.target)
+    if (targetImage && targetImage !== draggingImage) {
+      const targetRect = targetImage.getBoundingClientRect()
+      if (event.clientY > targetRect.top + (targetRect.height / 2)) {
+        targetImage.after(draggingImage)
+      } else {
+        targetImage.before(draggingImage)
+      }
+    } else {
+      const dropRange = getDropRangeFromPoint(event, editor)
+      if (dropRange && !draggingImage.contains(dropRange.startContainer)) {
+        dropRange.insertNode(draggingImage)
+      }
+    }
+
+    draggingImage.classList.remove('is-dragging')
+    draggingImageRef.current = null
+
+    const selection = window.getSelection()
+    if (selection) {
+      const range = document.createRange()
+      range.setStartAfter(draggingImage)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+
+    setEditorHtmlSnapshot(editor.innerHTML)
   }
 
   const handleEditorPaste = (event) => {
@@ -614,6 +666,40 @@ function PostForm() {
     return legacyFrame?.querySelector('img') || null
   }
 
+  const getDropRangeFromPoint = (event, editor) => {
+    if (!event || !editor) return null
+
+    if (typeof document.caretRangeFromPoint === 'function') {
+      const range = document.caretRangeFromPoint(event.clientX, event.clientY)
+      if (range && editor.contains(range.commonAncestorContainer)) {
+        return range
+      }
+    }
+
+    if (typeof document.caretPositionFromPoint === 'function') {
+      const position = document.caretPositionFromPoint(event.clientX, event.clientY)
+      if (position && editor.contains(position.offsetNode)) {
+        const range = document.createRange()
+        range.setStart(position.offsetNode, position.offset)
+        range.collapse(true)
+        return range
+      }
+    }
+
+    const selection = window.getSelection()
+    if (selection?.rangeCount) {
+      const currentRange = selection.getRangeAt(0).cloneRange()
+      if (editor.contains(currentRange.commonAncestorContainer)) {
+        return currentRange
+      }
+    }
+
+    const fallbackRange = document.createRange()
+    fallbackRange.selectNodeContents(editor)
+    fallbackRange.collapse(false)
+    return fallbackRange
+  }
+
   const handleEditorMouseMove = (event) => {
     if (resizeSessionRef.current) return
 
@@ -730,6 +816,7 @@ function PostForm() {
       imageElement.style.width = `${nextWidth}px`
       imageElement.style.maxWidth = '100%'
       imageElement.style.height = 'auto'
+      imageElement.style.display = 'block'
     }
 
     const onMouseUp = () => {
@@ -739,6 +826,27 @@ function PostForm() {
     resizeSessionRef.current = { onMouseMove, onMouseUp }
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
+  }
+
+  const handleEditorDragStart = (event) => {
+    const imageElement = findEditorImageElement(event.target)
+    if (!imageElement) return
+
+    draggingImageRef.current = imageElement
+    imageElement.classList.add('is-dragging')
+
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move'
+      event.dataTransfer.setData(INLINE_IMAGE_DRAG_MIME, '1')
+      event.dataTransfer.setData('text/plain', imageElement.getAttribute('src') || 'inline-image')
+    }
+  }
+
+  const handleEditorDragEnd = () => {
+    const draggingImage = draggingImageRef.current
+    if (!draggingImage) return
+    draggingImage.classList.remove('is-dragging')
+    draggingImageRef.current = null
   }
 
   const hasMeaningfulContent = (htmlText) => {
@@ -998,6 +1106,8 @@ function PostForm() {
               onKeyDown={handleEditorKeyDown}
               onInput={handleEditorInput}
               onPaste={handleEditorPaste}
+              onDragStart={handleEditorDragStart}
+              onDragEnd={handleEditorDragEnd}
               onDragEnter={handleEditorDragEnter}
               onDragOver={handleEditorDragOver}
               onDragLeave={handleEditorDragLeave}
@@ -1005,7 +1115,7 @@ function PostForm() {
             />
 
             <p className="mt-2 text-xs text-ink-400">
-              이미지는 드래그/붙여넣기하면 바로 보이며, 오른쪽/아래 끝선을 드래그하면 비율을 유지한 채 크기만 조절됩니다. 이미지를 클릭한 뒤 Delete/Backspace로 삭제할 수 있습니다.
+              이미지는 드래그/붙여넣기하면 바로 보이며, 이미지 자체를 드래그해서 위치를 옮길 수 있습니다. 오른쪽/아래 끝선을 드래그하면 비율을 유지한 채 크기만 조절되며, 클릭 후 Delete/Backspace로 삭제할 수 있습니다.
             </p>
 
             {activeInlineUploadCount > 0 && (

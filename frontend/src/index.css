@@ -132,6 +132,10 @@
     border-radius: 0.7rem;
   }
 
+  .rich-editor img[data-editor-image="true"].is-dragging {
+    opacity: 0.78;
+  }
+
   .rich-editor figure[data-editor-image="true"] figcaption,
   .rich-content figure[data-editor-image="true"] figcaption {
     @apply text-xs text-ink-500;
