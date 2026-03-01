@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -8,6 +8,19 @@ import useAuthStore from '../../stores/authStore'
 
 const NOTICE_CATEGORY_SLUG = 'notice'
 const IMAGE_MIME_PREFIX = 'image/'
+const MAX_FILE_SIZE = 10 * 1024 * 1024
+
+const ALLOWED_UPLOAD_TYPES = [
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+]
+
+const INLINE_FILE_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt'
 
 const isImageMimeType = (mimeType = '') => mimeType.startsWith(IMAGE_MIME_PREFIX)
 
@@ -18,46 +31,32 @@ const escapeMarkdownText = (value = '') => (
     .replace(/\]/g, '\\]')
 )
 
-const buildAttachmentMarkdown = (uploadedFiles = []) => {
-  if (!uploadedFiles.length) return ''
+const createUploadToken = () => (
+  `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+)
 
-  const imageLines = uploadedFiles
-    .filter((file) => isImageMimeType(file?.mime_type))
-    .map((file) => `![${escapeMarkdownText(file.original_filename)}](${filesAPI.downloadFile(file.id)})`)
-
-  const fileLines = uploadedFiles
-    .filter((file) => !isImageMimeType(file?.mime_type))
-    .map((file) => `- [${escapeMarkdownText(file.original_filename)}](${filesAPI.downloadFile(file.id)})`)
-
-  const sections = []
-
-  if (imageLines.length > 0) {
-    sections.push('### 첨부 이미지', ...imageLines)
-  }
-
-  if (fileLines.length > 0) {
-    sections.push('### 첨부 파일', ...fileLines)
-  }
-
-  return sections.join('\n\n')
-}
-
-const appendAttachmentMarkdown = (baseContent, attachmentMarkdown) => {
-  if (!attachmentMarkdown) return baseContent
-  return `${baseContent.trim()}\n\n---\n\n${attachmentMarkdown}`
-}
+const replaceUploadPlaceholders = (baseContent, replacements) => (
+  replacements.reduce(
+    (contentText, replacement) => contentText.split(replacement.placeholder).join(replacement.url),
+    baseContent
+  )
+)
 
 function PostForm() {
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isEdit = Boolean(id)
+  const postId = Number(id)
 
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [categoryId, setCategoryId] = useState('')
-  const [selectedFiles, setSelectedFiles] = useState([])
   const [uploadProgress, setUploadProgress] = useState(false)
+  const [pendingInlineUploads, setPendingInlineUploads] = useState([])
+
+  const contentInputRef = useRef(null)
+  const inlineFileInputRef = useRef(null)
 
   const { categories, fetchCategories } = useCategoriesStore()
   const user = useAuthStore((state) => state.user)
@@ -77,6 +76,7 @@ function PostForm() {
       setTitle(postData.data.title)
       setContent(postData.data.content)
       setCategoryId(postData.data.category_id || '')
+      setPendingInlineUploads([])
     }
   }, [postData])
 
@@ -99,38 +99,144 @@ function PostForm() {
     ])
   }
 
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files || [])
+  const insertAtCursor = (snippet) => {
+    const textarea = contentInputRef.current
 
-    // 파일 크기 검증 (10MB)
-    const MAX_SIZE = 10 * 1024 * 1024
-    const invalidFiles = files.filter(file => file.size > MAX_SIZE)
-    if (invalidFiles.length > 0) {
-      toast.error(`파일 크기는 10MB를 초과할 수 없습니다: ${invalidFiles.map(f => f.name).join(', ')}`)
-      return
-    }
+    setContent((previous) => {
+      if (!textarea) {
+        return `${previous}${snippet}`
+      }
 
-    // 파일 타입 검증
-    const ALLOWED_TYPES = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/plain'
-    ]
-    const invalidTypes = files.filter(file => !ALLOWED_TYPES.includes(file.type))
-    if (invalidTypes.length > 0) {
-      toast.error(`지원하지 않는 파일 형식입니다: ${invalidTypes.map(f => f.name).join(', ')}`)
-      return
-    }
+      const start = textarea.selectionStart ?? previous.length
+      const end = textarea.selectionEnd ?? previous.length
+      const next = `${previous.slice(0, start)}${snippet}${previous.slice(end)}`
 
-    setSelectedFiles(files)
+      requestAnimationFrame(() => {
+        textarea.focus()
+        const cursor = start + snippet.length
+        textarea.setSelectionRange(cursor, cursor)
+      })
+
+      return next
+    })
   }
 
-  const removeFile = (index) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+  const handleInsertLink = () => {
+    insertAtCursor('[링크 텍스트](https://example.com)')
+  }
+
+  const handleInsertInlineFormula = () => {
+    insertAtCursor('$E = mc^2$')
+  }
+
+  const handleInsertBlockFormula = () => {
+    insertAtCursor('\n$$\n\\int_0^1 x^2\\,dx\n$$\n')
+  }
+
+  const handleOpenInlineFilePicker = () => {
+    inlineFileInputRef.current?.click()
+  }
+
+  const handleInlineFileChange = (event) => {
+    const files = Array.from(event.target.files || [])
+    if (files.length === 0) return
+
+    const validFiles = []
+    const rejectedFiles = []
+
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE) {
+        rejectedFiles.push(`${file.name} (10MB 초과)`)
+        continue
+      }
+
+      if (!ALLOWED_UPLOAD_TYPES.includes(file.type)) {
+        rejectedFiles.push(`${file.name} (지원되지 않는 형식)`)
+        continue
+      }
+
+      validFiles.push(file)
+    }
+
+    if (rejectedFiles.length > 0) {
+      toast.warning(`일부 파일은 삽입되지 않았습니다: ${rejectedFiles.join(', ')}`)
+    }
+
+    if (validFiles.length === 0) {
+      event.target.value = ''
+      return
+    }
+
+    const uploads = validFiles.map((file) => {
+      const placeholder = `upload://${createUploadToken()}`
+      const escapedName = escapeMarkdownText(file.name)
+      const markdown = isImageMimeType(file.type)
+        ? `![${escapedName}](${placeholder})`
+        : `[${escapedName}](${placeholder})`
+
+      return {
+        file,
+        placeholder,
+        markdown,
+        originalFilename: file.name,
+      }
+    })
+
+    const snippet = uploads.map((upload) => upload.markdown).join('\n\n')
+    insertAtCursor(`${snippet}\n`)
+    setPendingInlineUploads((previous) => [...previous, ...uploads])
+    event.target.value = ''
+  }
+
+  const uploadInlineFiles = async (targetPostId, rawContent) => {
+    const targets = pendingInlineUploads.filter((upload) => rawContent.includes(upload.placeholder))
+
+    if (targets.length === 0) {
+      return {
+        resolvedContent: rawContent,
+        uploadedCount: 0,
+        failedUploads: [],
+      }
+    }
+
+    const replacements = []
+    const failedUploads = []
+
+    for (const upload of targets) {
+      try {
+        const response = await filesAPI.uploadFile(targetPostId, upload.file)
+        const uploadedFile = response?.data
+
+        if (!uploadedFile?.id) {
+          failedUploads.push(upload)
+          continue
+        }
+
+        replacements.push({
+          placeholder: upload.placeholder,
+          url: filesAPI.downloadFile(uploadedFile.id),
+        })
+      } catch (_error) {
+        failedUploads.push(upload)
+      }
+    }
+
+    let resolvedContent = replaceUploadPlaceholders(rawContent, replacements)
+
+    for (const failedUpload of failedUploads) {
+      resolvedContent = resolvedContent
+        .split(failedUpload.markdown)
+        .join(`[업로드 실패: ${failedUpload.originalFilename}]`)
+      resolvedContent = resolvedContent
+        .split(failedUpload.placeholder)
+        .join('')
+    }
+
+    return {
+      resolvedContent,
+      uploadedCount: replacements.length,
+      failedUploads,
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -155,82 +261,76 @@ function PostForm() {
       category_id: parseInt(categoryId, 10),
     }
 
+    setUploadProgress(true)
+
     try {
       if (isEdit) {
-        // 수정 시에는 파일 업로드 지원 안 함
-        await updateMutation.mutateAsync(data)
+        const { resolvedContent, uploadedCount, failedUploads } = await uploadInlineFiles(postId, trimmedContent)
+        const normalizedContent = resolvedContent.trim() || trimmedContent
+
+        await updateMutation.mutateAsync({
+          ...data,
+          content: normalizedContent,
+        })
+
         await invalidateCommunityCaches()
-        toast.success('게시글이 수정되었습니다.')
-        navigate(`/posts/${id}`)
-      } else {
-        // 1. 게시글 생성
-        const response = await createMutation.mutateAsync(data)
-        const postId = response.data.id
-        await invalidateCommunityCaches()
 
-        // 2. 파일 업로드 (선택된 파일이 있을 경우)
-        if (selectedFiles.length > 0) {
-          setUploadProgress(true)
-
-          try {
-            const uploadedFiles = []
-            const failedFiles = []
-
-            // 순차적으로 파일 업로드 (실패 파일은 건너뛰고 계속 진행)
-            for (const file of selectedFiles) {
-              try {
-                const uploadResponse = await filesAPI.uploadFile(postId, file)
-                if (uploadResponse?.data) {
-                  uploadedFiles.push(uploadResponse.data)
-                } else {
-                  failedFiles.push(file.name)
-                }
-              } catch (_fileUploadError) {
-                failedFiles.push(file.name)
-              }
-            }
-
-            // 업로드된 파일을 본문 하단에 마크다운으로 자동 삽입
-            if (uploadedFiles.length > 0) {
-              const attachmentMarkdown = buildAttachmentMarkdown(uploadedFiles)
-              if (attachmentMarkdown) {
-                try {
-                  const mergedContent = appendAttachmentMarkdown(trimmedContent, attachmentMarkdown)
-                  await postsAPI.updatePost(postId, { content: mergedContent })
-                  await invalidateCommunityCaches()
-                } catch (_contentUpdateError) {
-                  toast.warning('파일은 업로드되었지만 본문 자동 삽입에 실패했습니다.')
-                }
-              }
-            }
-
-            if (failedFiles.length > 0) {
-              toast.warning(`게시글은 작성되었지만 일부 파일 업로드에 실패했습니다: ${failedFiles.join(', ')}`)
-            } else {
-              toast.success(`게시글이 작성되었습니다. (파일 ${uploadedFiles.length}개 업로드됨)`)
-            }
-          } finally {
-            setUploadProgress(false)
-          }
-        } else {
-          toast.success('게시글이 작성되었습니다.')
+        if (failedUploads.length > 0) {
+          toast.warning(`일부 파일 업로드에 실패했습니다: ${failedUploads.map((item) => item.originalFilename).join(', ')}`)
         }
 
-        navigate(`/posts/${postId}`)
+        toast.success(
+          uploadedCount > 0
+            ? `게시글이 수정되었습니다. (인라인 파일 ${uploadedCount}개 반영)`
+            : '게시글이 수정되었습니다.'
+        )
+
+        setPendingInlineUploads([])
+        navigate(`/posts/${id}`)
+        return
       }
+
+      const response = await createMutation.mutateAsync(data)
+      const createdPostId = response.data.id
+
+      const { resolvedContent, uploadedCount, failedUploads } = await uploadInlineFiles(createdPostId, trimmedContent)
+      const normalizedContent = resolvedContent.trim() || trimmedContent
+
+      if (normalizedContent !== trimmedContent) {
+        await postsAPI.updatePost(createdPostId, { content: normalizedContent })
+      }
+
+      await invalidateCommunityCaches()
+
+      if (failedUploads.length > 0) {
+        toast.warning(`일부 파일 업로드에 실패했습니다: ${failedUploads.map((item) => item.originalFilename).join(', ')}`)
+      }
+
+      toast.success(
+        uploadedCount > 0
+          ? `게시글이 작성되었습니다. (인라인 파일 ${uploadedCount}개 반영)`
+          : '게시글이 작성되었습니다.'
+      )
+
+      setPendingInlineUploads([])
+      navigate(`/posts/${createdPostId}`)
     } catch (error) {
       toast.error(
         error.response?.data?.detail
           || (isEdit ? '게시글 수정에 실패했습니다.' : '게시글 작성에 실패했습니다.')
       )
+    } finally {
+      setUploadProgress(false)
     }
   }
 
   const isLoading = createMutation.isLoading || updateMutation.isLoading
+  const activeInlineUploadCount = pendingInlineUploads.filter(
+    (upload) => content.includes(upload.placeholder)
+  ).length
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-up">
-      {/* Back Navigation */}
       <Link
         to={isEdit ? `/posts/${id}` : '/community'}
         className="inline-flex items-center gap-1.5 text-sm text-ink-500 hover:text-ink-800 mb-6 group"
@@ -248,7 +348,7 @@ function PostForm() {
             {isEdit ? '게시글 수정' : '새 게시글 작성'}
           </h1>
           <p className="text-sm text-ink-400 mt-1">
-            {isEdit ? '내용을 수정하고 저장하세요' : '새로운 글을 작성하세요'}
+            {isEdit ? '내용을 수정하고 저장하세요' : '글 내용 안에서 이미지, 파일, 수식을 함께 작성할 수 있습니다.'}
           </p>
         </div>
 
@@ -290,83 +390,73 @@ function PostForm() {
           </div>
 
           <div>
-            <label htmlFor="content" className="block text-sm font-semibold text-ink-700 mb-2">
-              내용
-            </label>
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <label htmlFor="content" className="block text-sm font-semibold text-ink-700">
+                내용
+              </label>
+              <div className="flex flex-wrap justify-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleOpenInlineFilePicker}
+                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-ink-200 text-ink-700 hover:bg-paper-100"
+                >
+                  이미지/파일
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInsertLink}
+                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-ink-200 text-ink-700 hover:bg-paper-100"
+                >
+                  링크
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInsertInlineFormula}
+                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-ink-200 text-ink-700 hover:bg-paper-100"
+                >
+                  수식
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInsertBlockFormula}
+                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-ink-200 text-ink-700 hover:bg-paper-100"
+                >
+                  수식 블록
+                </button>
+              </div>
+            </div>
+
+            <input
+              ref={inlineFileInputRef}
+              type="file"
+              multiple
+              accept={INLINE_FILE_ACCEPT}
+              onChange={handleInlineFileChange}
+              className="hidden"
+            />
+
             <textarea
+              ref={contentInputRef}
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="내용을 입력하세요&#x2026;"
               className="input-field resize-y leading-relaxed"
-              rows="15"
+              rows="18"
               required
             />
+
             <p className="mt-2 text-xs text-ink-400">
-              마크다운 문법을 사용할 수 있으며, 첨부 이미지는 본문 하단에 자동 삽입됩니다.
+              본문에서 이미지/파일/링크/수식을 직접 삽입할 수 있습니다.
+              {' '}이미지와 파일은 저장 시 자동 업로드되어 본문 링크로 치환됩니다.
             </p>
-          </div>
 
-          {/* File Attachment (create only) */}
-          {!isEdit && (
-            <div>
-              <label htmlFor="files" className="block text-sm font-semibold text-ink-700 mb-2">
-                파일 첨부 (선택사항)
-              </label>
-
-              {/* File Input */}
-              <input
-                id="files"
-                type="file"
-                multiple
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <label
-                htmlFor="files"
-                className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-ink-200 rounded-lg cursor-pointer hover:border-ink-400 hover:bg-paper-50 transition-colors"
-              >
-                <svg className="w-5 h-5 text-ink-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
-                </svg>
-                <span className="text-sm text-ink-600">파일 선택 (최대 10MB)</span>
-              </label>
-
-              {/* Selected Files List */}
-              {selectedFiles.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {selectedFiles.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between px-3 py-2 bg-paper-50 rounded-lg border border-ink-100"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <svg className="w-4 h-4 text-ink-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                        </svg>
-                        <div className="min-w-0">
-                          <p className="text-sm text-ink-800 truncate">{file.name}</p>
-                          <p className="text-xs text-ink-400">{(file.size / 1024).toFixed(1)} KB</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="text-xs text-ink-400 hover:text-red-600 flex-shrink-0 ml-2"
-                      >
-                        삭제
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <p className="mt-2 text-xs text-ink-400">
-                지원 형식: 이미지(JPEG, PNG, GIF, WebP), 문서(PDF, Word, Excel), 텍스트
-                {' '}| 업로드 완료 후 본문에 바로 표시됩니다.
+            {activeInlineUploadCount > 0 && (
+              <p className="mt-1 text-xs text-ink-500">
+                업로드 대기 중인 인라인 파일: {activeInlineUploadCount}개
               </p>
-            </div>
-          )}
+            )}
+          </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-ink-100">
             <button
@@ -382,7 +472,7 @@ function PostForm() {
               className="btn-accent"
             >
               {(isLoading || uploadProgress)
-                ? (uploadProgress ? '파일 업로드 중\u2026' : '저장 중\u2026')
+                ? '저장 중\u2026'
                 : (isEdit ? '수정 완료' : '작성 완료')
               }
             </button>
