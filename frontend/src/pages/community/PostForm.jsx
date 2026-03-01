@@ -17,6 +17,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024
 const IMAGE_RESIZE_MIN_WIDTH = 140
 const IMAGE_RESIZE_EDGE_HITBOX = 14
 const INLINE_IMAGE_DRAG_MIME = 'application/x-notice-board-inline-image'
+const INLINE_IMAGE_DRAG_ID_ATTR = 'data-inline-drag-id'
 
 const ALLOWED_UPLOAD_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -222,6 +223,7 @@ function PostForm() {
     const draggingImage = draggingImageRef.current
     if (draggingImage) {
       draggingImage.classList.remove('is-dragging')
+      draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
       draggingImageRef.current = null
     }
     document.body.style.cursor = ''
@@ -255,11 +257,22 @@ function PostForm() {
     setPendingInlineUploads([])
   }
 
+  const normalizeEditorImageNodes = () => {
+    const editor = editorRef.current
+    if (!editor) return
+
+    Array.from(editor.querySelectorAll('img, figure[data-editor-image="true"] img')).forEach((imageElement) => {
+      imageElement.setAttribute('data-editor-image', 'true')
+      imageElement.setAttribute('draggable', 'true')
+    })
+  }
+
   const setEditorHtml = (nextHtml) => {
     const editor = editorRef.current
     if (!editor) return
     editor.innerHTML = nextHtml
-    setEditorHtmlSnapshot(nextHtml)
+    normalizeEditorImageNodes()
+    setEditorHtmlSnapshot(editor.innerHTML)
   }
 
   useEffect(() => {
@@ -331,6 +344,7 @@ function PostForm() {
       selection.addRange(nextRange)
     }
 
+    normalizeEditorImageNodes()
     setEditorHtmlSnapshot(editor.innerHTML)
   }
 
@@ -434,7 +448,7 @@ function PostForm() {
         }
 
         insertHtmlAtCursor(
-          `<img data-editor-image="true" src="${previewSrc}" alt="" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />`,
+          `<img data-editor-image="true" draggable="true" src="${previewSrc}" alt="" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />`,
         )
       } else {
         insertHtmlAtCursor(
@@ -448,9 +462,14 @@ function PostForm() {
   }
 
   const handleEditorDragEnter = (event) => {
-    if (!hasFileDragPayload(event)) return
+    if (hasFileDragPayload(event)) {
+      event.preventDefault()
+      setIsDragOver(true)
+      return
+    }
+
+    if (!isInlineImageDrag(event)) return
     event.preventDefault()
-    setIsDragOver(true)
   }
 
   const handleEditorDragOver = (event) => {
@@ -463,14 +482,20 @@ function PostForm() {
       return
     }
 
-    if (!draggingImageRef.current) return
+    if (!isInlineImageDrag(event)) return
     event.preventDefault()
     event.dataTransfer.dropEffect = 'move'
   }
 
   const handleEditorDragLeave = (event) => {
-    if (!hasFileDragPayload(event)) return
-    event.preventDefault()
+    if (hasFileDragPayload(event)) {
+      event.preventDefault()
+    }
+
+    if (isInlineImageDrag(event)) {
+      event.preventDefault()
+      return
+    }
 
     const editor = editorRef.current
     if (!editor) {
@@ -494,8 +519,10 @@ function PostForm() {
     }
 
     const editor = editorRef.current
-    const draggingImage = draggingImageRef.current
-    if (!editor || !draggingImage) return
+    if (!editor) return
+
+    const draggingImage = resolveDraggingImage(editor, event)
+    if (!draggingImage) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -517,6 +544,7 @@ function PostForm() {
     }
 
     draggingImage.classList.remove('is-dragging')
+    draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
     draggingImageRef.current = null
 
     const selection = window.getSelection()
@@ -547,6 +575,7 @@ function PostForm() {
   const handleEditorInput = () => {
     const editor = editorRef.current
     if (editor) {
+      normalizeEditorImageNodes()
       setEditorHtmlSnapshot(editor.innerHTML)
     }
   }
@@ -664,6 +693,30 @@ function PostForm() {
     if (directImage) return directImage
     const legacyFrame = target.closest('figure[data-editor-image="true"]')
     return legacyFrame?.querySelector('img') || null
+  }
+
+  const getInlineDragIdFromEvent = (event) => {
+    const types = Array.from(event?.dataTransfer?.types || [])
+    if (!types.includes(INLINE_IMAGE_DRAG_MIME)) return ''
+    return event.dataTransfer?.getData(INLINE_IMAGE_DRAG_MIME) || ''
+  }
+
+  const isInlineImageDrag = (event) => {
+    if (draggingImageRef.current) return true
+    return Boolean(getInlineDragIdFromEvent(event))
+  }
+
+  const resolveDraggingImage = (editor, event) => {
+    if (!editor) return null
+
+    const current = draggingImageRef.current
+    if (current && editor.contains(current)) return current
+
+    const dragId = getInlineDragIdFromEvent(event)
+    if (!dragId) return null
+
+    const byDragId = editor.querySelector(`img[data-editor-image="true"][${INLINE_IMAGE_DRAG_ID_ATTR}="${dragId}"]`)
+    return byDragId || null
   }
 
   const getDropRangeFromPoint = (event, editor) => {
@@ -832,12 +885,14 @@ function PostForm() {
     const imageElement = findEditorImageElement(event.target)
     if (!imageElement) return
 
+    const dragId = createUploadToken()
     draggingImageRef.current = imageElement
     imageElement.classList.add('is-dragging')
+    imageElement.setAttribute(INLINE_IMAGE_DRAG_ID_ATTR, dragId)
 
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move'
-      event.dataTransfer.setData(INLINE_IMAGE_DRAG_MIME, '1')
+      event.dataTransfer.setData(INLINE_IMAGE_DRAG_MIME, dragId)
       event.dataTransfer.setData('text/plain', imageElement.getAttribute('src') || 'inline-image')
     }
   }
@@ -846,6 +901,7 @@ function PostForm() {
     const draggingImage = draggingImageRef.current
     if (!draggingImage) return
     draggingImage.classList.remove('is-dragging')
+    draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
     draggingImageRef.current = null
   }
 
