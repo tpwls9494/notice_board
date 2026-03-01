@@ -413,8 +413,7 @@ function PostForm() {
           `<figure data-editor-image="true" data-image-id="${imageId}" class="editor-image-frame">
             <img src="${previewSrc}" alt="${escapedName}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />
             <span class="editor-image-resize-handle" contenteditable="false" aria-hidden="true"></span>
-            <figcaption contenteditable="false">${escapedName}</figcaption>
-          </figure><p><br></p>`,
+          </figure>`,
         )
       } else {
         insertHtmlAtCursor(
