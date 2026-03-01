@@ -103,6 +103,64 @@ const replaceUploadPlaceholders = (baseContent, replacements) => (
   )
 )
 
+const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(String(reader.result || ''))
+  reader.onerror = () => reject(new Error('Failed to read file as data URL'))
+  reader.readAsDataURL(file)
+})
+
+const getPreferredImageMimeType = (file) => {
+  if (!file) return ''
+
+  if (isImageMimeType(file.type)) {
+    return file.type.toLowerCase()
+  }
+
+  const extensionMimeType = EXTENSION_TO_MIME[getFileExtension(file.name)]
+  if (extensionMimeType && isImageMimeType(extensionMimeType)) {
+    return extensionMimeType
+  }
+
+  return ''
+}
+
+const coerceImageDataUrlMimeType = (rawDataUrl, preferredMimeType) => {
+  const dataUrl = String(rawDataUrl || '')
+  if (!dataUrl.startsWith('data:') || !preferredMimeType) return dataUrl
+
+  const commaIndex = dataUrl.indexOf(',')
+  if (commaIndex < 0) return dataUrl
+
+  const metadata = dataUrl.slice(5, commaIndex).toLowerCase()
+  if (metadata.startsWith('image/')) {
+    return dataUrl
+  }
+
+  const payload = dataUrl.slice(commaIndex + 1)
+  const isBase64 = metadata.includes(';base64')
+
+  return `data:${preferredMimeType}${isBase64 ? ';base64' : ''},${payload}`
+}
+
+const readImagePreviewSource = async (file) => {
+  if (!file) return ''
+
+  const preferredMimeType = getPreferredImageMimeType(file)
+  let previewSourceFile = file
+
+  if (preferredMimeType && !isImageMimeType(file.type)) {
+    try {
+      previewSourceFile = new Blob([file], { type: preferredMimeType })
+    } catch (_blobError) {
+      previewSourceFile = file
+    }
+  }
+
+  const rawDataUrl = await readFileAsDataUrl(previewSourceFile)
+  return coerceImageDataUrlMimeType(rawDataUrl, preferredMimeType)
+}
+
 function PostForm() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -138,11 +196,7 @@ function PostForm() {
   }, [pendingInlineUploads])
 
   useEffect(() => () => {
-    pendingInlineUploadsRef.current.forEach((upload) => {
-      if (upload.objectUrl) {
-        URL.revokeObjectURL(upload.objectUrl)
-      }
-    })
+    pendingInlineUploadsRef.current = []
   }, [])
 
   const selectableCategories = categories.filter(
@@ -165,14 +219,7 @@ function PostForm() {
   }
 
   const clearPendingInlineUploads = () => {
-    pendingInlineUploadsRef.current.forEach((upload) => {
-      if (upload.objectUrl) {
-        URL.revokeObjectURL(upload.objectUrl)
-      }
-    })
-
     pendingInlineUploadsRef.current = []
-
     setPendingInlineUploads([])
   }
 
@@ -291,7 +338,7 @@ function PostForm() {
     return body.innerHTML || '<p><br></p>'
   }
 
-  const handleInsertFiles = (incomingFiles) => {
+  const handleInsertFiles = async (incomingFiles) => {
     const files = Array.from(incomingFiles || [])
     if (files.length === 0) return
 
@@ -319,27 +366,40 @@ function PostForm() {
     if (validFiles.length === 0) return
 
     const uploads = []
-    validFiles.forEach((file) => {
+    for (const file of validFiles) {
       const normalizedFile = normalizeFileForUpload(file)
       const token = createUploadToken()
       const placeholder = `upload://${token}`
-      const objectUrl = URL.createObjectURL(normalizedFile)
       const escapedName = escapeHtml(file.name)
+      const isImage = isImageFile(normalizedFile)
+      let previewSrc = ''
+
+      if (isImage) {
+        try {
+          previewSrc = await readImagePreviewSource(normalizedFile)
+        } catch (_previewError) {
+          previewSrc = ''
+        }
+      }
 
       uploads.push({
         token,
         placeholder,
-        objectUrl,
         file: normalizedFile,
         originalFilename: file.name,
-        isImage: isImageFile(normalizedFile),
+        isImage,
       })
 
-      if (isImageFile(normalizedFile)) {
+      if (isImage) {
+        if (!previewSrc) {
+          insertHtmlAtCursor(`<p>[이미지 미리보기를 불러오지 못했습니다: ${escapedName}]</p>`)
+          continue
+        }
+
         const imageId = `img-${token}`
         insertHtmlAtCursor(
           `<figure data-editor-image="true" data-image-id="${imageId}" class="editor-image-frame" style="width: 420px; max-width: 100%;">
-            <img src="${objectUrl}" alt="${escapedName}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />
+            <img src="${previewSrc}" alt="${escapedName}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />
             <figcaption contenteditable="false">${escapedName}</figcaption>
           </figure><p><br></p>`,
         )
@@ -348,7 +408,7 @@ function PostForm() {
           `<p><a href="${placeholder}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" target="_blank" rel="noopener noreferrer">${escapedName}</a></p>`,
         )
       }
-    })
+    }
 
     pendingInlineUploadsRef.current = [...pendingInlineUploadsRef.current, ...uploads]
     setPendingInlineUploads((previous) => [...previous, ...uploads])
@@ -390,7 +450,7 @@ function PostForm() {
     if (!hasFileDragPayload(event)) return
     event.preventDefault()
     setIsDragOver(false)
-    handleInsertFiles(event.dataTransfer?.files || [])
+    void handleInsertFiles(event.dataTransfer?.files || [])
   }
 
   const handleEditorPaste = (event) => {
@@ -403,7 +463,7 @@ function PostForm() {
     if (files.length === 0) return
 
     event.preventDefault()
-    handleInsertFiles(files)
+    void handleInsertFiles(files)
   }
 
   const handleEditorInput = () => {
