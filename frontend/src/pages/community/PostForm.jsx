@@ -7,6 +7,45 @@ import useCategoriesStore from '../../stores/categoriesStore'
 import useAuthStore from '../../stores/authStore'
 
 const NOTICE_CATEGORY_SLUG = 'notice'
+const IMAGE_MIME_PREFIX = 'image/'
+
+const isImageMimeType = (mimeType = '') => mimeType.startsWith(IMAGE_MIME_PREFIX)
+
+const escapeMarkdownText = (value = '') => (
+  value
+    .replace(/\\/g, '\\\\')
+    .replace(/\[/g, '\\[')
+    .replace(/\]/g, '\\]')
+)
+
+const buildAttachmentMarkdown = (uploadedFiles = []) => {
+  if (!uploadedFiles.length) return ''
+
+  const imageLines = uploadedFiles
+    .filter((file) => isImageMimeType(file?.mime_type))
+    .map((file) => `![${escapeMarkdownText(file.original_filename)}](${filesAPI.downloadFile(file.id)})`)
+
+  const fileLines = uploadedFiles
+    .filter((file) => !isImageMimeType(file?.mime_type))
+    .map((file) => `- [${escapeMarkdownText(file.original_filename)}](${filesAPI.downloadFile(file.id)})`)
+
+  const sections = []
+
+  if (imageLines.length > 0) {
+    sections.push('### 첨부 이미지', ...imageLines)
+  }
+
+  if (fileLines.length > 0) {
+    sections.push('### 첨부 파일', ...fileLines)
+  }
+
+  return sections.join('\n\n')
+}
+
+const appendAttachmentMarkdown = (baseContent, attachmentMarkdown) => {
+  if (!attachmentMarkdown) return baseContent
+  return `${baseContent.trim()}\n\n---\n\n${attachmentMarkdown}`
+}
 
 function PostForm() {
   const { id } = useParams()
@@ -97,20 +136,23 @@ function PostForm() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!title.trim() || !content.trim()) {
+    const trimmedTitle = title.trim()
+    const trimmedContent = content.trim()
+
+    if (!trimmedTitle || !trimmedContent) {
       toast.error('제목과 내용을 모두 입력해주세요.')
       return
     }
 
     if (!categoryId) {
-      toast.error('카테고리를 선택해주세요.')
+      toast.error('커뮤니티 위치를 선택해주세요.')
       return
     }
 
     const data = {
-      title: title.trim(),
-      content: content.trim(),
-      category_id: parseInt(categoryId),
+      title: trimmedTitle,
+      content: trimmedContent,
+      category_id: parseInt(categoryId, 10),
     }
 
     try {
@@ -131,14 +173,42 @@ function PostForm() {
           setUploadProgress(true)
 
           try {
-            // 순차적으로 파일 업로드
+            const uploadedFiles = []
+            const failedFiles = []
+
+            // 순차적으로 파일 업로드 (실패 파일은 건너뛰고 계속 진행)
             for (const file of selectedFiles) {
-              await filesAPI.uploadFile(postId, file)
+              try {
+                const uploadResponse = await filesAPI.uploadFile(postId, file)
+                if (uploadResponse?.data) {
+                  uploadedFiles.push(uploadResponse.data)
+                } else {
+                  failedFiles.push(file.name)
+                }
+              } catch (_fileUploadError) {
+                failedFiles.push(file.name)
+              }
             }
-            toast.success(`게시글이 작성되었습니다. (파일 ${selectedFiles.length}개 업로드됨)`)
-          } catch (fileError) {
-            // 파일 업로드 실패 시에도 게시글은 이미 생성됨
-            toast.warning('게시글은 작성되었으나 일부 파일 업로드에 실패했습니다.')
+
+            // 업로드된 파일을 본문 하단에 마크다운으로 자동 삽입
+            if (uploadedFiles.length > 0) {
+              const attachmentMarkdown = buildAttachmentMarkdown(uploadedFiles)
+              if (attachmentMarkdown) {
+                try {
+                  const mergedContent = appendAttachmentMarkdown(trimmedContent, attachmentMarkdown)
+                  await postsAPI.updatePost(postId, { content: mergedContent })
+                  await invalidateCommunityCaches()
+                } catch (_contentUpdateError) {
+                  toast.warning('파일은 업로드되었지만 본문 자동 삽입에 실패했습니다.')
+                }
+              }
+            }
+
+            if (failedFiles.length > 0) {
+              toast.warning(`게시글은 작성되었지만 일부 파일 업로드에 실패했습니다: ${failedFiles.join(', ')}`)
+            } else {
+              toast.success(`게시글이 작성되었습니다. (파일 ${uploadedFiles.length}개 업로드됨)`)
+            }
           } finally {
             setUploadProgress(false)
           }
@@ -184,6 +254,26 @@ function PostForm() {
 
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5">
           <div>
+            <label htmlFor="category" className="block text-sm font-semibold text-ink-700 mb-2">
+              커뮤니티 위치 <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="input-field"
+              required
+            >
+              <option value="">커뮤니티를 선택하세요</option>
+              {selectableCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label htmlFor="title" className="block text-sm font-semibold text-ink-700 mb-2">
               제목
             </label>
@@ -200,26 +290,6 @@ function PostForm() {
           </div>
 
           <div>
-            <label htmlFor="category" className="block text-sm font-semibold text-ink-700 mb-2">
-              카테고리 <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="input-field"
-              required
-            >
-              <option value="">카테고리를 선택하세요</option>
-              {selectableCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
             <label htmlFor="content" className="block text-sm font-semibold text-ink-700 mb-2">
               내용
             </label>
@@ -232,6 +302,9 @@ function PostForm() {
               rows="15"
               required
             />
+            <p className="mt-2 text-xs text-ink-400">
+              마크다운 문법을 사용할 수 있으며, 첨부 이미지는 본문 하단에 자동 삽입됩니다.
+            </p>
           </div>
 
           {/* File Attachment (create only) */}
@@ -290,6 +363,7 @@ function PostForm() {
 
               <p className="mt-2 text-xs text-ink-400">
                 지원 형식: 이미지(JPEG, PNG, GIF, WebP), 문서(PDF, Word, Excel), 텍스트
+                {' '}| 업로드 완료 후 본문에 바로 표시됩니다.
               </p>
             </div>
           )}

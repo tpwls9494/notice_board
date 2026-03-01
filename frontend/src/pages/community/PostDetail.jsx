@@ -2,6 +2,8 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEffect, useState, useRef } from 'react';
 import { toast } from 'sonner';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import {
   API_BASE_URL,
@@ -17,6 +19,57 @@ import LoginModal from '../../components/LoginModal';
 import { getAvatarInitial, resolveProfileImageUrl } from '../../utils/userProfile';
 import { createMetaDescription, useSeo } from '../../utils/seo';
 import { trackAnalyticsEvent } from '../../utils/analytics';
+
+const markdownComponents = {
+  h1: ({ node, ...props }) => (
+    <h1 className="mb-4 text-2xl font-bold text-ink-950" {...props} />
+  ),
+  h2: ({ node, ...props }) => (
+    <h2 className="mb-3 mt-6 text-xl font-semibold text-ink-900" {...props} />
+  ),
+  h3: ({ node, ...props }) => (
+    <h3 className="mb-3 mt-5 text-lg font-semibold text-ink-900" {...props} />
+  ),
+  p: ({ node, ...props }) => (
+    <p className="mb-4 whitespace-pre-wrap text-ink-800 leading-relaxed last:mb-0" {...props} />
+  ),
+  ul: ({ node, ...props }) => (
+    <ul className="mb-4 list-disc pl-6 text-ink-800 leading-relaxed" {...props} />
+  ),
+  ol: ({ node, ...props }) => (
+    <ol className="mb-4 list-decimal pl-6 text-ink-800 leading-relaxed" {...props} />
+  ),
+  li: ({ node, ...props }) => (
+    <li className="mb-1" {...props} />
+  ),
+  a: ({ node, ...props }) => (
+    <a
+      className="font-medium text-ink-800 underline underline-offset-2 hover:text-ink-950"
+      target="_blank"
+      rel="noopener noreferrer"
+      {...props}
+    />
+  ),
+  img: ({ node, alt, ...props }) => (
+    <img
+      alt={alt || '첨부 이미지'}
+      loading="lazy"
+      className="my-4 w-full rounded-xl border border-ink-200 bg-paper-50 object-contain"
+      {...props}
+    />
+  ),
+  blockquote: ({ node, ...props }) => (
+    <blockquote className="my-4 border-l-4 border-ink-200 pl-4 text-ink-600" {...props} />
+  ),
+  code: ({ node, inline, ...props }) => (
+    inline
+      ? <code className="rounded bg-paper-200 px-1.5 py-0.5 text-sm text-ink-900" {...props} />
+      : <code className="text-sm text-ink-900" {...props} />
+  ),
+  pre: ({ node, ...props }) => (
+    <pre className="my-4 overflow-x-auto rounded-xl border border-ink-200 bg-paper-50 p-4" {...props} />
+  ),
+};
 
 function PostDetail() {
   const { id } = useParams();
@@ -387,8 +440,10 @@ function PostDetail() {
         </div>
 
         <div className="px-6 sm:px-8 py-8">
-          <div className="prose prose-ink max-w-none whitespace-pre-wrap text-ink-800 leading-relaxed">
-            {post.content}
+          <div className="max-w-none text-ink-800 leading-relaxed">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {post.content || ''}
+            </ReactMarkdown>
           </div>
         </div>
 
