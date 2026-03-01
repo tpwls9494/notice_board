@@ -180,7 +180,8 @@ function PostForm() {
   const editorRef = useRef(null)
   const pendingInlineUploadsRef = useRef([])
   const resizeSessionRef = useRef(null)
-  const resizeHoverFrameRef = useRef(null)
+  const resizeHoverImageRef = useRef(null)
+  const selectedImageRef = useRef(null)
 
   const { categories, fetchCategories } = useCategoriesStore()
   const user = useAuthStore((state) => state.user)
@@ -206,10 +207,15 @@ function PostForm() {
       document.removeEventListener('mouseup', session.onMouseUp)
       resizeSessionRef.current = null
     }
-    const hoverFrame = resizeHoverFrameRef.current
-    if (hoverFrame) {
-      hoverFrame.classList.remove('is-resize-ready')
-      resizeHoverFrameRef.current = null
+    const hoverImage = resizeHoverImageRef.current
+    if (hoverImage) {
+      hoverImage.classList.remove('is-resize-ready')
+      resizeHoverImageRef.current = null
+    }
+    const selectedImage = selectedImageRef.current
+    if (selectedImage) {
+      selectedImage.classList.remove('is-selected')
+      selectedImageRef.current = null
     }
     document.body.style.cursor = ''
     if (editorRef.current) {
@@ -341,8 +347,9 @@ function PostForm() {
     const documentNode = parser.parseFromString(sanitizedSnapshot, 'text/html')
     const body = documentNode.body
 
-    Array.from(body.querySelectorAll('figure[data-editor-image="true"]')).forEach((figureElement) => {
-      figureElement.classList.remove('is-resize-ready')
+    Array.from(body.querySelectorAll('[data-editor-image="true"], figure[data-editor-image="true"] img')).forEach((element) => {
+      element.classList.remove('is-resize-ready')
+      element.classList.remove('is-selected')
     })
 
     Array.from(body.querySelectorAll('[data-upload-placeholder]')).forEach((element) => {
@@ -419,11 +426,8 @@ function PostForm() {
           continue
         }
 
-        const imageId = `img-${token}`
         insertHtmlAtCursor(
-          `<figure data-editor-image="true" data-image-id="${imageId}" class="editor-image-frame">
-            <img src="${previewSrc}" alt="${escapedName}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />
-          </figure>`,
+          `<img data-editor-image="true" src="${previewSrc}" alt="" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />`,
         )
       } else {
         insertHtmlAtCursor(
@@ -495,11 +499,68 @@ function PostForm() {
     }
   }
 
+  const clearSelectedImageFrame = () => {
+    const selectedImage = selectedImageRef.current
+    if (!selectedImage) return
+
+    selectedImage.classList.remove('is-selected')
+    selectedImageRef.current = null
+  }
+
+  const setSelectedImageFrame = (nextFrame) => {
+    const normalizedNextFrame = nextFrame || null
+    if (selectedImageRef.current === normalizedNextFrame) return
+
+    clearSelectedImageFrame()
+
+    if (normalizedNextFrame) {
+      normalizedNextFrame.classList.add('is-selected')
+      selectedImageRef.current = normalizedNextFrame
+    }
+  }
+
+  const handleEditorKeyDown = (event) => {
+    if (event.key !== 'Backspace' && event.key !== 'Delete') return
+
+    const editor = editorRef.current
+    const selectedImage = selectedImageRef.current
+    if (!editor || !selectedImage || !editor.contains(selectedImage)) return
+
+    event.preventDefault()
+
+    const previousSibling = selectedImage.previousSibling
+    const nextSibling = selectedImage.nextSibling
+    selectedImage.remove()
+    clearSelectedImageFrame()
+
+    if (!editor.innerHTML.trim()) {
+      editor.innerHTML = '<p><br></p>'
+    }
+
+    const selection = window.getSelection()
+    if (selection) {
+      const range = document.createRange()
+      if (nextSibling && editor.contains(nextSibling)) {
+        range.setStartBefore(nextSibling)
+      } else if (previousSibling && editor.contains(previousSibling)) {
+        range.setStartAfter(previousSibling)
+      } else {
+        range.selectNodeContents(editor)
+        range.collapse(false)
+      }
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+
+    setEditorHtmlSnapshot(editor.innerHTML)
+  }
+
   const clearResizeHoverState = () => {
-    const previousHoverFrame = resizeHoverFrameRef.current
-    if (previousHoverFrame) {
-      previousHoverFrame.classList.remove('is-resize-ready')
-      resizeHoverFrameRef.current = null
+    const previousHoverImage = resizeHoverImageRef.current
+    if (previousHoverImage) {
+      previousHoverImage.classList.remove('is-resize-ready')
+      resizeHoverImageRef.current = null
     }
     if (!resizeSessionRef.current && editorRef.current) {
       editorRef.current.style.cursor = ''
@@ -512,10 +573,10 @@ function PostForm() {
     return 'ew-resize'
   }
 
-  const getImageResizeMode = (event, frame) => {
-    if (!event || !frame) return null
+  const getImageResizeMode = (event, imageElement) => {
+    if (!event || !imageElement) return null
 
-    const frameRect = frame.getBoundingClientRect()
+    const frameRect = imageElement.getBoundingClientRect()
     const isWithinVerticalBounds = (
       event.clientY >= frameRect.top - 2
       && event.clientY <= frameRect.bottom + 2
@@ -545,27 +606,35 @@ function PostForm() {
     return null
   }
 
+  const findEditorImageElement = (target) => {
+    if (!target || typeof target.closest !== 'function') return null
+    const directImage = target.closest('img[data-editor-image="true"]')
+    if (directImage) return directImage
+    const legacyFrame = target.closest('figure[data-editor-image="true"]')
+    return legacyFrame?.querySelector('img') || null
+  }
+
   const handleEditorMouseMove = (event) => {
     if (resizeSessionRef.current) return
 
     const editor = editorRef.current
     if (!editor) return
 
-    const hoveredFrame = event.target?.closest?.('figure[data-editor-image="true"]')
-    const resizeMode = hoveredFrame ? getImageResizeMode(event, hoveredFrame) : null
-    const canResize = Boolean(hoveredFrame && resizeMode)
+    const hoveredImage = findEditorImageElement(event.target)
+    const resizeMode = hoveredImage ? getImageResizeMode(event, hoveredImage) : null
+    const canResize = Boolean(hoveredImage && resizeMode)
 
     if (!canResize) {
       clearResizeHoverState()
       return
     }
 
-    if (resizeHoverFrameRef.current && resizeHoverFrameRef.current !== hoveredFrame) {
-      resizeHoverFrameRef.current.classList.remove('is-resize-ready')
+    if (resizeHoverImageRef.current && resizeHoverImageRef.current !== hoveredImage) {
+      resizeHoverImageRef.current.classList.remove('is-resize-ready')
     }
 
-    resizeHoverFrameRef.current = hoveredFrame
-    hoveredFrame.classList.add('is-resize-ready')
+    resizeHoverImageRef.current = hoveredImage
+    hoveredImage.classList.add('is-resize-ready')
     editor.style.cursor = getResizeCursor(resizeMode)
   }
 
@@ -590,11 +659,20 @@ function PostForm() {
   }
 
   const handleEditorMouseDown = (event) => {
-    const frame = event.target?.closest?.('figure[data-editor-image="true"]')
-    const imageElement = frame?.querySelector('img')
+    const imageElement = findEditorImageElement(event.target)
     const editor = editorRef.current
-    const resizeMode = frame ? getImageResizeMode(event, frame) : null
-    if (!frame || !imageElement || !editor || !resizeMode) return
+    const resizeMode = imageElement ? getImageResizeMode(event, imageElement) : null
+    if (!editor) return
+
+    if (!imageElement) {
+      clearSelectedImageFrame()
+      return
+    }
+
+    setSelectedImageFrame(imageElement)
+    editor.focus()
+
+    if (!imageElement || !resizeMode) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -603,7 +681,6 @@ function PostForm() {
       stopImageResizeSession()
     }
 
-    const frameRect = frame.getBoundingClientRect()
     const imageRect = imageElement.getBoundingClientRect()
     const editorRect = editor.getBoundingClientRect()
     const editorHorizontalPadding = 32
@@ -613,13 +690,13 @@ function PostForm() {
     )
 
     const startHeight = Math.max(1, Math.round(imageRect.height))
-    const startWidth = Math.max(IMAGE_RESIZE_MIN_WIDTH, Math.round(frameRect.width))
+    const startWidth = Math.max(IMAGE_RESIZE_MIN_WIDTH, Math.round(imageRect.width))
     const startX = event.clientX
     const startY = event.clientY
     const aspectRatio = Math.max(0.01, startWidth / startHeight)
 
-    resizeHoverFrameRef.current = frame
-    frame.classList.add('is-resize-ready')
+    resizeHoverImageRef.current = imageElement
+    imageElement.classList.add('is-resize-ready')
     const activeCursor = getResizeCursor(resizeMode)
     editor.style.cursor = activeCursor
     document.body.style.cursor = activeCursor
@@ -650,9 +727,7 @@ function PostForm() {
         Math.min(maxWidth, Math.round(nextWidthCandidate)),
       )
 
-      frame.style.width = `${nextWidth}px`
-      frame.style.maxWidth = '100%'
-      imageElement.style.width = '100%'
+      imageElement.style.width = `${nextWidth}px`
       imageElement.style.maxWidth = '100%'
       imageElement.style.height = 'auto'
     }
@@ -672,7 +747,7 @@ function PostForm() {
 
     const parser = new DOMParser()
     const parsed = parser.parseFromString(htmlText, 'text/html')
-    return Boolean(parsed.body.querySelector('img, a[href], figure[data-editor-image="true"]'))
+    return Boolean(parsed.body.querySelector('img, a[href]'))
   }
 
   const removeFailedUploadNodes = (htmlText, failedUploads) => {
@@ -920,6 +995,7 @@ function PostForm() {
               onMouseDown={handleEditorMouseDown}
               onMouseMove={handleEditorMouseMove}
               onMouseLeave={handleEditorMouseLeave}
+              onKeyDown={handleEditorKeyDown}
               onInput={handleEditorInput}
               onPaste={handleEditorPaste}
               onDragEnter={handleEditorDragEnter}
@@ -929,7 +1005,7 @@ function PostForm() {
             />
 
             <p className="mt-2 text-xs text-ink-400">
-              이미지는 드래그/붙여넣기하면 바로 보이며, 오른쪽/아래 끝선을 드래그하면 비율을 유지한 채 크기만 조절됩니다.
+              이미지는 드래그/붙여넣기하면 바로 보이며, 오른쪽/아래 끝선을 드래그하면 비율을 유지한 채 크기만 조절됩니다. 이미지를 클릭한 뒤 Delete/Backspace로 삭제할 수 있습니다.
             </p>
 
             {activeInlineUploadCount > 0 && (
