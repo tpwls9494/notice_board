@@ -25,9 +25,63 @@ const ALLOWED_UPLOAD_TYPES = [
   'text/plain',
 ]
 
-const INLINE_FILE_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt'
+const ALLOWED_UPLOAD_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt',
+])
+
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp'])
+const EXTENSION_TO_MIME = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.txt': 'text/plain',
+}
 
 const isImageMimeType = (mimeType = '') => mimeType.startsWith(IMAGE_MIME_PREFIX)
+
+const getFileExtension = (filename = '') => {
+  const lastDotIndex = filename.lastIndexOf('.')
+  if (lastDotIndex < 0) return ''
+  return filename.slice(lastDotIndex).toLowerCase()
+}
+
+const isAllowedUploadFile = (file) => {
+  if (!file) return false
+  if (ALLOWED_UPLOAD_TYPES.includes(file.type)) return true
+  return ALLOWED_UPLOAD_EXTENSIONS.has(getFileExtension(file.name))
+}
+
+const isImageFile = (file) => {
+  if (!file) return false
+  if (isImageMimeType(file.type)) return true
+  return IMAGE_EXTENSIONS.has(getFileExtension(file.name))
+}
+
+const normalizeFileForUpload = (file) => {
+  if (!file) return file
+  if (file.type && file.type !== 'application/octet-stream') return file
+
+  const extension = getFileExtension(file.name)
+  const normalizedMimeType = EXTENSION_TO_MIME[extension]
+  if (!normalizedMimeType) return file
+
+  try {
+    return new File([file], file.name, {
+      type: normalizedMimeType,
+      lastModified: file.lastModified,
+    })
+  } catch (_error) {
+    return file
+  }
+}
 
 const escapeHtml = (value = '') => (
   value
@@ -61,12 +115,9 @@ function PostForm() {
   const [uploadProgress, setUploadProgress] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [pendingInlineUploads, setPendingInlineUploads] = useState([])
-  const [selectedImageId, setSelectedImageId] = useState('')
-  const [selectedImageWidth, setSelectedImageWidth] = useState(420)
   const [editorHtmlSnapshot, setEditorHtmlSnapshot] = useState('<p><br></p>')
 
   const editorRef = useRef(null)
-  const inlineFileInputRef = useRef(null)
   const pendingInlineUploadsRef = useRef([])
 
   const { categories, fetchCategories } = useCategoriesStore()
@@ -114,36 +165,15 @@ function PostForm() {
   }
 
   const clearPendingInlineUploads = () => {
-    setPendingInlineUploads((previous) => {
-      previous.forEach((upload) => {
-        if (upload.objectUrl) {
-          URL.revokeObjectURL(upload.objectUrl)
-        }
-      })
-      return []
-    })
-  }
-
-  const syncEditorImagesSelection = (activeImageId = '') => {
-    const editor = editorRef.current
-    if (!editor) return
-
-    const frames = Array.from(editor.querySelectorAll('[data-editor-image="true"]'))
-    frames.forEach((frame) => {
-      if ((frame.getAttribute('data-image-id') || '') === activeImageId) {
-        frame.classList.add('is-selected')
-      } else {
-        frame.classList.remove('is-selected')
+    pendingInlineUploadsRef.current.forEach((upload) => {
+      if (upload.objectUrl) {
+        URL.revokeObjectURL(upload.objectUrl)
       }
     })
-  }
 
-  const getImageFrameById = (imageId) => {
-    const editor = editorRef.current
-    if (!editor || !imageId) return null
+    pendingInlineUploadsRef.current = []
 
-    const frames = Array.from(editor.querySelectorAll('[data-editor-image="true"]'))
-    return frames.find((frame) => (frame.getAttribute('data-image-id') || '') === imageId) || null
+    setPendingInlineUploads([])
   }
 
   const setEditorHtml = (nextHtml) => {
@@ -151,7 +181,6 @@ function PostForm() {
     if (!editor) return
     editor.innerHTML = nextHtml
     setEditorHtmlSnapshot(nextHtml)
-    syncEditorImagesSelection(selectedImageId)
   }
 
   useEffect(() => {
@@ -161,8 +190,6 @@ function PostForm() {
       setTitle(postData.data.title || '')
       setCategoryId(String(postData.data.category_id || ''))
       setEditorHtml(normalizeStoredContentForEditor(postData.data.content || ''))
-      setSelectedImageId('')
-      setSelectedImageWidth(420)
       clearPendingInlineUploads()
       return
     }
@@ -225,12 +252,7 @@ function PostForm() {
       selection.addRange(nextRange)
     }
 
-    syncEditorImagesSelection(selectedImageId)
     setEditorHtmlSnapshot(editor.innerHTML)
-  }
-
-  const handleOpenInlineFilePicker = () => {
-    inlineFileInputRef.current?.click()
   }
 
   const hasFileDragPayload = (event) => {
@@ -282,7 +304,7 @@ function PostForm() {
         continue
       }
 
-      if (!ALLOWED_UPLOAD_TYPES.includes(file.type)) {
+      if (!isAllowedUploadFile(file)) {
         rejectedFiles.push(`${file.name} (지원되지 않는 형식)`)
         continue
       }
@@ -298,21 +320,22 @@ function PostForm() {
 
     const uploads = []
     validFiles.forEach((file) => {
+      const normalizedFile = normalizeFileForUpload(file)
       const token = createUploadToken()
       const placeholder = `upload://${token}`
-      const objectUrl = URL.createObjectURL(file)
+      const objectUrl = URL.createObjectURL(normalizedFile)
       const escapedName = escapeHtml(file.name)
 
       uploads.push({
         token,
         placeholder,
         objectUrl,
-        file,
+        file: normalizedFile,
         originalFilename: file.name,
-        isImage: isImageMimeType(file.type),
+        isImage: isImageFile(normalizedFile),
       })
 
-      if (isImageMimeType(file.type)) {
+      if (isImageFile(normalizedFile)) {
         const imageId = `img-${token}`
         insertHtmlAtCursor(
           `<figure data-editor-image="true" data-image-id="${imageId}" class="editor-image-frame" style="width: 420px; max-width: 100%;">
@@ -327,12 +350,8 @@ function PostForm() {
       }
     })
 
+    pendingInlineUploadsRef.current = [...pendingInlineUploadsRef.current, ...uploads]
     setPendingInlineUploads((previous) => [...previous, ...uploads])
-  }
-
-  const handleInlineFileChange = (event) => {
-    handleInsertFiles(event.target.files || [])
-    event.target.value = ''
   }
 
   const handleEditorDragEnter = (event) => {
@@ -387,76 +406,11 @@ function PostForm() {
     handleInsertFiles(files)
   }
 
-  const handleInsertLink = () => {
-    insertHtmlAtCursor('<a href="https://example.com" target="_blank" rel="noopener noreferrer">링크 텍스트</a>')
-  }
-
-  const handleInsertInlineFormula = () => {
-    insertHtmlAtCursor('<span>\\(E = mc^2\\)</span>')
-  }
-
-  const handleInsertBlockFormula = () => {
-    insertHtmlAtCursor('<p>\\[\\int_0^1 x^2\\,dx\\]</p>')
-  }
-
-  const handleEditorClick = (event) => {
-    const editor = editorRef.current
-    if (!editor) return
-
-    const clickedFrame = event.target.closest('[data-editor-image="true"]')
-    if (!clickedFrame || !editor.contains(clickedFrame)) {
-      setSelectedImageId('')
-      setSelectedImageWidth(420)
-      syncEditorImagesSelection('')
-      return
-    }
-
-    let imageId = clickedFrame.getAttribute('data-image-id') || ''
-    if (!imageId) {
-      imageId = `img-${createUploadToken()}`
-      clickedFrame.setAttribute('data-image-id', imageId)
-      setEditorHtmlSnapshot(editor.innerHTML)
-    }
-    setSelectedImageId(imageId)
-    const measuredWidth = Math.round(clickedFrame.getBoundingClientRect().width)
-    const nextWidth = Number.isFinite(measuredWidth) ? measuredWidth : 420
-    setSelectedImageWidth(Math.max(120, Math.min(1000, nextWidth)))
-    syncEditorImagesSelection(imageId)
-  }
-
   const handleEditorInput = () => {
     const editor = editorRef.current
     if (editor) {
       setEditorHtmlSnapshot(editor.innerHTML)
     }
-
-    if (selectedImageId) {
-      const frame = getImageFrameById(selectedImageId)
-      if (!frame) {
-        setSelectedImageId('')
-        setSelectedImageWidth(420)
-      }
-    }
-  }
-
-  const handleSelectedImageWidthChange = (event) => {
-    const nextWidth = Number(event.target.value || 420)
-    setSelectedImageWidth(nextWidth)
-
-    const frame = getImageFrameById(selectedImageId)
-    if (!frame) return
-
-    frame.style.width = `${nextWidth}px`
-    setEditorHtmlSnapshot(editorRef.current?.innerHTML || '')
-  }
-
-  const handleRemoveSelectedImage = () => {
-    const frame = getImageFrameById(selectedImageId)
-    if (!frame) return
-    frame.remove()
-    setSelectedImageId('')
-    setSelectedImageWidth(420)
-    setEditorHtmlSnapshot(editorRef.current?.innerHTML || '')
   }
 
   const hasMeaningfulContent = (htmlText) => {
@@ -497,7 +451,7 @@ function PostForm() {
   }
 
   const uploadInlineFiles = async (targetPostId, contentWithPlaceholders) => {
-    const targets = pendingInlineUploads.filter((upload) => (
+    const targets = pendingInlineUploadsRef.current.filter((upload) => (
       contentWithPlaceholders.includes(upload.placeholder)
     ))
 
@@ -693,50 +647,9 @@ function PostForm() {
           </div>
 
           <div>
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <label htmlFor="rich-editor" className="block text-sm font-semibold text-ink-700">
-                내용
-              </label>
-              <div className="flex flex-wrap justify-end gap-1.5">
-                <button
-                  type="button"
-                  onClick={handleOpenInlineFilePicker}
-                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-ink-200 text-ink-700 hover:bg-paper-100"
-                >
-                  이미지/파일
-                </button>
-                <button
-                  type="button"
-                  onClick={handleInsertLink}
-                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-ink-200 text-ink-700 hover:bg-paper-100"
-                >
-                  링크
-                </button>
-                <button
-                  type="button"
-                  onClick={handleInsertInlineFormula}
-                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-ink-200 text-ink-700 hover:bg-paper-100"
-                >
-                  수식
-                </button>
-                <button
-                  type="button"
-                  onClick={handleInsertBlockFormula}
-                  className="px-2.5 py-1 text-xs font-medium rounded-md border border-ink-200 text-ink-700 hover:bg-paper-100"
-                >
-                  수식 블록
-                </button>
-              </div>
-            </div>
-
-            <input
-              ref={inlineFileInputRef}
-              type="file"
-              multiple
-              accept={INLINE_FILE_ACCEPT}
-              onChange={handleInlineFileChange}
-              className="hidden"
-            />
+            <label htmlFor="rich-editor" className="block text-sm font-semibold text-ink-700 mb-2">
+              내용
+            </label>
 
             <div
               id="rich-editor"
@@ -745,7 +658,6 @@ function PostForm() {
               suppressContentEditableWarning
               className={`rich-editor ${isDragOver ? 'is-drag-over' : ''}`}
               onInput={handleEditorInput}
-              onClick={handleEditorClick}
               onPaste={handleEditorPaste}
               onDragEnter={handleEditorDragEnter}
               onDragOver={handleEditorDragOver}
@@ -754,38 +666,8 @@ function PostForm() {
             />
 
             <p className="mt-2 text-xs text-ink-400">
-              파일을 에디터로 드래그하면 본문에 바로 들어갑니다. 이미지를 클릭하면 너비를 조절할 수 있습니다.
+              이미지는 드래그/붙여넣기하면 바로 보입니다. 이미지 박스의 오른쪽 아래 모서리를 드래그해 크기를 조절할 수 있습니다.
             </p>
-
-            {selectedImageId && (
-              <div className="mt-3 rounded-lg border border-ink-200 bg-paper-50 px-3 py-2.5">
-                <div className="flex items-center justify-between gap-3">
-                  <label htmlFor="image-width" className="text-xs font-medium text-ink-700">
-                    이미지 너비
-                  </label>
-                  <span className="text-xs text-ink-500">{selectedImageWidth}px</span>
-                </div>
-                <div className="mt-2 flex items-center gap-3">
-                  <input
-                    id="image-width"
-                    type="range"
-                    min="120"
-                    max="1000"
-                    step="10"
-                    value={selectedImageWidth}
-                    onChange={handleSelectedImageWidthChange}
-                    className="w-full"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleRemoveSelectedImage}
-                    className="px-2.5 py-1 text-xs rounded-md border border-red-200 text-red-600 hover:bg-red-50"
-                  >
-                    삭제
-                  </button>
-                </div>
-              </div>
-            )}
 
             {activeInlineUploadCount > 0 && (
               <p className="mt-1 text-xs text-ink-500">
