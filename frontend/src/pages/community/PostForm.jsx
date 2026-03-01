@@ -15,6 +15,7 @@ const NOTICE_CATEGORY_SLUG = 'notice'
 const IMAGE_MIME_PREFIX = 'image/'
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const IMAGE_RESIZE_MIN_WIDTH = 140
+const IMAGE_RESIZE_EDGE_HITBOX = 14
 
 const ALLOWED_UPLOAD_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -179,6 +180,7 @@ function PostForm() {
   const editorRef = useRef(null)
   const pendingInlineUploadsRef = useRef([])
   const resizeSessionRef = useRef(null)
+  const resizeHoverFrameRef = useRef(null)
 
   const { categories, fetchCategories } = useCategoriesStore()
   const user = useAuthStore((state) => state.user)
@@ -203,6 +205,15 @@ function PostForm() {
       document.removeEventListener('mousemove', session.onMouseMove)
       document.removeEventListener('mouseup', session.onMouseUp)
       resizeSessionRef.current = null
+    }
+    const hoverFrame = resizeHoverFrameRef.current
+    if (hoverFrame) {
+      hoverFrame.classList.remove('is-resize-ready')
+      resizeHoverFrameRef.current = null
+    }
+    document.body.style.cursor = ''
+    if (editorRef.current) {
+      editorRef.current.style.cursor = ''
     }
     pendingInlineUploadsRef.current = []
   }, [])
@@ -330,6 +341,10 @@ function PostForm() {
     const documentNode = parser.parseFromString(sanitizedSnapshot, 'text/html')
     const body = documentNode.body
 
+    Array.from(body.querySelectorAll('figure[data-editor-image="true"]')).forEach((figureElement) => {
+      figureElement.classList.remove('is-resize-ready')
+    })
+
     Array.from(body.querySelectorAll('.editor-image-resize-handle')).forEach((handleElement) => {
       handleElement.remove()
     })
@@ -412,7 +427,6 @@ function PostForm() {
         insertHtmlAtCursor(
           `<figure data-editor-image="true" data-image-id="${imageId}" class="editor-image-frame">
             <img src="${previewSrc}" alt="${escapedName}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />
-            <span class="editor-image-resize-handle" contenteditable="false" aria-hidden="true"></span>
           </figure>`,
         )
       } else {
@@ -485,6 +499,57 @@ function PostForm() {
     }
   }
 
+  const clearResizeHoverState = () => {
+    const previousHoverFrame = resizeHoverFrameRef.current
+    if (previousHoverFrame) {
+      previousHoverFrame.classList.remove('is-resize-ready')
+      resizeHoverFrameRef.current = null
+    }
+
+    if (!resizeSessionRef.current && editorRef.current) {
+      editorRef.current.style.cursor = ''
+    }
+  }
+
+  const isWithinImageResizeEdge = (event, frame) => {
+    if (!event || !frame) return false
+
+    const frameRect = frame.getBoundingClientRect()
+    const isWithinVerticalBounds = event.clientY >= frameRect.top && event.clientY <= frameRect.bottom
+    if (!isWithinVerticalBounds) return false
+
+    const rightEdgeDistance = frameRect.right - event.clientX
+    return rightEdgeDistance >= -2 && rightEdgeDistance <= IMAGE_RESIZE_EDGE_HITBOX
+  }
+
+  const handleEditorMouseMove = (event) => {
+    if (resizeSessionRef.current) return
+
+    const editor = editorRef.current
+    if (!editor) return
+
+    const hoveredFrame = event.target?.closest?.('figure[data-editor-image="true"]')
+    const canResize = Boolean(hoveredFrame && isWithinImageResizeEdge(event, hoveredFrame))
+
+    if (!canResize) {
+      clearResizeHoverState()
+      return
+    }
+
+    if (resizeHoverFrameRef.current && resizeHoverFrameRef.current !== hoveredFrame) {
+      resizeHoverFrameRef.current.classList.remove('is-resize-ready')
+    }
+
+    resizeHoverFrameRef.current = hoveredFrame
+    hoveredFrame.classList.add('is-resize-ready')
+    editor.style.cursor = 'ew-resize'
+  }
+
+  const handleEditorMouseLeave = () => {
+    if (resizeSessionRef.current) return
+    clearResizeHoverState()
+  }
+
   const stopImageResizeSession = () => {
     const session = resizeSessionRef.current
     if (!session) return
@@ -492,6 +557,8 @@ function PostForm() {
     document.removeEventListener('mousemove', session.onMouseMove)
     document.removeEventListener('mouseup', session.onMouseUp)
     resizeSessionRef.current = null
+    document.body.style.cursor = ''
+    clearResizeHoverState()
 
     if (editorRef.current) {
       setEditorHtmlSnapshot(editorRef.current.innerHTML)
@@ -499,13 +566,10 @@ function PostForm() {
   }
 
   const handleEditorMouseDown = (event) => {
-    const handleElement = event.target?.closest?.('.editor-image-resize-handle')
-    if (!handleElement) return
-
-    const frame = handleElement.closest('figure[data-editor-image="true"]')
+    const frame = event.target?.closest?.('figure[data-editor-image="true"]')
     const imageElement = frame?.querySelector('img')
     const editor = editorRef.current
-    if (!frame || !imageElement || !editor) return
+    if (!frame || !imageElement || !editor || !isWithinImageResizeEdge(event, frame)) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -523,6 +587,11 @@ function PostForm() {
     )
     const startWidth = Math.max(IMAGE_RESIZE_MIN_WIDTH, Math.round(frameRect.width))
     const startX = event.clientX
+
+    resizeHoverFrameRef.current = frame
+    frame.classList.add('is-resize-ready')
+    editor.style.cursor = 'ew-resize'
+    document.body.style.cursor = 'ew-resize'
 
     const onMouseMove = (moveEvent) => {
       moveEvent.preventDefault()
@@ -800,6 +869,8 @@ function PostForm() {
               suppressContentEditableWarning
               className={`rich-editor ${isDragOver ? 'is-drag-over' : ''}`}
               onMouseDown={handleEditorMouseDown}
+              onMouseMove={handleEditorMouseMove}
+              onMouseLeave={handleEditorMouseLeave}
               onInput={handleEditorInput}
               onPaste={handleEditorPaste}
               onDragEnter={handleEditorDragEnter}
@@ -809,7 +880,7 @@ function PostForm() {
             />
 
             <p className="mt-2 text-xs text-ink-400">
-              이미지는 드래그/붙여넣기하면 바로 보이며, 우측 하단 핸들을 드래그하면 비율을 유지한 채 크기만 조절됩니다.
+              이미지는 드래그/붙여넣기하면 바로 보이며, 오른쪽 끝선을 드래그하면 비율을 유지한 채 크기만 조절됩니다.
             </p>
 
             {activeInlineUploadCount > 0 && (

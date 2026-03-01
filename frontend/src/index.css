@@ -128,6 +128,12 @@
     box-shadow: 0 0 0 2px rgba(115, 115, 115, 0.2);
   }
 
+  .rich-editor figure[data-editor-image="true"].is-resize-ready {
+    cursor: ew-resize;
+    border-color: #a3a3a3;
+    box-shadow: 0 0 0 2px rgba(163, 163, 163, 0.18);
+  }
+
   .rich-editor figure[data-editor-image="true"] img,
   .rich-content figure[data-editor-image="true"] img,
   .rich-content img {
@@ -144,25 +150,7 @@
     padding: 0.35rem 0.5rem 0.45rem;
   }
 
-  .rich-editor .editor-image-resize-handle {
-    position: absolute;
-    right: 0.45rem;
-    bottom: 0.45rem;
-    width: 0.95rem;
-    height: 0.95rem;
-    border-radius: 999px;
-    border: 2px solid #fff;
-    background: #262626;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-    cursor: nwse-resize;
-    opacity: 0.9;
-  }
-
-  .rich-editor .editor-image-resize-handle:hover {
-    background: #171717;
-  }
-
-  .rich-content .editor-image-resize-handle {
+  .editor-image-resize-handle {
     display: none;
   }
 
