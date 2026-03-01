@@ -12,7 +12,7 @@ on:
         default: false
         type: boolean
       max_items:
-        description: "Override max items (3-10 recommended)"
+        description: "Override max items (3-5 recommended)"
         required: false
         type: string
 
@@ -28,6 +28,7 @@ jobs:
       IT_NEWS_BOT_TOKEN: ${{ secrets.IT_NEWS_BOT_TOKEN }}
       IT_NEWS_BOT_EMAIL: ${{ secrets.IT_NEWS_BOT_EMAIL }}
       IT_NEWS_BOT_PASSWORD: ${{ secrets.IT_NEWS_BOT_PASSWORD }}
+      IT_NEWS_ALERT_WEBHOOK: ${{ secrets.IT_NEWS_ALERT_WEBHOOK }}
       IT_NEWS_CATEGORY_SLUG: dev-news
 
     steps:
@@ -46,7 +47,16 @@ jobs:
           if [[ -n "${{ inputs.max_items || '' }}" ]]; then
             max_items="${{ inputs.max_items }}"
           else
-            max_items="$(shuf -i 3-10 -n 1)"
+            max_items="$(shuf -i 3-5 -n 1)"
+          fi
+
+          if ! [[ "$max_items" =~ ^[0-9]+$ ]]; then
+            echo "max_items must be an integer"
+            exit 1
+          fi
+          if (( max_items < 1 || max_items > 10 )); then
+            echo "max_items must be between 1 and 10"
+            exit 1
           fi
 
           dry_run="false"
@@ -88,3 +98,27 @@ jobs:
 
           echo "Running: ${cmd[*]}"
           "${cmd[@]}"
+
+      - name: Notify failure
+        if: failure() && env.IT_NEWS_ALERT_WEBHOOK != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload=$(
+            jq -n \
+              --arg repo "${{ github.repository }}" \
+              --arg run_id "${{ github.run_id }}" \
+              --arg workflow "${{ github.workflow }}" \
+              --arg max_items "${{ steps.options.outputs.max_items }}" \
+              --arg dry_run "${{ steps.options.outputs.dry_run }}" \
+              '{
+                text: ("[ALERT] " + $workflow + " failed\n" +
+                  "repo=" + $repo + "\n" +
+                  "run=https://github.com/" + $repo + "/actions/runs/" + $run_id + "\n" +
+                  "max_items=" + $max_items + ", dry_run=" + $dry_run)
+              }'
+          )
+          curl -sS -X POST \
+            -H 'Content-Type: application/json' \
+            --data "$payload" \
+            "$IT_NEWS_ALERT_WEBHOOK" >/dev/null

@@ -1,18 +1,50 @@
 [
   {
-    "name": "아이뉴스24 IT",
-    "url": "https://www.inews24.com/rss/news_it.xml"
+    "name": "ZDNet Korea",
+    "url": "https://www.zdnet.co.kr/news/news.xml"
   },
   {
-    "name": "뉴시스 IT·바이오",
-    "url": "https://www.newsis.com/RSS/health.xml"
+    "name": "ITWorld Korea",
+    "url": "https://www.itworld.co.kr/rss/all.xml"
   },
   {
-    "name": "한국경제 IT",
+    "name": "Bloter",
+    "url": "https://www.bloter.net/feed"
+  },
+  {
+    "name": "BoanNews",
+    "url": "https://www.boannews.com/media/news_rss.xml"
+  },
+  {
+    "name": "Hankyung IT",
     "url": "https://www.hankyung.com/feed/it"
   },
   {
-    "name": "연합뉴스TV 최신",
-    "url": "https://www.yonhapnewstv.co.kr/browse/feed/"
+    "name": "TechCrunch",
+    "url": "https://techcrunch.com/feed/"
+  },
+  {
+    "name": "The Verge",
+    "url": "https://www.theverge.com/rss/index.xml"
+  },
+  {
+    "name": "Wired",
+    "url": "https://www.wired.com/feed/rss"
+  },
+  {
+    "name": "Ars Technica",
+    "url": "https://feeds.arstechnica.com/arstechnica/index"
+  },
+  {
+    "name": "Engadget",
+    "url": "https://www.engadget.com/rss.xml"
+  },
+  {
+    "name": "BleepingComputer",
+    "url": "https://www.bleepingcomputer.com/feed/"
+  },
+  {
+    "name": "InfoQ",
+    "url": "https://feed.infoq.com/"
   }
 ]

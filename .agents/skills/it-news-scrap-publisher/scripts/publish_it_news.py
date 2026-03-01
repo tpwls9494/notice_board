@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import unicodedata
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from html import unescape
@@ -54,6 +55,20 @@ KOREAN_DOMAIN_HINTS = (
     "zdnet.co.kr",
 )
 DEFAULT_ARTICLE_MAX_CHARS = 7000
+DEFAULT_MIN_CONTENT_CHARS = 160
+DEFAULT_TITLE_SIMILARITY_THRESHOLD = 0.9
+MAX_TITLE_TOKENS = 32
+BLOCKED_TITLE_KEYWORDS = (
+    "연예",
+    "스포츠",
+    "부동산",
+    "운세",
+    "복권",
+    "광고",
+    "프로모션",
+    "성인",
+    "도박",
+)
 JS_DUMP_HINTS = (
     "window.wiz_global_data",
     "window[\"_f_toggles",
@@ -94,6 +109,70 @@ def trim_title(title: str, limit: int = 255) -> str:
     if len(title) <= limit:
         return title
     return title[: limit - 3].rstrip() + "..."
+
+
+def normalize_url_for_dedupe(raw_url: str) -> str:
+    if not raw_url:
+        return ""
+
+    parsed = parse.urlparse(raw_url.strip())
+    if not parsed.scheme or not parsed.netloc:
+        return raw_url.strip().rstrip("/")
+
+    host = parsed.netloc.lower()
+    if host.startswith("www."):
+        host = host[4:]
+
+    query_pairs = parse.parse_qsl(parsed.query, keep_blank_values=False)
+    filtered_query = []
+    for key, value in query_pairs:
+        lowered_key = key.lower()
+        if lowered_key.startswith("utm_"):
+            continue
+        if lowered_key in {"gclid", "fbclid", "mc_cid", "mc_eid", "ref", "spm"}:
+            continue
+        filtered_query.append((key, value))
+    filtered_query.sort()
+
+    normalized_path = re.sub(r"/{2,}", "/", parsed.path or "/")
+    normalized_path = normalized_path.rstrip("/") or "/"
+    normalized_query = parse.urlencode(filtered_query, doseq=True)
+
+    return parse.urlunparse(
+        (
+            parsed.scheme.lower(),
+            host,
+            normalized_path,
+            "",
+            normalized_query,
+            "",
+        )
+    )
+
+
+def tokenize_title_for_similarity(title: str) -> set[str]:
+    text = unicodedata.normalize("NFKC", title or "").lower()
+    text = re.sub(r"[\[\](){}<>:;,.!?/\\|@#$%^&*_+=~\"'`-]+", " ", text)
+    tokens = [token for token in text.split() if len(token) >= 2]
+    return set(tokens[:MAX_TITLE_TOKENS])
+
+
+def title_similarity(a: str, b: str) -> float:
+    a_tokens = tokenize_title_for_similarity(a)
+    b_tokens = tokenize_title_for_similarity(b)
+    if not a_tokens or not b_tokens:
+        return 0.0
+    union = a_tokens | b_tokens
+    if not union:
+        return 0.0
+    return len(a_tokens & b_tokens) / len(union)
+
+
+def is_blocked_title(title: str) -> bool:
+    lowered = (title or "").strip().lower()
+    if not lowered:
+        return True
+    return any(keyword in lowered for keyword in BLOCKED_TITLE_KEYWORDS)
 
 
 def parse_feed_argument(raw: str) -> FeedSource:
@@ -149,13 +228,55 @@ def infer_default_api_base() -> str:
     return DEFAULT_API_BASE
 
 
-def load_feeds(feeds_file: Path, feed_args: list[str]) -> list[FeedSource]:
+def load_feed_whitelist(feeds_file: Path) -> set[str]:
+    if not feeds_file.exists():
+        return set()
+
+    raw = json.loads(feeds_file.read_text(encoding="utf-8"))
+    if not isinstance(raw, list):
+        raise ValueError(f"Invalid feeds file format: {feeds_file}")
+
+    hosts: set[str] = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            continue
+        url = str(entry.get("url", "")).strip()
+        if not url:
+            continue
+        parsed = parse.urlparse(url)
+        if parsed.netloc:
+            host = parsed.netloc.lower()
+            if host.startswith("www."):
+                host = host[4:]
+            hosts.add(host)
+    return hosts
+
+
+def normalize_host(raw_host: str) -> str:
+    host = (raw_host or "").lower().strip()
+    if host.startswith("www."):
+        return host[4:]
+    return host
+
+
+def load_feeds(feeds_file: Path, feed_args: list[str], allow_custom_feeds: bool = False) -> list[FeedSource]:
     feeds: list[FeedSource] = []
+    whitelisted_hosts = load_feed_whitelist(feeds_file)
 
     if feed_args:
         for raw in feed_args:
             parsed_feed = parse_feed_argument(raw)
             if parsed_feed.name and parsed_feed.url:
+                if not allow_custom_feeds:
+                    parsed = parse.urlparse(parsed_feed.url)
+                    if parsed.netloc:
+                        host = normalize_host(parsed.netloc)
+                        if whitelisted_hosts and host not in whitelisted_hosts:
+                            print(
+                                f"[WARN] Skipping non-whitelisted feed host: {parsed_feed.url}",
+                                file=sys.stderr,
+                            )
+                            continue
                 feeds.append(parsed_feed)
     elif feeds_file.exists():
         raw = json.loads(feeds_file.read_text(encoding="utf-8"))
@@ -445,7 +566,11 @@ def find_category_id(api_base: str, category_slug: str) -> int:
     raise RuntimeError(f"Category slug not found: {category_slug}")
 
 
-def fetch_existing_links(api_base: str, category_id: int, page_size: int) -> set[str]:
+def fetch_existing_dedupe_state(
+    api_base: str,
+    category_id: int,
+    page_size: int,
+) -> tuple[set[str], list[str]]:
     posts_url = make_url(
         api_base,
         "/api/v1/posts/",
@@ -459,11 +584,19 @@ def fetch_existing_links(api_base: str, category_id: int, page_size: int) -> set
     payload = api_json("GET", posts_url) or {}
     posts = payload.get("posts", [])
     links: set[str] = set()
+    normalized_links: set[str] = set()
+    titles: list[str] = []
     for post in posts:
+        post_title = sanitize_plain_text(str(post.get("title", "")))
+        if post_title:
+            titles.append(post_title)
         content = str(post.get("content", ""))
         for link in URL_PATTERN.findall(content):
-            links.add(link.rstrip(".,)"))
-    return links
+            cleaned = link.rstrip(".,)")
+            links.add(cleaned)
+            normalized_links.add(normalize_url_for_dedupe(cleaned))
+    # Keep raw links for backward compatibility and canonicalized links for robust dedupe.
+    return links | normalized_links, titles
 
 
 def build_post_content(news: NewsItem, article_max_chars: int, fetch_article: bool = True) -> str:
@@ -503,6 +636,56 @@ def format_post(news: NewsItem, article_max_chars: int, fetch_article: bool = Tr
     return title, content
 
 
+def build_candidate_items(
+    items: list[NewsItem],
+    max_items: int,
+    existing_links: set[str],
+    existing_titles: list[str],
+    title_similarity_threshold: float,
+    min_content_chars: int,
+    article_max_chars: int,
+    fetch_article: bool,
+) -> tuple[list[tuple[NewsItem, str, str]], int]:
+    selected: list[tuple[NewsItem, str, str]] = []
+    seen_normalized_links = set(existing_links)
+    seen_titles: list[str] = [title for title in existing_titles if title]
+    skipped = 0
+
+    for item in items:
+        if len(selected) >= max_items:
+            break
+
+        normalized_link = normalize_url_for_dedupe(item.link)
+        if normalized_link in seen_normalized_links or item.link in seen_normalized_links:
+            skipped += 1
+            continue
+
+        if is_blocked_title(item.title):
+            skipped += 1
+            continue
+
+        title, content = format_post(
+            item,
+            article_max_chars=article_max_chars,
+            fetch_article=fetch_article,
+        )
+        plain_content = sanitize_plain_text(content)
+        if len(plain_content) < min_content_chars:
+            skipped += 1
+            continue
+
+        if any(title_similarity(title, existing) >= title_similarity_threshold for existing in seen_titles):
+            skipped += 1
+            continue
+
+        selected.append((item, title, content))
+        seen_titles.append(title)
+        seen_normalized_links.add(item.link)
+        seen_normalized_links.add(normalized_link)
+
+    return selected, skipped
+
+
 def is_google_news_url(url: str) -> bool:
     host = parse.urlparse(url).netloc.lower()
     return any(host.endswith(domain) for domain in GOOGLE_NEWS_HOSTS)
@@ -533,7 +716,7 @@ def collect_items(feeds: list[FeedSource], per_feed_limit: int) -> list[NewsItem
     deduped: list[NewsItem] = []
     seen = set()
     for item in collected:
-        key = (item.link.strip().lower(), item.title.strip().lower())
+        key = (normalize_url_for_dedupe(item.link), item.title.strip().lower())
         if key in seen:
             continue
         seen.add(key)
@@ -557,9 +740,26 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_ARTICLE_MAX_CHARS,
         help="Maximum number of characters for extracted article body.",
     )
+    parser.add_argument(
+        "--min-content-chars",
+        type=int,
+        default=DEFAULT_MIN_CONTENT_CHARS,
+        help="Minimum cleaned content length required to publish.",
+    )
+    parser.add_argument(
+        "--title-similarity-threshold",
+        type=float,
+        default=DEFAULT_TITLE_SIMILARITY_THRESHOLD,
+        help="Skip candidates whose title similarity is above this threshold (0.0-1.0).",
+    )
     parser.add_argument("--dedupe-window", type=int, default=DEFAULT_DEDUPE_WINDOW, help="Recent posts to inspect for duplicate links")
     parser.add_argument("--feeds-file", default=str(DEFAULT_FEEDS_FILE), help="JSON file with default feeds")
     parser.add_argument("--feed", action="append", default=[], help="Feed override. Use URL or name|URL. Repeatable.")
+    parser.add_argument(
+        "--allow-custom-feeds",
+        action="store_true",
+        help="Allow non-whitelisted --feed URLs. By default, only hosts in --feeds-file are accepted.",
+    )
     parser.add_argument(
         "--allow-global",
         action="store_true",
@@ -595,8 +795,25 @@ def main() -> int:
     if args.article_max_chars < 300:
         print("[ERROR] --article-max-chars must be at least 300", file=sys.stderr)
         return 1
+    if args.min_content_chars < 80:
+        print("[ERROR] --min-content-chars must be at least 80", file=sys.stderr)
+        return 1
+    if not (0.5 <= args.title_similarity_threshold <= 1.0):
+        print("[ERROR] --title-similarity-threshold must be between 0.5 and 1.0", file=sys.stderr)
+        return 1
+    if args.category_slug != DEFAULT_CATEGORY_SLUG:
+        print(
+            f"[ERROR] Only '{DEFAULT_CATEGORY_SLUG}' category is allowed for automation "
+            f"(received: {args.category_slug})",
+            file=sys.stderr,
+        )
+        return 1
 
-    feeds = load_feeds(Path(args.feeds_file), args.feed)
+    feeds = load_feeds(
+        Path(args.feeds_file),
+        args.feed,
+        allow_custom_feeds=args.allow_custom_feeds,
+    )
     if not feeds:
         print("[ERROR] No feeds configured. Provide --feed or a valid --feeds-file.", file=sys.stderr)
         return 1
@@ -626,13 +843,19 @@ def main() -> int:
 
     if args.no_api:
         print("[INFO] API calls disabled (--no-api).")
-        for idx, item in enumerate(items[: args.max_items], start=1):
-            title, content = format_post(
-                item,
-                article_max_chars=args.article_max_chars,
-                fetch_article=False,
-            )
+        candidates, skipped_by_guard = build_candidate_items(
+            items=items,
+            max_items=args.max_items,
+            existing_links=set(),
+            existing_titles=[],
+            title_similarity_threshold=args.title_similarity_threshold,
+            min_content_chars=1,
+            article_max_chars=args.article_max_chars,
+            fetch_article=False,
+        )
+        for idx, (_item, title, content) in enumerate(candidates, start=1):
             print(f"\n[{idx}] {title}\n{content}\n")
+        print(f"[SUMMARY] candidates={len(candidates)} skipped_by_guard={skipped_by_guard}")
         return 0
 
     try:
@@ -642,14 +865,27 @@ def main() -> int:
         return 1
 
     try:
-        existing_links = fetch_existing_links(args.api_base, category_id, args.dedupe_window)
+        existing_links, existing_titles = fetch_existing_dedupe_state(
+            args.api_base,
+            category_id,
+            args.dedupe_window,
+        )
     except Exception as exc:  # noqa: BLE001
         print(f"[ERROR] Failed to inspect existing posts: {exc}", file=sys.stderr)
         return 1
 
-    candidates = [item for item in items if item.link not in existing_links][: args.max_items]
+    candidates, skipped_by_guard = build_candidate_items(
+        items=items,
+        max_items=args.max_items,
+        existing_links=existing_links,
+        existing_titles=existing_titles,
+        title_similarity_threshold=args.title_similarity_threshold,
+        min_content_chars=args.min_content_chars,
+        article_max_chars=args.article_max_chars,
+        fetch_article=not args.no_article_fetch,
+    )
     if not candidates:
-        print("[INFO] No new items to post (all duplicates).")
+        print("[INFO] No publishable items after duplicate/quality filtering.")
         return 0
 
     auth_token = None
@@ -671,12 +907,7 @@ def main() -> int:
     skipped = len(items) - len(candidates)
     create_url = make_url(args.api_base, "/api/v1/posts/")
 
-    for item in candidates:
-        title, content = format_post(
-            item,
-            article_max_chars=args.article_max_chars,
-            fetch_article=not args.no_article_fetch,
-        )
+    for item, title, content in candidates:
         payload = {"title": title, "content": content, "category_id": category_id}
 
         if args.dry_run:
@@ -716,7 +947,7 @@ def main() -> int:
 
     print(
         f"\n[SUMMARY] collected={len(items)} candidates={len(candidates)} "
-        f"created={created} skipped={skipped} failed={failed}"
+        f"created={created} skipped={skipped} failed={failed} skipped_by_guard={skipped_by_guard}"
     )
     return 0 if failed == 0 else 1
 
