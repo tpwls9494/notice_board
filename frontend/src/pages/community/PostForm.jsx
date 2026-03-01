@@ -14,6 +14,7 @@ import {
 const NOTICE_CATEGORY_SLUG = 'notice'
 const IMAGE_MIME_PREFIX = 'image/'
 const MAX_FILE_SIZE = 10 * 1024 * 1024
+const IMAGE_RESIZE_MIN_WIDTH = 140
 
 const ALLOWED_UPLOAD_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -177,6 +178,7 @@ function PostForm() {
 
   const editorRef = useRef(null)
   const pendingInlineUploadsRef = useRef([])
+  const resizeSessionRef = useRef(null)
 
   const { categories, fetchCategories } = useCategoriesStore()
   const user = useAuthStore((state) => state.user)
@@ -196,6 +198,12 @@ function PostForm() {
   }, [pendingInlineUploads])
 
   useEffect(() => () => {
+    const session = resizeSessionRef.current
+    if (session) {
+      document.removeEventListener('mousemove', session.onMouseMove)
+      document.removeEventListener('mouseup', session.onMouseUp)
+      resizeSessionRef.current = null
+    }
     pendingInlineUploadsRef.current = []
   }, [])
 
@@ -322,6 +330,10 @@ function PostForm() {
     const documentNode = parser.parseFromString(sanitizedSnapshot, 'text/html')
     const body = documentNode.body
 
+    Array.from(body.querySelectorAll('.editor-image-resize-handle')).forEach((handleElement) => {
+      handleElement.remove()
+    })
+
     Array.from(body.querySelectorAll('[data-upload-placeholder]')).forEach((element) => {
       const placeholder = element.getAttribute('data-upload-placeholder')
       if (!placeholder) return
@@ -400,6 +412,7 @@ function PostForm() {
         insertHtmlAtCursor(
           `<figure data-editor-image="true" data-image-id="${imageId}" class="editor-image-frame">
             <img src="${previewSrc}" alt="${escapedName}" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />
+            <span class="editor-image-resize-handle" contenteditable="false" aria-hidden="true"></span>
             <figcaption contenteditable="false">${escapedName}</figcaption>
           </figure><p><br></p>`,
         )
@@ -471,6 +484,69 @@ function PostForm() {
     if (editor) {
       setEditorHtmlSnapshot(editor.innerHTML)
     }
+  }
+
+  const stopImageResizeSession = () => {
+    const session = resizeSessionRef.current
+    if (!session) return
+
+    document.removeEventListener('mousemove', session.onMouseMove)
+    document.removeEventListener('mouseup', session.onMouseUp)
+    resizeSessionRef.current = null
+
+    if (editorRef.current) {
+      setEditorHtmlSnapshot(editorRef.current.innerHTML)
+    }
+  }
+
+  const handleEditorMouseDown = (event) => {
+    const handleElement = event.target?.closest?.('.editor-image-resize-handle')
+    if (!handleElement) return
+
+    const frame = handleElement.closest('figure[data-editor-image="true"]')
+    const imageElement = frame?.querySelector('img')
+    const editor = editorRef.current
+    if (!frame || !imageElement || !editor) return
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (resizeSessionRef.current) {
+      stopImageResizeSession()
+    }
+
+    const frameRect = frame.getBoundingClientRect()
+    const editorRect = editor.getBoundingClientRect()
+    const editorHorizontalPadding = 32
+    const maxWidth = Math.max(
+      IMAGE_RESIZE_MIN_WIDTH,
+      Math.floor(editorRect.width - editorHorizontalPadding),
+    )
+    const startWidth = Math.max(IMAGE_RESIZE_MIN_WIDTH, Math.round(frameRect.width))
+    const startX = event.clientX
+
+    const onMouseMove = (moveEvent) => {
+      moveEvent.preventDefault()
+      const deltaX = moveEvent.clientX - startX
+      const nextWidth = Math.max(
+        IMAGE_RESIZE_MIN_WIDTH,
+        Math.min(maxWidth, Math.round(startWidth + deltaX)),
+      )
+
+      frame.style.width = `${nextWidth}px`
+      frame.style.maxWidth = '100%'
+      imageElement.style.width = '100%'
+      imageElement.style.maxWidth = '100%'
+      imageElement.style.height = 'auto'
+    }
+
+    const onMouseUp = () => {
+      stopImageResizeSession()
+    }
+
+    resizeSessionRef.current = { onMouseMove, onMouseUp }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
   }
 
   const hasMeaningfulContent = (htmlText) => {
@@ -568,7 +644,7 @@ function PostForm() {
     }
 
     if (!categoryId) {
-      toast.error('커뮤니티 위치를 선택해주세요.')
+      toast.error('커뮤니티를 선택해주세요.')
       return
     }
 
@@ -672,22 +748,29 @@ function PostForm() {
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5">
           <div>
             <label htmlFor="category" className="block text-sm font-semibold text-ink-700 mb-2">
-              커뮤니티 위치 <span className="text-red-500">*</span>
+              커뮤니티 <span className="text-red-500">*</span>
             </label>
-            <select
-              id="category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="input-field h-[52px]"
-              required
-            >
-              <option value="">커뮤니티를 선택하세요</option>
-              {selectableCategories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                id="category"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="input-field h-[52px] pr-12 appearance-none"
+                required
+              >
+                <option value="">커뮤니티를 선택하세요</option>
+                {selectableCategories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-ink-500">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                </svg>
+              </span>
+            </div>
           </div>
 
           <div>
@@ -717,6 +800,7 @@ function PostForm() {
               contentEditable
               suppressContentEditableWarning
               className={`rich-editor ${isDragOver ? 'is-drag-over' : ''}`}
+              onMouseDown={handleEditorMouseDown}
               onInput={handleEditorInput}
               onPaste={handleEditorPaste}
               onDragEnter={handleEditorDragEnter}
@@ -726,7 +810,7 @@ function PostForm() {
             />
 
             <p className="mt-2 text-xs text-ink-400">
-              이미지는 드래그/붙여넣기하면 바로 보이며, 원본 비율을 유지해 자동으로 맞춰집니다. 드래그 핸들은 표시되지 않습니다.
+              이미지는 드래그/붙여넣기하면 바로 보이며, 우측 하단 핸들을 드래그하면 비율을 유지한 채 크기만 조절됩니다.
             </p>
 
             {activeInlineUploadCount > 0 && (
