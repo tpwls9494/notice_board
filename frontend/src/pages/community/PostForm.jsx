@@ -345,10 +345,6 @@ function PostForm() {
       figureElement.classList.remove('is-resize-ready')
     })
 
-    Array.from(body.querySelectorAll('.editor-image-resize-handle')).forEach((handleElement) => {
-      handleElement.remove()
-    })
-
     Array.from(body.querySelectorAll('[data-upload-placeholder]')).forEach((element) => {
       const placeholder = element.getAttribute('data-upload-placeholder')
       if (!placeholder) return
@@ -505,21 +501,48 @@ function PostForm() {
       previousHoverFrame.classList.remove('is-resize-ready')
       resizeHoverFrameRef.current = null
     }
-
     if (!resizeSessionRef.current && editorRef.current) {
       editorRef.current.style.cursor = ''
     }
   }
 
-  const isWithinImageResizeEdge = (event, frame) => {
-    if (!event || !frame) return false
+  const getResizeCursor = (mode) => {
+    if (mode === 'vertical') return 'ns-resize'
+    if (mode === 'corner') return 'nwse-resize'
+    return 'ew-resize'
+  }
+
+  const getImageResizeMode = (event, frame) => {
+    if (!event || !frame) return null
 
     const frameRect = frame.getBoundingClientRect()
-    const isWithinVerticalBounds = event.clientY >= frameRect.top && event.clientY <= frameRect.bottom
-    if (!isWithinVerticalBounds) return false
+    const isWithinVerticalBounds = (
+      event.clientY >= frameRect.top - 2
+      && event.clientY <= frameRect.bottom + 2
+    )
+    const isWithinHorizontalBounds = (
+      event.clientX >= frameRect.left - 2
+      && event.clientX <= frameRect.right + 2
+    )
 
     const rightEdgeDistance = frameRect.right - event.clientX
-    return rightEdgeDistance >= -2 && rightEdgeDistance <= IMAGE_RESIZE_EDGE_HITBOX
+    const bottomEdgeDistance = frameRect.bottom - event.clientY
+
+    const isNearRightEdge = (
+      isWithinVerticalBounds
+      && rightEdgeDistance >= -2
+      && rightEdgeDistance <= IMAGE_RESIZE_EDGE_HITBOX
+    )
+    const isNearBottomEdge = (
+      isWithinHorizontalBounds
+      && bottomEdgeDistance >= -2
+      && bottomEdgeDistance <= IMAGE_RESIZE_EDGE_HITBOX
+    )
+
+    if (isNearRightEdge && isNearBottomEdge) return 'corner'
+    if (isNearRightEdge) return 'horizontal'
+    if (isNearBottomEdge) return 'vertical'
+    return null
   }
 
   const handleEditorMouseMove = (event) => {
@@ -529,7 +552,8 @@ function PostForm() {
     if (!editor) return
 
     const hoveredFrame = event.target?.closest?.('figure[data-editor-image="true"]')
-    const canResize = Boolean(hoveredFrame && isWithinImageResizeEdge(event, hoveredFrame))
+    const resizeMode = hoveredFrame ? getImageResizeMode(event, hoveredFrame) : null
+    const canResize = Boolean(hoveredFrame && resizeMode)
 
     if (!canResize) {
       clearResizeHoverState()
@@ -542,7 +566,7 @@ function PostForm() {
 
     resizeHoverFrameRef.current = hoveredFrame
     hoveredFrame.classList.add('is-resize-ready')
-    editor.style.cursor = 'ew-resize'
+    editor.style.cursor = getResizeCursor(resizeMode)
   }
 
   const handleEditorMouseLeave = () => {
@@ -569,7 +593,8 @@ function PostForm() {
     const frame = event.target?.closest?.('figure[data-editor-image="true"]')
     const imageElement = frame?.querySelector('img')
     const editor = editorRef.current
-    if (!frame || !imageElement || !editor || !isWithinImageResizeEdge(event, frame)) return
+    const resizeMode = frame ? getImageResizeMode(event, frame) : null
+    if (!frame || !imageElement || !editor || !resizeMode) return
 
     event.preventDefault()
     event.stopPropagation()
@@ -579,26 +604,50 @@ function PostForm() {
     }
 
     const frameRect = frame.getBoundingClientRect()
+    const imageRect = imageElement.getBoundingClientRect()
     const editorRect = editor.getBoundingClientRect()
     const editorHorizontalPadding = 32
     const maxWidth = Math.max(
       IMAGE_RESIZE_MIN_WIDTH,
       Math.floor(editorRect.width - editorHorizontalPadding),
     )
+
+    const startHeight = Math.max(1, Math.round(imageRect.height))
     const startWidth = Math.max(IMAGE_RESIZE_MIN_WIDTH, Math.round(frameRect.width))
     const startX = event.clientX
+    const startY = event.clientY
+    const aspectRatio = Math.max(0.01, startWidth / startHeight)
 
     resizeHoverFrameRef.current = frame
     frame.classList.add('is-resize-ready')
-    editor.style.cursor = 'ew-resize'
-    document.body.style.cursor = 'ew-resize'
+    const activeCursor = getResizeCursor(resizeMode)
+    editor.style.cursor = activeCursor
+    document.body.style.cursor = activeCursor
 
     const onMouseMove = (moveEvent) => {
       moveEvent.preventDefault()
       const deltaX = moveEvent.clientX - startX
+      const deltaY = moveEvent.clientY - startY
+
+      const widthFromHorizontal = startWidth + deltaX
+      const widthFromVertical = (startHeight + deltaY) * aspectRatio
+
+      let nextWidthCandidate = widthFromHorizontal
+      if (resizeMode === 'vertical') {
+        nextWidthCandidate = widthFromVertical
+      } else if (resizeMode === 'corner') {
+        const horizontalDeltaWidth = widthFromHorizontal - startWidth
+        const verticalDeltaWidth = widthFromVertical - startWidth
+        nextWidthCandidate = (
+          Math.abs(horizontalDeltaWidth) >= Math.abs(verticalDeltaWidth)
+            ? widthFromHorizontal
+            : widthFromVertical
+        )
+      }
+
       const nextWidth = Math.max(
         IMAGE_RESIZE_MIN_WIDTH,
-        Math.min(maxWidth, Math.round(startWidth + deltaX)),
+        Math.min(maxWidth, Math.round(nextWidthCandidate)),
       )
 
       frame.style.width = `${nextWidth}px`
@@ -880,7 +929,7 @@ function PostForm() {
             />
 
             <p className="mt-2 text-xs text-ink-400">
-              이미지는 드래그/붙여넣기하면 바로 보이며, 오른쪽 끝선을 드래그하면 비율을 유지한 채 크기만 조절됩니다.
+              이미지는 드래그/붙여넣기하면 바로 보이며, 오른쪽/아래 끝선을 드래그하면 비율을 유지한 채 크기만 조절됩니다.
             </p>
 
             {activeInlineUploadCount > 0 && (

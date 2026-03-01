@@ -129,7 +129,6 @@
   }
 
   .rich-editor figure[data-editor-image="true"].is-resize-ready {
-    cursor: ew-resize;
     border-color: #a3a3a3;
     box-shadow: 0 0 0 2px rgba(163, 163, 163, 0.18);
   }
@@ -148,10 +147,6 @@
   .rich-content figure[data-editor-image="true"] figcaption {
     @apply text-xs text-ink-500;
     padding: 0.35rem 0.5rem 0.45rem;
-  }
-
-  .editor-image-resize-handle {
-    display: none;
   }
 
   .rich-content figure[data-editor-image="true"] {
