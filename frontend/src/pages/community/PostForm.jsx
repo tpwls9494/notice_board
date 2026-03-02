@@ -18,6 +18,7 @@ const IMAGE_RESIZE_MIN_WIDTH = 140
 const IMAGE_RESIZE_EDGE_HITBOX = 14
 const INLINE_IMAGE_DRAG_MIME = 'application/x-notice-board-inline-image'
 const INLINE_IMAGE_DRAG_ID_ATTR = 'data-inline-drag-id'
+const INLINE_IMAGE_DRAG_TEXT_PREFIX = 'inline-image:'
 
 const ALLOWED_UPLOAD_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -462,31 +463,33 @@ function PostForm() {
   }
 
   const handleEditorDragEnter = (event) => {
-    if (hasFileDragPayload(event)) {
-      event.preventDefault()
-      event.dataTransfer.dropEffect = 'copy'
-      setIsDragOver(true)
-      return
-    }
+    if (!event.dataTransfer) return
 
-    if (!isInlineImageDrag(event)) return
+    const hasFilePayload = hasFileDragPayload(event)
+    const hasInlineDragPayload = isInlineImageDrag(event)
+    if (!hasFilePayload && !hasInlineDragPayload) return
+
     event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = hasFilePayload ? 'copy' : 'move'
+
+    if (hasFilePayload) {
+      setIsDragOver(true)
+    }
   }
 
   const handleEditorDragOver = (event) => {
-    if (hasFileDragPayload(event)) {
-      event.preventDefault()
-      event.dataTransfer.dropEffect = 'copy'
-      if (!isDragOver) {
-        setIsDragOver(true)
-      }
-      return
-    }
+    if (!event.dataTransfer) return
 
-    if (!isInlineImageDrag(event)) return
+    const hasFilePayload = hasFileDragPayload(event)
+    const hasInlineDragPayload = isInlineImageDrag(event)
+    if (!hasFilePayload && !hasInlineDragPayload) return
+
     event.preventDefault()
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = hasFilePayload ? 'copy' : 'move'
+
+    if (hasFilePayload && !isDragOver) {
+      setIsDragOver(true)
+    }
   }
 
   const handleEditorDragLeave = (event) => {
@@ -513,22 +516,21 @@ function PostForm() {
   }
 
   const handleEditorDrop = (event) => {
-    if (hasFileDragPayload(event)) {
-      event.preventDefault()
-      setIsDragOver(false)
-      void handleInsertFiles(event.dataTransfer?.files || [])
-      return
-    }
-
+    const hasFilePayload = hasFileDragPayload(event)
     const editor = editorRef.current
-    if (!editor) return
-
-    const draggingImage = resolveDraggingImage(editor, event)
-    if (!draggingImage) return
+    const draggingImage = editor ? resolveDraggingImage(editor, event) : null
+    if (!hasFilePayload && !draggingImage) return
 
     event.preventDefault()
     event.stopPropagation()
     setIsDragOver(false)
+
+    if (hasFilePayload) {
+      void handleInsertFiles(event.dataTransfer?.files || [])
+      return
+    }
+
+    if (!editor || !draggingImage) return
 
     const targetImage = findEditorImageElement(event.target)
     if (targetImage && targetImage !== draggingImage) {
@@ -698,9 +700,26 @@ function PostForm() {
   }
 
   const getInlineDragIdFromEvent = (event) => {
-    const types = Array.from(event?.dataTransfer?.types || [])
-    if (!types.includes(INLINE_IMAGE_DRAG_MIME)) return ''
-    return event.dataTransfer?.getData(INLINE_IMAGE_DRAG_MIME) || ''
+    const transfer = event?.dataTransfer
+    if (!transfer) return ''
+
+    try {
+      const types = Array.from(transfer.types || [])
+      if (types.includes(INLINE_IMAGE_DRAG_MIME)) {
+        return transfer.getData(INLINE_IMAGE_DRAG_MIME) || ''
+      }
+
+      if (types.includes('text/plain')) {
+        const textPayload = transfer.getData('text/plain') || ''
+        if (textPayload.startsWith(INLINE_IMAGE_DRAG_TEXT_PREFIX)) {
+          return textPayload.slice(INLINE_IMAGE_DRAG_TEXT_PREFIX.length)
+        }
+      }
+    } catch (_error) {
+      return ''
+    }
+
+    return ''
   }
 
   const isInlineImageDrag = (event) => {
@@ -901,7 +920,7 @@ function PostForm() {
     if (event.dataTransfer) {
       event.dataTransfer.effectAllowed = 'move'
       event.dataTransfer.setData(INLINE_IMAGE_DRAG_MIME, dragId)
-      event.dataTransfer.setData('text/plain', imageElement.getAttribute('src') || 'inline-image')
+      event.dataTransfer.setData('text/plain', `${INLINE_IMAGE_DRAG_TEXT_PREFIX}${dragId}`)
     }
   }
 

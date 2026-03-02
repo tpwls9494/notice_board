@@ -134,7 +134,6 @@
 
   .rich-editor img[data-editor-image="true"].is-dragging {
     opacity: 0.78;
-    pointer-events: none;
   }
 
   .rich-editor figure[data-editor-image="true"] figcaption,
