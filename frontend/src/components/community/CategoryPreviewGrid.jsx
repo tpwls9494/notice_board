@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { postsAPI } from '../../services/api';
+import { hasInlineAttachmentInContent } from '../../utils/richContent';
+import AttachmentIcon from './AttachmentIcon';
 
 const PREVIEW_LIMIT = 5;
 const EXCLUDED_CATEGORY_SLUGS = new Set(['notice']);
@@ -95,6 +97,7 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
                   <ul className="space-y-1">
                     {posts.map((post) => {
                       const timeText = formatRelativeTime(post.created_at);
+                      const hasInlineAttachment = hasInlineAttachmentInContent(post.content);
 
                       return (
                         <li key={post.id}>
@@ -103,10 +106,11 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
                             className="block rounded-md px-1.5 py-1.5 transition-colors hover:bg-paper-50"
                           >
                             <span className="flex items-center justify-between gap-2">
-                              <span className="flex min-w-0 items-center gap-1.5">
-                                <span className="truncate text-[13px] font-medium text-ink-800">
+                              <span className="flex min-w-0 items-center gap-1.5 flex-1">
+                                <span className="truncate text-[13px] font-medium text-ink-800 flex-1">
                                   {post.title}
                                 </span>
+                                {hasInlineAttachment && <AttachmentIcon />}
                                 {post.comment_count > 0 && (
                                   <span className="shrink-0 text-[11px] text-ink-500">
                                     [{post.comment_count}]

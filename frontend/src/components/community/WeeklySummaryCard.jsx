@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { communityAPI } from '../../services/api';
 import useAuthStore from '../../stores/authStore';
 import { trackAnalyticsEvent } from '../../utils/analytics';
+import { hasInlineAttachmentInContent } from '../../utils/richContent';
+import AttachmentIcon from './AttachmentIcon';
 
 const WEEKLY_SUMMARY_DISMISS_KEY = 'community-weekly-summary-dismissed-week';
 const COMMUNITY_LAST_VISIT_KEY = 'community-last-visit-at';
@@ -144,7 +146,8 @@ function WeeklySummaryCard() {
               className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-ink-700 transition-colors hover:bg-paper-100 hover:text-ink-900"
             >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-ink-400" aria-hidden="true" />
-              <span className="min-w-0 truncate">{post.title}</span>
+              <span className="min-w-0 truncate flex-1">{post.title}</span>
+              {hasInlineAttachmentInContent(post.content) && <AttachmentIcon />}
             </Link>
           </li>
         ))}

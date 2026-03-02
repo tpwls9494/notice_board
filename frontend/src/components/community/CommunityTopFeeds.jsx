@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { communityAPI, postsAPI } from '../../services/api';
 import useCategoriesStore from '../../stores/categoriesStore';
+import { hasInlineAttachmentInContent } from '../../utils/richContent';
+import AttachmentIcon from './AttachmentIcon';
 
 const LIST_LIMIT = 5;
 const LATEST_MORE_LINK = '/community/posts?sort=latest';
@@ -94,6 +96,7 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
         const metaText = showPopularity
           ? `추천 ${post.likes_count || 0} · 조회 ${post.views || 0} · 댓글 ${post.comment_count || 0}`
           : `댓글 ${post.comment_count || 0}`;
+        const hasInlineAttachment = hasInlineAttachmentInContent(post.content);
 
         return (
           <li key={post.id}>
@@ -113,9 +116,12 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
                       {post.category_name}
                     </span>
                   )}
-                  <h3 className="truncate text-[14px] font-semibold text-ink-900 flex-1">
-                    {post.title}
-                  </h3>
+                  <div className="min-w-0 flex items-center gap-1.5 flex-1">
+                    <h3 className="truncate text-[14px] font-semibold text-ink-900 flex-1">
+                      {post.title}
+                    </h3>
+                    {hasInlineAttachment && <AttachmentIcon />}
+                  </div>
                 </div>
 
                 <div className="mt-1 flex items-center justify-between gap-2 text-[12px] text-ink-400">
