@@ -70,7 +70,7 @@ function CategoryPreviewGrid({ categories, onSelectCategory }) {
       {previewCards.length === 0 ? (
         <p className="px-1 text-[12px] text-ink-400">최근 글이 있는 게시판이 아직 없습니다.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {previewCards.map(({ category, posts, isLoading }) => (
             <section key={category.id} className="card rounded-xl px-3 py-2">
               <header className="flex items-center justify-between gap-2 border-b border-ink-100 pb-1.5">
