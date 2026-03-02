@@ -61,16 +61,8 @@ function CommunityBoardPage() {
   return (
     <div className="animate-fade-up">
       <section className="mb-4">
-        <h1 className="font-display text-2xl font-bold text-ink-950 tracking-tight text-balance flex items-center gap-2">
-          <span
-            className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-ink-200 bg-paper-100 text-ink-500 shrink-0"
-            aria-hidden="true"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5v13.5H3.75V5.25zm5.25 0v13.5m5.25-13.5v13.5M3.75 9.75h16.5m-16.5 4.5h16.5" />
-            </svg>
-          </span>
-          <span>{activeCategory.name} 게시판</span>
+        <h1 className="font-display text-2xl font-bold text-ink-950 tracking-tight text-balance">
+          {activeCategory.name} 게시판
         </h1>
         <p className="mt-1 text-xs text-ink-500 max-w-md">
           {activeCategory.description || '선택한 게시판의 글 목록입니다.'}
