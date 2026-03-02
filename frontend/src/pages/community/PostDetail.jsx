@@ -562,7 +562,12 @@ function PostDetail() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-ink-800">{post.author_username}</p>
+                  <Link
+                    to={`/users/${post.user_id}/followers`}
+                    className="text-sm font-semibold text-ink-800 hover:text-ink-950 hover:underline underline-offset-2"
+                  >
+                    {post.author_username}
+                  </Link>
                   {showFollowButton && (
                     <button
                       type="button"

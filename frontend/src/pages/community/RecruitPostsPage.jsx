@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { postsAPI } from '../../services/api';
 import { useSeo } from '../../utils/seo';
@@ -51,6 +51,7 @@ const getDdayLabel = (deadlineAt) => {
 };
 
 function RecruitPostsPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [recruitType, setRecruitType] = useState('ALL');
   const [recruitStatus, setRecruitStatus] = useState('OPEN');
@@ -88,6 +89,29 @@ function RecruitPostsPage() {
         <p className="mt-1 text-xs text-ink-500 max-w-lg">
           모집중인 프로젝트/스터디를 한 눈에 확인하고, 상세 페이지에서 바로 지원할 수 있습니다.
         </p>
+      </section>
+
+      <section className="mb-3.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            onClick={() => navigate('/community')}
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-white text-ink-600 border-ink-200 hover:bg-paper-100"
+          >
+            전체
+          </button>
+          <button
+            onClick={() => navigate('/community/recruits')}
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-ink-900 text-paper-50 border-ink-900"
+          >
+            모집
+          </button>
+          <button
+            onClick={() => navigate('/community/following')}
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-white text-ink-600 border-ink-200 hover:bg-paper-100"
+          >
+            팔로잉
+          </button>
+        </div>
       </section>
 
       <section className="card rounded-xl p-3 mb-4">

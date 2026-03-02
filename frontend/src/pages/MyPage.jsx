@@ -189,6 +189,20 @@ function MyPage() {
             ? '프로필과 비밀번호를 관리하고, 저장한 북마크를 빠르게 다시 볼 수 있습니다.'
             : '프로필을 관리하고, 저장한 북마크를 빠르게 다시 볼 수 있습니다.'}
         </p>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Link
+            to={`/users/${user.id}/followers`}
+            className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border border-ink-200 bg-white text-ink-600 hover:bg-paper-100"
+          >
+            내 팔로워 보기
+          </Link>
+          <Link
+            to={`/users/${user.id}/following`}
+            className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border border-ink-200 bg-white text-ink-600 hover:bg-paper-100"
+          >
+            내 팔로잉 보기
+          </Link>
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr,1fr]">

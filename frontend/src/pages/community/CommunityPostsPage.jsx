@@ -1,10 +1,11 @@
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import PostListPage from '../../components/community/PostListPage';
 import { useSeo } from '../../utils/seo';
 
 const ALLOWED_WINDOWS = new Set(['24h', '7d', '30d']);
 
 function CommunityPostsPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const rawSort = searchParams.get('sort');
@@ -34,6 +35,29 @@ function CommunityPostsPage() {
         <p className="mt-1 text-xs text-ink-500 max-w-md">
           {description}
         </p>
+      </section>
+
+      <section className="mb-3.5">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            onClick={() => navigate('/community')}
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-white text-ink-600 border-ink-200 hover:bg-paper-100"
+          >
+            전체
+          </button>
+          <button
+            onClick={() => navigate('/community/recruits')}
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-white text-ink-600 border-ink-200 hover:bg-paper-100"
+          >
+            모집
+          </button>
+          <button
+            onClick={() => navigate('/community/following')}
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-white text-ink-600 border-ink-200 hover:bg-paper-100"
+          >
+            팔로잉
+          </button>
+        </div>
       </section>
 
       <PostListPage
