@@ -186,6 +186,7 @@ function PostForm() {
   const resizeHoverImageRef = useRef(null)
   const selectedImageRef = useRef(null)
   const draggingImageRef = useRef(null)
+  const dragCandidateImageRef = useRef(null)
 
   const { categories, fetchCategories } = useCategoriesStore()
   const user = useAuthStore((state) => state.user)
@@ -227,6 +228,7 @@ function PostForm() {
       draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
       draggingImageRef.current = null
     }
+    dragCandidateImageRef.current = null
     document.body.style.cursor = ''
     if (editorRef.current) {
       editorRef.current.style.cursor = ''
@@ -349,8 +351,15 @@ function PostForm() {
     setEditorHtmlSnapshot(editor.innerHTML)
   }
 
-  const hasFileDragPayload = (event) => {
-    const types = Array.from(event.dataTransfer?.types || [])
+  const hasFileDragPayload = (event, { requireFiles = false } = {}) => {
+    const transfer = event?.dataTransfer
+    if (!transfer) return false
+
+    if (requireFiles) {
+      return Boolean(transfer.files && transfer.files.length > 0)
+    }
+
+    const types = Array.from(transfer.types || [])
     return types.includes('Files')
   }
 
@@ -465,12 +474,12 @@ function PostForm() {
   const handleEditorDragEnter = (event) => {
     if (!event.dataTransfer) return
 
-    const hasFilePayload = hasFileDragPayload(event)
     const hasInlineDragPayload = isInlineImageDrag(event)
+    const hasFilePayload = hasFileDragPayload(event)
     if (!hasFilePayload && !hasInlineDragPayload) return
 
     event.preventDefault()
-    event.dataTransfer.dropEffect = hasFilePayload ? 'copy' : 'move'
+    event.dataTransfer.dropEffect = hasInlineDragPayload ? 'move' : 'copy'
 
     if (hasFilePayload) {
       setIsDragOver(true)
@@ -480,12 +489,12 @@ function PostForm() {
   const handleEditorDragOver = (event) => {
     if (!event.dataTransfer) return
 
-    const hasFilePayload = hasFileDragPayload(event)
     const hasInlineDragPayload = isInlineImageDrag(event)
+    const hasFilePayload = hasFileDragPayload(event)
     if (!hasFilePayload && !hasInlineDragPayload) return
 
     event.preventDefault()
-    event.dataTransfer.dropEffect = hasFilePayload ? 'copy' : 'move'
+    event.dataTransfer.dropEffect = hasInlineDragPayload ? 'move' : 'copy'
 
     if (hasFilePayload && !isDragOver) {
       setIsDragOver(true)
@@ -516,7 +525,7 @@ function PostForm() {
   }
 
   const handleEditorDrop = (event) => {
-    const hasFilePayload = hasFileDragPayload(event)
+    const hasFilePayload = hasFileDragPayload(event, { requireFiles: true })
     const editor = editorRef.current
     const draggingImage = editor ? resolveDraggingImage(editor, event) : null
     if (!hasFilePayload && !draggingImage) return
@@ -525,42 +534,44 @@ function PostForm() {
     event.stopPropagation()
     setIsDragOver(false)
 
+    if (draggingImage) {
+      const targetImage = findEditorImageElement(event.target)
+      if (targetImage && targetImage !== draggingImage) {
+        const targetRect = targetImage.getBoundingClientRect()
+        if (event.clientY > targetRect.top + (targetRect.height / 2)) {
+          targetImage.after(draggingImage)
+        } else {
+          targetImage.before(draggingImage)
+        }
+      } else {
+        const dropRange = getDropRangeFromPoint(event, editor)
+        if (dropRange && !draggingImage.contains(dropRange.startContainer)) {
+          dropRange.insertNode(draggingImage)
+        }
+      }
+
+      draggingImage.classList.remove('is-dragging')
+      draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
+      draggingImageRef.current = null
+      dragCandidateImageRef.current = null
+
+      const selection = window.getSelection()
+      if (selection) {
+        const range = document.createRange()
+        range.setStartAfter(draggingImage)
+        range.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+
+      setEditorHtmlSnapshot(editor.innerHTML)
+      return
+    }
+
     if (hasFilePayload) {
       void handleInsertFiles(event.dataTransfer?.files || [])
       return
     }
-
-    if (!editor || !draggingImage) return
-
-    const targetImage = findEditorImageElement(event.target)
-    if (targetImage && targetImage !== draggingImage) {
-      const targetRect = targetImage.getBoundingClientRect()
-      if (event.clientY > targetRect.top + (targetRect.height / 2)) {
-        targetImage.after(draggingImage)
-      } else {
-        targetImage.before(draggingImage)
-      }
-    } else {
-      const dropRange = getDropRangeFromPoint(event, editor)
-      if (dropRange && !draggingImage.contains(dropRange.startContainer)) {
-        dropRange.insertNode(draggingImage)
-      }
-    }
-
-    draggingImage.classList.remove('is-dragging')
-    draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
-    draggingImageRef.current = null
-
-    const selection = window.getSelection()
-    if (selection) {
-      const range = document.createRange()
-      range.setStartAfter(draggingImage)
-      range.collapse(true)
-      selection.removeAllRanges()
-      selection.addRange(range)
-    }
-
-    setEditorHtmlSnapshot(editor.innerHTML)
   }
 
   const handleEditorPaste = (event) => {
@@ -826,10 +837,12 @@ function PostForm() {
 
     if (!imageElement) {
       clearSelectedImageFrame()
+      dragCandidateImageRef.current = null
       return
     }
 
     setSelectedImageFrame(imageElement)
+    dragCandidateImageRef.current = resizeMode ? null : imageElement
 
     if (!imageElement || !resizeMode) return
 
@@ -905,15 +918,23 @@ function PostForm() {
     const imageElement = findEditorImageElement(event.target)
     const editor = editorRef.current
     if (!editor || !imageElement) return
+    dragCandidateImageRef.current = null
     editor.focus()
   }
 
   const handleEditorDragStart = (event) => {
-    const imageElement = findEditorImageElement(event.target)
+    let imageElement = findEditorImageElement(event.target)
+    if (!imageElement) {
+      const candidate = dragCandidateImageRef.current
+      if (candidate && editorRef.current?.contains(candidate)) {
+        imageElement = candidate
+      }
+    }
     if (!imageElement) return
 
     const dragId = createUploadToken()
     draggingImageRef.current = imageElement
+    dragCandidateImageRef.current = null
     imageElement.classList.add('is-dragging')
     imageElement.setAttribute(INLINE_IMAGE_DRAG_ID_ATTR, dragId)
 
@@ -930,6 +951,7 @@ function PostForm() {
     draggingImage.classList.remove('is-dragging')
     draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
     draggingImageRef.current = null
+    dragCandidateImageRef.current = null
   }
 
   const hasMeaningfulContent = (htmlText) => {
