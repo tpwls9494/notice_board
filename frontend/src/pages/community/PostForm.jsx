@@ -464,12 +464,14 @@ function PostForm() {
   const handleEditorDragEnter = (event) => {
     if (hasFileDragPayload(event)) {
       event.preventDefault()
+      event.dataTransfer.dropEffect = 'copy'
       setIsDragOver(true)
       return
     }
 
     if (!isInlineImageDrag(event)) return
     event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
   }
 
   const handleEditorDragOver = (event) => {
@@ -809,7 +811,6 @@ function PostForm() {
     }
 
     setSelectedImageFrame(imageElement)
-    editor.focus()
 
     if (!imageElement || !resizeMode) return
 
@@ -879,6 +880,13 @@ function PostForm() {
     resizeSessionRef.current = { onMouseMove, onMouseUp }
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
+  }
+
+  const handleEditorClick = (event) => {
+    const imageElement = findEditorImageElement(event.target)
+    const editor = editorRef.current
+    if (!editor || !imageElement) return
+    editor.focus()
   }
 
   const handleEditorDragStart = (event) => {
@@ -1157,6 +1165,7 @@ function PostForm() {
               suppressContentEditableWarning
               className={`rich-editor ${isDragOver ? 'is-drag-over' : ''}`}
               onMouseDown={handleEditorMouseDown}
+              onClick={handleEditorClick}
               onMouseMove={handleEditorMouseMove}
               onMouseLeave={handleEditorMouseLeave}
               onKeyDown={handleEditorKeyDown}
