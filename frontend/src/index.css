@@ -130,10 +130,16 @@
     height: auto;
     margin: 0.8rem 0;
     border-radius: 0.7rem;
+    cursor: grab;
+  }
+
+  .rich-editor img[data-editor-image="true"].is-resize-ready {
+    cursor: inherit;
   }
 
   .rich-editor img[data-editor-image="true"].is-dragging {
     opacity: 0.78;
+    cursor: grabbing;
   }
 
   .rich-editor figure[data-editor-image="true"] figcaption,

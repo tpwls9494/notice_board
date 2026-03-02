@@ -719,6 +719,7 @@ function PostForm() {
     if (editor) {
       editor.style.cursor = ''
     }
+    document.body.style.cursor = ''
     document.body.style.userSelect = ''
 
     const { imageElement, moved } = session
@@ -768,6 +769,7 @@ function PostForm() {
         session.moved = true
         session.imageElement.classList.add('is-dragging')
         document.body.style.userSelect = 'none'
+        document.body.style.cursor = 'grabbing'
         editor.style.cursor = 'grabbing'
       }
 
@@ -804,6 +806,7 @@ function PostForm() {
 
   const handleEditorMouseMove = (event) => {
     if (resizeSessionRef.current) return
+    if (imageMoveSessionRef.current?.moved) return
 
     const editor = editorRef.current
     if (!editor) return
