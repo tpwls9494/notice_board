@@ -1,30 +1,30 @@
 import { useEffect, useRef } from 'react';
 
 const DESKTOP_SETTINGS = {
-  density: 0.000055,
-  minPoints: 14,
-  maxPoints: 44,
-  linkDistance: 100,
+  density: 0.000085,
+  minPoints: 22,
+  maxPoints: 58,
+  linkDistance: 136,
   speedScale: 1,
   pixelRatioCap: 1.5,
   frameInterval: 32,
 };
 
 const MOBILE_SETTINGS = {
-  density: 0.00003,
-  minPoints: 8,
-  maxPoints: 22,
-  linkDistance: 76,
+  density: 0.00005,
+  minPoints: 12,
+  maxPoints: 34,
+  linkDistance: 108,
   speedScale: 0.75,
   pixelRatioCap: 1.2,
   frameInterval: 42,
 };
 
 const LOW_END_SETTINGS = {
-  density: 0.000018,
-  minPoints: 6,
-  maxPoints: 14,
-  linkDistance: 64,
+  density: 0.000032,
+  minPoints: 9,
+  maxPoints: 20,
+  linkDistance: 94,
   speedScale: 0.55,
   pixelRatioCap: 1,
   frameInterval: 55,
@@ -51,11 +51,11 @@ function getSettings() {
   const cores = navigator.hardwareConcurrency ?? 4;
   const veryLowEnd = memory <= 1 || cores <= 2;
 
-  if (prefersReducedMotion || saveData) {
+  if (prefersReducedMotion) {
     return { enabled: false, ...MOBILE_SETTINGS };
   }
 
-  if (veryLowEnd) {
+  if (saveData || veryLowEnd) {
     return { enabled: true, ...LOW_END_SETTINGS };
   }
 
@@ -76,7 +76,7 @@ function createPoint(width, height, speedScale) {
     vx: Math.cos(angle) * velocity,
     vy: Math.sin(angle) * velocity,
     radius: Math.random() * 1.2 + 0.6,
-    opacity: Math.random() * 0.1 + 0.08,
+    opacity: Math.random() * 0.1 + 0.1,
   };
 }
 
@@ -187,7 +187,7 @@ function CommunityHeroConstellation() {
           if (distanceSq > maxDistanceSq) continue;
 
           const distance = Math.sqrt(distanceSq);
-          const alpha = (1 - distance / maxDistance) * 0.14;
+          const alpha = (1 - distance / maxDistance) * 0.18;
 
           ctx.beginPath();
           ctx.moveTo(from.x, from.y);
