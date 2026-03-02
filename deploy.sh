@@ -49,22 +49,8 @@ sleep 10
 echo -e "${YELLOW}🛠 Running database migrations...${NC}"
 docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 
-echo -e "${YELLOW}🌱 Seeding category data...${NC}"
-if CATEGORY_COUNT_RAW=$(docker exec company_board_backend python -c "from app.db.session import SessionLocal; from app.models.category import Category; db=SessionLocal(); print(db.query(Category).count()); db.close()" 2>/dev/null); then
-    CATEGORY_COUNT=$(echo "${CATEGORY_COUNT_RAW}" | tr -dc '0-9')
-
-    if [ -z "${CATEGORY_COUNT}" ]; then
-        echo -e "${YELLOW}⚠️  Could not parse category count. Trying safe non-interactive seed...${NC}"
-        printf "n\n" | docker exec -i company_board_backend python -m seed_categories || echo -e "${YELLOW}⚠️  Category seeding skipped${NC}"
-    elif [ "${CATEGORY_COUNT}" -eq 0 ]; then
-        docker exec company_board_backend python -m seed_categories || echo -e "${YELLOW}⚠️  Category seeding failed${NC}"
-    else
-        echo -e "${YELLOW}ℹ️  Categories already exist (${CATEGORY_COUNT}). Skipping seed.${NC}"
-    fi
-else
-    echo -e "${YELLOW}⚠️  Could not check category count. Trying safe non-interactive seed...${NC}"
-    printf "n\n" | docker exec -i company_board_backend python -m seed_categories || echo -e "${YELLOW}⚠️  Category seeding skipped${NC}"
-fi
+echo -e "${YELLOW}🌱 Ensuring default category data...${NC}"
+docker compose -f docker-compose.prod.yml exec -T backend python -m app.ensure_default_categories || echo -e "${YELLOW}⚠️  Default category ensure failed${NC}"
 
 echo -e "${YELLOW}🧩 Seeding MCP marketplace data...${NC}"
 docker compose -f docker-compose.prod.yml exec -T backend python -m app.seed_mcp_data || echo -e "${YELLOW}⚠️  MCP marketplace seeding failed${NC}"
