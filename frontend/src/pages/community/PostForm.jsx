@@ -1387,9 +1387,8 @@ function PostForm() {
                       <option value={RECRUIT_STATUS_CLOSED}>마감</option>
                     </select>
                   ) : (
-                    <div className="h-[42px] px-3 rounded-lg border border-ink-200 bg-white text-xs text-ink-600 flex items-center justify-between">
-                      <span className="font-medium text-emerald-700">모집중으로 시작</span>
-                      <span className="text-ink-400">마감은 수정에서 가능</span>
+                    <div className="h-[42px] px-3 rounded-lg border border-ink-200 bg-white text-xs text-ink-600 flex items-center">
+                      <span className="font-medium text-emerald-700">모집중</span>
                     </div>
                   )}
                 </div>
