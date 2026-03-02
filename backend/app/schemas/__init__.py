@@ -22,6 +22,12 @@ from app.schemas.post import (
 from app.schemas.comment import CommentCreate, CommentResponse
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 from app.schemas.like import LikeCreate, LikeResponse
+from app.schemas.follow import (
+    FollowResponse,
+    FollowStatusResponse,
+    FollowUserSummary,
+    FollowUserListResponse,
+)
 from app.schemas.file import FileResponse
 from app.schemas.bookmark import (
     BookmarkCreate,
@@ -81,6 +87,10 @@ __all__ = [
     "CategoryResponse",
     "LikeCreate",
     "LikeResponse",
+    "FollowResponse",
+    "FollowStatusResponse",
+    "FollowUserSummary",
+    "FollowUserListResponse",
     "FileResponse",
     "BookmarkCreate",
     "BookmarkResponse",

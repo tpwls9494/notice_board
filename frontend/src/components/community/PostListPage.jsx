@@ -24,6 +24,10 @@ function PostListPage({
   title = null,
   initialSort = 'latest',
   initialWindow = '24h',
+  scope = 'all',
+  emptyStateTitle = '게시글이 없습니다',
+  emptyStateDescription = '첫 번째 게시글을 작성해보세요',
+  emptyStateShowWriteButton = true,
 }) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -39,7 +43,7 @@ function PostListPage({
     setSort(initialSort);
     setWindow(initialWindow);
     setIsFilterOpen(false);
-  }, [categoryId, initialSort, initialWindow]);
+  }, [categoryId, initialSort, initialWindow, scope]);
 
   useEffect(() => {
     if (search || sort !== 'latest' || window !== '24h') {
@@ -48,8 +52,8 @@ function PostListPage({
   }, [search, sort, window]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['posts', page, search, categoryId, sort, window],
-    queryFn: () => postsAPI.getPosts(page, 10, search, categoryId, sort, window),
+    queryKey: ['posts', page, search, categoryId, sort, window, scope],
+    queryFn: () => postsAPI.getPosts(page, 10, search, categoryId, sort, window, { scope }),
   });
 
   const posts = data?.data?.posts || [];
@@ -173,7 +177,11 @@ function PostListPage({
           </div>
         </div>
       ) : posts.length === 0 ? (
-        <EmptyState />
+        <EmptyState
+          title={emptyStateTitle}
+          description={emptyStateDescription}
+          showWriteButton={emptyStateShowWriteButton}
+        />
       ) : (
         <PostCardList posts={posts} selectedCategoryId={categoryId} />
       )}

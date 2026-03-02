@@ -20,6 +20,7 @@ import CommunityHubPage from './pages/community/CommunityHubPage'
 import CommunityBoardPage from './pages/community/CommunityBoardPage'
 import CommunityPostsPage from './pages/community/CommunityPostsPage'
 import RecruitPostsPage from './pages/community/RecruitPostsPage'
+import FollowingPostsPage from './pages/community/FollowingPostsPage'
 import PostDetail from './pages/community/PostDetail'
 import PostForm from './pages/community/PostForm'
 
@@ -70,6 +71,7 @@ function App() {
           <Route path="community" element={<CommunityHubPage />} />
           <Route path="community/posts" element={<CommunityPostsPage />} />
           <Route path="community/recruits" element={<RecruitPostsPage />} />
+          <Route path="community/following" element={<FollowingPostsPage />} />
           <Route path="community/:slug" element={<CommunityBoardPage />} />
           <Route path="posts/:id" element={<PostDetail />} />
           <Route path="terms" element={<TermsPage />} />

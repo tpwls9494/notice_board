@@ -9,7 +9,18 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.api import seo as seo_routes
-from app.api.v1 import auth, bookmarks, categories, comments, community, files, likes, notifications, posts
+from app.api.v1 import (
+    auth,
+    bookmarks,
+    categories,
+    comments,
+    community,
+    files,
+    follows,
+    likes,
+    notifications,
+    posts,
+)
 from app.api.v1 import mcp_categories, mcp_playground, mcp_reviews, mcp_servers
 from app.api.v1 import analytics
 from app.core.config import settings
@@ -128,6 +139,7 @@ app.include_router(comments.router, prefix="/api/v1/comments", tags=["comments"]
 app.include_router(categories.router, prefix="/api/v1/categories", tags=["categories"])
 app.include_router(likes.router, prefix="/api/v1/likes", tags=["likes"])
 app.include_router(bookmarks.router, prefix="/api/v1/bookmarks", tags=["bookmarks"])
+app.include_router(follows.router, prefix="/api/v1/follows", tags=["follows"])
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
 app.include_router(community.router, prefix="/api/v1/community", tags=["community"])

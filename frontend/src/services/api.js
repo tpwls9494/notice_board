@@ -101,6 +101,9 @@ export const postsAPI = {
     if (options.recruitIsOnline !== null && options.recruitIsOnline !== undefined) {
       url += `&recruit_is_online=${options.recruitIsOnline ? 'true' : 'false'}`;
     }
+    if (options.scope && options.scope !== 'all') {
+      url += `&scope=${encodeURIComponent(options.scope)}`;
+    }
     return api.get(url);
   },
   getPost: (id) => api.get(`/posts/${id}`),
@@ -134,6 +137,17 @@ export const likesAPI = {
   likePost: (postId) => api.post(`/likes/posts/${postId}/like`),
   unlikePost: (postId) => api.delete(`/likes/posts/${postId}/like`),
   getLikesCount: (postId) => api.get(`/likes/posts/${postId}/likes/count`),
+};
+
+// Follows API
+export const followsAPI = {
+  followUser: (userId) => api.post(`/follows/users/${userId}`),
+  unfollowUser: (userId) => api.delete(`/follows/users/${userId}`),
+  getFollowStatus: (userId) => api.get(`/follows/users/${userId}/status`),
+  getFollowers: (userId, page = 1, pageSize = 20) =>
+    api.get(`/follows/users/${userId}/followers?page=${page}&page_size=${pageSize}`),
+  getFollowing: (userId, page = 1, pageSize = 20) =>
+    api.get(`/follows/users/${userId}/following?page=${page}&page_size=${pageSize}`),
 };
 
 // Bookmarks API

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, List, Optional, Set
+from typing import Iterable, List, Optional, Sequence, Set
 
-from sqlalchemy import asc, case, desc, func, or_
+from sqlalchemy import asc, case, desc, false, func, or_
 from sqlalchemy.orm import Session
 
 from app.models.bookmark import Bookmark
@@ -39,6 +39,7 @@ def _apply_base_filters(
     search: Optional[str],
     category_id: Optional[int],
     post_type: Optional[str],
+    author_ids: Optional[Sequence[int]] = None,
 ):
     """Apply search/category/post-type filters to a query."""
     if search:
@@ -53,6 +54,12 @@ def _apply_base_filters(
         query = query.filter(Post.category_id == category_id)
     if post_type:
         query = query.filter(Post.post_type == post_type)
+    if author_ids is not None:
+        normalized_author_ids = [int(author_id) for author_id in author_ids if author_id is not None]
+        if normalized_author_ids:
+            query = query.filter(Post.user_id.in_(normalized_author_ids))
+        else:
+            query = query.filter(false())
     return query
 
 
@@ -95,6 +102,7 @@ def get_posts(
     recruit_type: Optional[str] = None,
     recruit_status: Optional[str] = None,
     recruit_is_online: Optional[bool] = None,
+    author_ids: Optional[Sequence[int]] = None,
 ) -> tuple[List[Post], int]:
     normalized_post_type = _normalize_post_type(post_type)
     normalized_sort = (sort or "latest").lower()
@@ -115,7 +123,13 @@ def get_posts(
     pinned_posts: List[Post] = []
     if skip == 0 and not is_recruit_listing:
         pinned_q = db.query(Post).filter(Post.is_pinned == True)  # noqa: E712
-        pinned_q = _apply_base_filters(pinned_q, search, category_id, normalized_post_type)
+        pinned_q = _apply_base_filters(
+            pinned_q,
+            search,
+            category_id,
+            normalized_post_type,
+            author_ids=author_ids,
+        )
         pinned_posts = pinned_q.order_by(
             func.coalesce(Post.pinned_order, 9999),
             desc(Post.created_at),
@@ -125,7 +139,13 @@ def get_posts(
     query = db.query(Post).filter(
         or_(Post.is_pinned == False, Post.is_pinned == None)  # noqa: E711,E712
     )
-    query = _apply_base_filters(query, search, category_id, normalized_post_type)
+    query = _apply_base_filters(
+        query,
+        search,
+        category_id,
+        normalized_post_type,
+        author_ids=author_ids,
+    )
     query = _apply_recruit_filters(
         query,
         recruit_type=recruit_type,

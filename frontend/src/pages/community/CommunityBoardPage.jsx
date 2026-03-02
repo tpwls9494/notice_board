@@ -91,6 +91,12 @@ function CommunityBoardPage() {
           >
             모집
           </button>
+          <button
+            onClick={() => navigate('/community/following')}
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-white text-ink-600 border-ink-200 hover:bg-paper-100"
+          >
+            팔로잉
+          </button>
           {sortedCategories.map((category) => (
             <button
               key={category.id}

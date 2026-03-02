@@ -7,6 +7,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_current_user_optional
+from app.crud import follow as crud_follow
 from app.crud import notification as crud_notification
 from app.crud import post as crud_post
 from app.crud import recruit_application as crud_recruit_application
@@ -176,10 +177,31 @@ def get_posts(
     recruit_type: Optional[str] = Query(None),
     recruit_status: Optional[str] = Query(None, pattern="^(OPEN|CLOSED)$"),
     recruit_is_online: Optional[bool] = Query(None),
+    scope: Optional[str] = Query("all", pattern="^(all|following)$"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     skip = (page - 1) * page_size
+    normalized_scope = (scope or "all").lower()
+    author_ids: Optional[list[int]] = None
+
+    if normalized_scope == "following":
+        if not current_user:
+            return {
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "posts": [],
+            }
+        author_ids = crud_follow.get_following_user_ids(db, follower_id=current_user.id)
+        if not author_ids:
+            return {
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "posts": [],
+            }
+
     posts, total = crud_post.get_posts(
         db,
         skip=skip,
@@ -192,6 +214,7 @@ def get_posts(
         recruit_type=recruit_type,
         recruit_status=recruit_status,
         recruit_is_online=recruit_is_online,
+        author_ids=author_ids,
     )
 
     post_ids = [post.id for post in posts]

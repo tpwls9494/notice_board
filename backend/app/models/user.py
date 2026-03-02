@@ -27,6 +27,18 @@ class User(Base):
     likes = relationship("Like", back_populates="user", cascade="all, delete-orphan")
     bookmarks = relationship("Bookmark", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    following_links = relationship(
+        "UserFollow",
+        foreign_keys="UserFollow.follower_id",
+        back_populates="follower",
+        cascade="all, delete-orphan",
+    )
+    follower_links = relationship(
+        "UserFollow",
+        foreign_keys="UserFollow.following_id",
+        back_populates="following",
+        cascade="all, delete-orphan",
+    )
     recruit_applications = relationship(
         "RecruitApplication",
         back_populates="applicant",

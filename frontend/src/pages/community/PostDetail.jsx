@@ -7,6 +7,7 @@ import remarkGfm from 'remark-gfm';
 
 import {
   API_BASE_URL,
+  followsAPI,
   postsAPI,
   commentsAPI,
   likesAPI,
@@ -259,6 +260,7 @@ function PostDetail() {
   });
 
   const post = postData?.data;
+  const authorUserId = post?.user_id ?? null;
   const isAuthor = user?.id === post?.user_id;
   const isAdmin = user?.is_admin;
   const isRecruitPost = post?.post_type === 'RECRUIT';
@@ -280,7 +282,40 @@ function PostDetail() {
     enabled: Boolean(token && isRecruitPost && (isAuthor || isAdmin)),
   });
 
+  const { data: followStatusData, isLoading: followStatusLoading } = useQuery({
+    queryKey: ['follow-status', authorUserId],
+    queryFn: () => followsAPI.getFollowStatus(authorUserId),
+    enabled: Boolean(authorUserId && token && user?.id !== authorUserId),
+  });
+
+  const followMutation = useMutation({
+    mutationFn: (targetUserId) => followsAPI.followUser(targetUserId),
+    onSuccess: () => {
+      toast.success('팔로우했습니다.');
+      queryClient.invalidateQueries(['follow-status', authorUserId]);
+      queryClient.invalidateQueries(['posts']);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || '팔로우에 실패했습니다.');
+    },
+  });
+
+  const unfollowMutation = useMutation({
+    mutationFn: (targetUserId) => followsAPI.unfollowUser(targetUserId),
+    onSuccess: () => {
+      toast.success('언팔로우했습니다.');
+      queryClient.invalidateQueries(['follow-status', authorUserId]);
+      queryClient.invalidateQueries(['posts']);
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.detail || '언팔로우에 실패했습니다.');
+    },
+  });
+
   const recruitApplications = recruitApplicationsData?.data || [];
+  const isFollowingAuthor = Boolean(followStatusData?.data?.is_following);
+  const isFollowActionPending = followMutation.isPending || unfollowMutation.isPending;
+  const showFollowButton = Boolean(post?.user_id) && (!token || (user && user.id !== post.user_id));
   const comments = commentsData?.data || [];
   const postContent = post?.content || '';
   const isHtmlPostContent = isLikelyHtml(postContent);
@@ -415,6 +450,20 @@ function PostDetail() {
     updateRecruitApplicationStatusMutation.mutate({ applicationId, nextStatus });
   };
 
+  const handleFollowToggle = () => {
+    if (!authorUserId) return;
+    if (!token) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (isFollowingAuthor) {
+      unfollowMutation.mutate(authorUserId);
+    } else {
+      followMutation.mutate(authorUserId);
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto animate-fade-up">
       <Link
@@ -512,7 +561,27 @@ function PostDetail() {
                 )}
               </div>
               <div>
-                <p className="text-sm font-semibold text-ink-800">{post.author_username}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-ink-800">{post.author_username}</p>
+                  {showFollowButton && (
+                    <button
+                      type="button"
+                      onClick={handleFollowToggle}
+                      disabled={isFollowActionPending || followStatusLoading}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${
+                        isFollowingAuthor
+                          ? 'bg-ink-100 text-ink-700 border-ink-300 hover:bg-ink-200'
+                          : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
+                      }`}
+                    >
+                      {isFollowActionPending
+                        ? '처리 중...'
+                        : isFollowingAuthor
+                          ? '팔로잉'
+                          : '팔로우'}
+                    </button>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 text-xs text-ink-400">
                   <span>
                     {new Intl.DateTimeFormat('ko-KR', {
