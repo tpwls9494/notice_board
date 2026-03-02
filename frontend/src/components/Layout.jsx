@@ -444,8 +444,21 @@ function Layout() {
       </main>
 
       <footer className="border-t border-subtle mt-auto">
-        <div className="max-w-6xl mx-auto px-6 lg:px-8 py-6">
-          <p className="text-center text-xs text-ink-400 tracking-wide">Jion</p>
+        <div className="max-w-6xl mx-auto px-6 lg:px-8 py-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+            <p className="text-xs text-ink-400 tracking-wide">
+              © {new Date().getFullYear()} Jion. All rights reserved.
+            </p>
+            <div className="flex items-center gap-3 text-xs text-ink-500">
+              <span className="hover:text-ink-700 transition-colors duration-200 cursor-default">이용약관</span>
+              <span aria-hidden="true" className="text-ink-300">|</span>
+              <span className="hover:text-ink-700 transition-colors duration-200 cursor-default">개인정보처리방침</span>
+              <span aria-hidden="true" className="text-ink-300">|</span>
+              <a href="mailto:tpwls9494@naver.com" className="hover:text-ink-700 transition-colors duration-200">
+                문의
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
 

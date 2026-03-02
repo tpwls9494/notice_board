@@ -1204,10 +1204,6 @@ function PostForm() {
               onDrop={handleEditorDrop}
             />
 
-            <p className="mt-2 text-xs text-ink-400">
-              이미지는 드래그/붙여넣기하면 바로 보이며, 이미지 자체를 드래그해서 위치를 옮길 수 있습니다. 오른쪽/아래 끝선을 드래그하면 비율을 유지한 채 크기만 조절되며, 클릭 후 Delete/Backspace로 삭제할 수 있습니다.
-            </p>
-
             {activeInlineUploadCount > 0 && (
               <p className="mt-1 text-xs text-ink-500">
                 업로드 대기 중인 인라인 파일: {activeInlineUploadCount}개
