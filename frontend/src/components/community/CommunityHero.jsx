@@ -18,7 +18,7 @@ function CommunityHero() {
     <section className="mb-3">
       <div className="relative overflow-hidden rounded-2xl border border-ink-200/70 bg-gradient-to-br from-paper-50/95 via-white/92 to-paper-200/72 px-5 py-4 sm:px-6 sm:py-5">
         <CommunityHeroConstellation />
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/32 via-white/22 to-white/38" />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/20 via-white/14 to-white/28" />
 
         <div className="relative z-10">
           <h1 className="font-display text-2xl font-bold text-ink-950 tracking-tight text-balance">
