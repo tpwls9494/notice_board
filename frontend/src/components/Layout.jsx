@@ -450,13 +450,17 @@ function Layout() {
               © {new Date().getFullYear()} Jion. All rights reserved.
             </p>
             <div className="flex items-center gap-3 text-xs text-ink-500">
-              <span className="hover:text-ink-700 transition-colors duration-200 cursor-default">이용약관</span>
+              <Link to="/terms" className="hover:text-ink-700 transition-colors duration-200">
+                이용약관
+              </Link>
               <span aria-hidden="true" className="text-ink-300">|</span>
-              <span className="hover:text-ink-700 transition-colors duration-200 cursor-default">개인정보처리방침</span>
+              <Link to="/privacy" className="hover:text-ink-700 transition-colors duration-200">
+                개인정보처리방침
+              </Link>
               <span aria-hidden="true" className="text-ink-300">|</span>
-              <a href="mailto:tpwls9494@naver.com" className="hover:text-ink-700 transition-colors duration-200">
+              <Link to="/contact" className="hover:text-ink-700 transition-colors duration-200">
                 문의
-              </a>
+              </Link>
             </div>
           </div>
         </div>

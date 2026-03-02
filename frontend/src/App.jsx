@@ -8,6 +8,9 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import MyPage from './pages/MyPage'
 import OAuthCallback from './pages/OAuthCallback'
+import TermsPage from './pages/TermsPage'
+import PrivacyPage from './pages/PrivacyPage'
+import ContactPage from './pages/ContactPage'
 // Marketplace
 import McpList from './pages/marketplace/McpList'
 import McpDetail from './pages/marketplace/McpDetail'
@@ -67,6 +70,9 @@ function App() {
           <Route path="community/posts" element={<CommunityPostsPage />} />
           <Route path="community/:slug" element={<CommunityBoardPage />} />
           <Route path="posts/:id" element={<PostDetail />} />
+          <Route path="terms" element={<TermsPage />} />
+          <Route path="privacy" element={<PrivacyPage />} />
+          <Route path="contact" element={<ContactPage />} />
 
           {/* Account (protected) */}
           <Route
