@@ -7,7 +7,18 @@ from app.schemas.user import (
     Token,
     TokenData,
 )
-from app.schemas.post import PostCreate, PostUpdate, PostResponse, PostListResponse
+from app.schemas.post import (
+    PostCreate,
+    PostUpdate,
+    PostResponse,
+    PostListResponse,
+    RecruitMetaCreate,
+    RecruitMetaUpdate,
+    RecruitMetaResponse,
+    RecruitApplicationCreate,
+    RecruitApplicationStatusUpdate,
+    RecruitApplicationResponse,
+)
 from app.schemas.comment import CommentCreate, CommentResponse
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse
 from app.schemas.like import LikeCreate, LikeResponse
@@ -57,6 +68,12 @@ __all__ = [
     "PostUpdate",
     "PostResponse",
     "PostListResponse",
+    "RecruitMetaCreate",
+    "RecruitMetaUpdate",
+    "RecruitMetaResponse",
+    "RecruitApplicationCreate",
+    "RecruitApplicationStatusUpdate",
+    "RecruitApplicationResponse",
     "CommentCreate",
     "CommentResponse",
     "CategoryCreate",

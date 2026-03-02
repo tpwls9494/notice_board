@@ -14,6 +14,21 @@ from app.models.user import User
 router = APIRouter()
 
 
+def _serialize_recruit_meta(post) -> Optional[dict]:
+    recruit_meta = post.recruit_meta
+    if recruit_meta is None:
+        return None
+    return {
+        "recruit_type": recruit_meta.recruit_type,
+        "status": recruit_meta.status,
+        "is_online": recruit_meta.is_online,
+        "location_text": recruit_meta.location_text,
+        "schedule_text": recruit_meta.schedule_text,
+        "headcount_max": recruit_meta.headcount_max,
+        "deadline_at": recruit_meta.deadline_at,
+    }
+
+
 def _build_hot_post_responses(
     db: Session,
     results: list[dict],
@@ -39,6 +54,8 @@ def _build_hot_post_responses(
             views=r["post"].views,
             user_id=r["post"].user_id,
             category_id=r["post"].category_id,
+            post_type=r["post"].post_type or "NORMAL",
+            recruit_meta=_serialize_recruit_meta(r["post"]),
             created_at=r["post"].created_at,
             updated_at=r["post"].updated_at,
             author_username=r["post"].author.username if r["post"].author else None,
@@ -89,6 +106,8 @@ def get_pinned_posts(
             views=p.views,
             user_id=p.user_id,
             category_id=p.category_id,
+            post_type=p.post_type or "NORMAL",
+            recruit_meta=_serialize_recruit_meta(p),
             created_at=p.created_at,
             updated_at=p.updated_at,
             author_username=p.author.username if p.author else None,

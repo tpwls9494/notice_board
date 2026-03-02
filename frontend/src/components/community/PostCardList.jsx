@@ -29,6 +29,21 @@ function formatDate(dateStr) {
   return `${yy}.${mm}.${dd}`;
 }
 
+function getRecruitDdayLabel(deadlineAt) {
+  if (!deadlineAt) return null;
+  const target = new Date(deadlineAt);
+  if (Number.isNaN(target.getTime())) return null;
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTarget = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const diffDays = Math.floor((startOfTarget.getTime() - startOfToday.getTime()) / 86_400_000);
+
+  if (diffDays < 0) return '마감';
+  if (diffDays === 0) return 'D-day';
+  return `D-${diffDays}`;
+}
+
 function PostCardList({ posts, selectedCategoryId }) {
   const showCategory = selectedCategoryId == null;
 
@@ -49,6 +64,8 @@ function PostCardList({ posts, selectedCategoryId }) {
           <div className="divide-y divide-ink-100">
             {posts.map((post) => {
               const hasInlineAttachment = hasInlineAttachmentInContent(post.content);
+              const isRecruitPost = post.post_type === 'RECRUIT';
+              const recruitDdayLabel = getRecruitDdayLabel(post?.recruit_meta?.deadline_at);
 
               return (
                 <Link
@@ -80,12 +97,22 @@ function PostCardList({ posts, selectedCategoryId }) {
 
                   <div className={`${showCategory ? 'col-span-4' : 'col-span-5'} min-w-0`}>
                     <div className="flex items-center gap-1 min-w-0">
+                      {isRecruitPost && (
+                        <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
+                          모집
+                        </span>
+                      )}
                       <span className={`text-[13px] font-medium hover:underline truncate min-w-0 flex-1${
                         post.is_pinned ? ' text-ink-950 font-semibold' : ' text-ink-900'
                       }`}
                       >
                         {post.title}
                       </span>
+                      {isRecruitPost && recruitDdayLabel && (
+                        <span className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 flex-shrink-0">
+                          {recruitDdayLabel}
+                        </span>
+                      )}
                       {hasInlineAttachment && <AttachmentIcon />}
                       {post.comment_count > 0 && (
                         <span className="ml-0.5 text-[11px] text-ink-500 font-semibold flex-shrink-0">

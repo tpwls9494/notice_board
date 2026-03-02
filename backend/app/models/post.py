@@ -20,6 +20,7 @@ class Post(Base):
     is_pinned = Column(Boolean, default=False, index=True)
     is_featured = Column(Boolean, default=False)
     pinned_order = Column(Integer, nullable=True, index=True)
+    post_type = Column(String(20), nullable=False, default="NORMAL", server_default="NORMAL", index=True)
 
     author = relationship("User", back_populates="posts")
     comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
@@ -27,3 +28,14 @@ class Post(Base):
     files = relationship("File", back_populates="post", cascade="all, delete-orphan")
     category = relationship("Category")
     bookmarks = relationship("Bookmark", back_populates="post", cascade="all, delete-orphan")
+    recruit_meta = relationship(
+        "RecruitMeta",
+        back_populates="post",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+    recruit_applications = relationship(
+        "RecruitApplication",
+        back_populates="recruit_post",
+        cascade="all, delete-orphan",
+    )

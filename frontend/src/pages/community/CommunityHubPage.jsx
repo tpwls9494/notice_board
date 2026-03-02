@@ -5,6 +5,7 @@ import CommunityHero from '../../components/community/CommunityHero';
 import CommunityTopFeeds from '../../components/community/CommunityTopFeeds';
 import CategoryPreviewGrid from '../../components/community/CategoryPreviewGrid';
 import WeeklySummaryCard from '../../components/community/WeeklySummaryCard';
+import OpenRecruitsSection from '../../components/community/OpenRecruitsSection';
 import { useSeo } from '../../utils/seo';
 
 function CommunityHubPage() {
@@ -32,6 +33,7 @@ function CommunityHubPage() {
     <div className="animate-fade-up">
       <CommunityHero />
       <WeeklySummaryCard />
+      <OpenRecruitsSection />
 
       <section className="mb-3.5">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
@@ -40,6 +42,12 @@ function CommunityHubPage() {
             className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-ink-900 text-paper-50 border-ink-900"
           >
             전체
+          </button>
+          <button
+            onClick={() => navigate('/community/recruits')}
+            className="inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-colors bg-white text-ink-600 border-ink-200 hover:bg-paper-100"
+          >
+            모집
           </button>
           {sortedCategories.map((category) => (
             <button

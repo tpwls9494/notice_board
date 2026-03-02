@@ -13,9 +13,11 @@ from app.models.mcp_review import McpReview
 from app.models.mcp_install_guide import McpInstallGuide
 from app.models.playground_usage import PlaygroundUsage
 from app.models.analytics_event import AnalyticsEvent
+from app.models.recruit_meta import RecruitMeta
+from app.models.recruit_application import RecruitApplication
 
 __all__ = [
     "User", "Post", "Comment", "Category", "Like", "File", "Bookmark", "Notification",
     "McpCategory", "McpServer", "McpTool", "McpReview", "McpInstallGuide",
-    "PlaygroundUsage", "AnalyticsEvent",
+    "PlaygroundUsage", "AnalyticsEvent", "RecruitMeta", "RecruitApplication",
 ]

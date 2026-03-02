@@ -81,18 +81,36 @@ export const communityAPI = {
 
 // Posts API
 export const postsAPI = {
-  getPosts: (page = 1, pageSize = 10, search = '', categoryId = null, sort = 'latest', window = '24h') => {
+  getPosts: (
+    page = 1,
+    pageSize = 10,
+    search = '',
+    categoryId = null,
+    sort = 'latest',
+    window = '24h',
+    options = {}
+  ) => {
     let url = `/posts/?page=${page}&page_size=${pageSize}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (categoryId) url += `&category_id=${categoryId}`;
     if (sort && sort !== 'latest') url += `&sort=${sort}`;
     if (sort === 'hot' && window) url += `&window=${window}`;
+    if (options.postType) url += `&post_type=${encodeURIComponent(options.postType)}`;
+    if (options.recruitType) url += `&recruit_type=${encodeURIComponent(options.recruitType)}`;
+    if (options.recruitStatus) url += `&recruit_status=${encodeURIComponent(options.recruitStatus)}`;
+    if (options.recruitIsOnline !== null && options.recruitIsOnline !== undefined) {
+      url += `&recruit_is_online=${options.recruitIsOnline ? 'true' : 'false'}`;
+    }
     return api.get(url);
   },
   getPost: (id) => api.get(`/posts/${id}`),
   createPost: (data) => api.post('/posts/', data),
   updatePost: (id, data) => api.put(`/posts/${id}`, data),
   deletePost: (id) => api.delete(`/posts/${id}`),
+  applyRecruitPost: (postId, data) => api.post(`/posts/${postId}/applications`, data),
+  getRecruitApplications: (postId) => api.get(`/posts/${postId}/applications`),
+  updateRecruitApplicationStatus: (postId, applicationId, status) =>
+    api.patch(`/posts/${postId}/applications/${applicationId}`, { status }),
 };
 
 // Comments API

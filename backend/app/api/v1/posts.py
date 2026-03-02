@@ -1,12 +1,31 @@
+from datetime import datetime, timezone
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from app.db.session import get_db
+
 from app.api.deps import get_current_user, get_current_user_optional
-from app.schemas.post import PostCreate, PostUpdate, PostResponse, PostListResponse
-from app.models.user import User
-from app.models.category import Category
+from app.crud import notification as crud_notification
 from app.crud import post as crud_post
+from app.crud import recruit_application as crud_recruit_application
+from app.db.session import get_db
+from app.models.category import Category
+from app.models.post import Post
+from app.models.user import User
+from app.schemas.notification import NotificationCreate
+from app.schemas.post import (
+    POST_TYPE_RECRUIT,
+    RECRUIT_APPLICATION_STATUS_ACCEPTED,
+    RECRUIT_APPLICATION_STATUS_REJECTED,
+    PostCreate,
+    PostListResponse,
+    PostResponse,
+    PostUpdate,
+    RecruitApplicationCreate,
+    RecruitApplicationResponse,
+    RecruitApplicationStatusUpdate,
+)
 
 router = APIRouter()
 NOTICE_CATEGORY_SLUG = "notice"
@@ -30,6 +49,84 @@ def ensure_notice_write_permission(category: Category, current_user: User) -> No
         )
 
 
+def _serialize_recruit_meta(post: Post) -> Optional[dict]:
+    recruit_meta = post.recruit_meta
+    if recruit_meta is None:
+        return None
+    return {
+        "recruit_type": recruit_meta.recruit_type,
+        "status": recruit_meta.status,
+        "is_online": recruit_meta.is_online,
+        "location_text": recruit_meta.location_text,
+        "schedule_text": recruit_meta.schedule_text,
+        "headcount_max": recruit_meta.headcount_max,
+        "deadline_at": recruit_meta.deadline_at,
+    }
+
+
+def _build_post_response(
+    post: Post,
+    comment_count: int,
+    likes_count: int,
+    is_liked: bool,
+    is_bookmarked: bool,
+    views: Optional[int] = None,
+) -> PostResponse:
+    return PostResponse(
+        id=post.id,
+        title=post.title,
+        content=post.content,
+        views=post.views if views is None else views,
+        user_id=post.user_id,
+        category_id=post.category_id,
+        post_type=post.post_type or "NORMAL",
+        recruit_meta=_serialize_recruit_meta(post),
+        created_at=post.created_at,
+        updated_at=post.updated_at,
+        author_username=post.author.username if post.author else None,
+        author_profile_image_url=post.author.profile_image_url if post.author else None,
+        comment_count=comment_count,
+        likes_count=likes_count,
+        is_liked=is_liked,
+        is_bookmarked=is_bookmarked,
+        is_pinned=post.is_pinned or False,
+        category_name=post.category.name if post.category else None,
+        category_slug=post.category.slug if post.category else None,
+    )
+
+
+def _ensure_recruit_post_or_400(db: Session, post_id: int) -> Post:
+    post = crud_post.get_post(db, post_id)
+    if not post:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Post not found",
+        )
+    if post.post_type != POST_TYPE_RECRUIT:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="모집 글이 아닙니다.",
+        )
+    return post
+
+
+def _build_application_response(application) -> RecruitApplicationResponse:
+    return RecruitApplicationResponse(
+        id=application.id,
+        recruit_post_id=application.recruit_post_id,
+        applicant_id=application.applicant_id,
+        applicant_username=application.applicant.username if application.applicant else None,
+        applicant_profile_image_url=(
+            application.applicant.profile_image_url if application.applicant else None
+        ),
+        message=application.message,
+        link=application.link,
+        status=application.status,
+        created_at=application.created_at,
+        updated_at=application.updated_at,
+    )
+
+
 @router.get("/", response_model=PostListResponse)
 def get_posts(
     page: int = Query(1, ge=1),
@@ -38,6 +135,10 @@ def get_posts(
     category_id: Optional[int] = Query(None),
     sort: Optional[str] = Query("latest"),
     window: Optional[str] = Query("24h"),
+    post_type: Optional[str] = Query(None, pattern="^(NORMAL|RECRUIT)$"),
+    recruit_type: Optional[str] = Query(None),
+    recruit_status: Optional[str] = Query(None, pattern="^(OPEN|CLOSED)$"),
+    recruit_is_online: Optional[bool] = Query(None),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
@@ -50,6 +151,10 @@ def get_posts(
         category_id=category_id,
         sort=sort or "latest",
         window=window or "24h",
+        post_type=post_type,
+        recruit_type=recruit_type,
+        recruit_status=recruit_status,
+        recruit_is_online=recruit_is_online,
     )
 
     post_ids = [post.id for post in posts]
@@ -64,29 +169,16 @@ def get_posts(
         user_id=current_user.id if current_user else None,
     )
 
-    # Add author username and engagement metrics
-    post_responses = []
-    for post in posts:
-        post_dict = {
-            "id": post.id,
-            "title": post.title,
-            "content": post.content,
-            "views": post.views,
-            "user_id": post.user_id,
-            "category_id": post.category_id,
-            "created_at": post.created_at,
-            "updated_at": post.updated_at,
-            "author_username": post.author.username if post.author else None,
-            "author_profile_image_url": post.author.profile_image_url if post.author else None,
-            "comment_count": comment_count_by_post_id.get(post.id, 0),
-            "likes_count": likes_count_by_post_id.get(post.id, 0),
-            "is_liked": post.id in liked_post_ids_for_user,
-            "is_bookmarked": post.id in bookmarked_post_ids_for_user,
-            "is_pinned": post.is_pinned or False,
-            "category_name": post.category.name if post.category else None,
-            "category_slug": post.category.slug if post.category else None,
-        }
-        post_responses.append(PostResponse(**post_dict))
+    post_responses = [
+        _build_post_response(
+            post=post,
+            comment_count=comment_count_by_post_id.get(post.id, 0),
+            likes_count=likes_count_by_post_id.get(post.id, 0),
+            is_liked=post.id in liked_post_ids_for_user,
+            is_bookmarked=post.id in bookmarked_post_ids_for_user,
+        )
+        for post in posts
+    ]
 
     return {
         "total": total,
@@ -100,7 +192,7 @@ def get_posts(
 def get_post(
     post_id: int,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     post = crud_post.get_post(db, post_id)
     if not post:
@@ -109,7 +201,6 @@ def get_post(
             detail="Post not found",
         )
 
-    # Increment views
     crud_post.increment_views(db, post_id)
 
     (
@@ -123,24 +214,13 @@ def get_post(
         user_id=current_user.id if current_user else None,
     )
 
-    return PostResponse(
-        id=post.id,
-        title=post.title,
-        content=post.content,
-        views=post.views + 1,
-        user_id=post.user_id,
-        category_id=post.category_id,
-        created_at=post.created_at,
-        updated_at=post.updated_at,
-        author_username=post.author.username if post.author else None,
-        author_profile_image_url=post.author.profile_image_url if post.author else None,
+    return _build_post_response(
+        post=post,
         comment_count=comment_count_by_post_id.get(post.id, 0),
         likes_count=likes_count_by_post_id.get(post.id, 0),
         is_liked=post.id in liked_post_ids_for_user,
         is_bookmarked=post.id in bookmarked_post_ids_for_user,
-        is_pinned=post.is_pinned or False,
-        category_name=post.category.name if post.category else None,
-        category_slug=post.category.slug if post.category else None,
+        views=post.views + 1,
     )
 
 
@@ -153,25 +233,21 @@ def create_post(
     category = get_category_or_404(db, post.category_id)
     ensure_notice_write_permission(category, current_user)
 
-    db_post = crud_post.create_post(db, post, current_user.id)
-    return PostResponse(
-        id=db_post.id,
-        title=db_post.title,
-        content=db_post.content,
-        views=db_post.views,
-        user_id=db_post.user_id,
-        category_id=db_post.category_id,
-        created_at=db_post.created_at,
-        updated_at=db_post.updated_at,
-        author_username=current_user.username,
-        author_profile_image_url=current_user.profile_image_url,
+    try:
+        db_post = crud_post.create_post(db, post, current_user.id)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return _build_post_response(
+        post=db_post,
         comment_count=0,
         likes_count=0,
         is_liked=False,
         is_bookmarked=False,
-        is_pinned=db_post.is_pinned or False,
-        category_name=db_post.category.name if db_post.category else None,
-        category_slug=db_post.category.slug if db_post.category else None,
     )
 
 
@@ -189,7 +265,6 @@ def update_post(
             detail="Post not found",
         )
 
-    # Check if user is the author or admin
     if db_post.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -202,26 +277,174 @@ def update_post(
     target_category = get_category_or_404(db, target_category_id)
     ensure_notice_write_permission(target_category, current_user)
 
-    updated_post = crud_post.update_post(db, post_id, post_update)
-    return PostResponse(
-        id=updated_post.id,
-        title=updated_post.title,
-        content=updated_post.content,
-        views=updated_post.views,
-        user_id=updated_post.user_id,
-        category_id=updated_post.category_id,
-        created_at=updated_post.created_at,
-        updated_at=updated_post.updated_at,
-        author_username=updated_post.author.username if updated_post.author else None,
-        author_profile_image_url=updated_post.author.profile_image_url if updated_post.author else None,
+    try:
+        updated_post = crud_post.update_post(db, post_id, post_update)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return _build_post_response(
+        post=updated_post,
         comment_count=crud_post.get_comment_count(db, post_id),
         likes_count=crud_post.get_likes_count(db, post_id),
         is_liked=crud_post.check_user_liked(db, post_id, current_user.id),
         is_bookmarked=crud_post.check_user_bookmarked(db, post_id, current_user.id),
-        is_pinned=updated_post.is_pinned or False,
-        category_name=updated_post.category.name if updated_post.category else None,
-        category_slug=updated_post.category.slug if updated_post.category else None,
     )
+
+
+@router.post(
+    "/{post_id}/applications",
+    response_model=RecruitApplicationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def apply_recruit_post(
+    post_id: int,
+    application: RecruitApplicationCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    post = _ensure_recruit_post_or_400(db, post_id)
+    recruit_meta = post.recruit_meta
+
+    if recruit_meta is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="모집 정보가 없습니다.",
+        )
+
+    if post.user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="본인 모집글에는 지원할 수 없습니다.",
+        )
+
+    deadline_at = recruit_meta.deadline_at
+    if recruit_meta.status != "OPEN" or (
+        deadline_at is not None and deadline_at <= datetime.now(timezone.utc)
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="마감된 모집입니다.",
+        )
+
+    existing = crud_recruit_application.get_application_by_post_and_applicant(
+        db,
+        recruit_post_id=post.id,
+        applicant_id=current_user.id,
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이미 지원한 모집글입니다.",
+        )
+
+    try:
+        created = crud_recruit_application.create_application(
+            db,
+            recruit_post_id=post.id,
+            applicant_id=current_user.id,
+            message=application.message.strip(),
+            link=application.link.strip() if application.link else None,
+        )
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이미 지원한 모집글입니다.",
+        ) from exc
+
+    if post.user_id != current_user.id:
+        try:
+            crud_notification.create_notification(
+                db,
+                NotificationCreate(
+                    user_id=post.user_id,
+                    type="recruit_application",
+                    content=f"{current_user.username}님이 모집글에 지원했습니다.",
+                    related_post_id=post.id,
+                ),
+            )
+        except Exception:
+            pass
+
+    refreshed = crud_recruit_application.get_application(db, created.id)
+    return _build_application_response(refreshed)
+
+
+@router.get("/{post_id}/applications", response_model=List[RecruitApplicationResponse])
+def get_recruit_applications(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    post = _ensure_recruit_post_or_400(db, post_id)
+    if post.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+
+    applications = crud_recruit_application.list_applications_by_post(db, post.id)
+    return [_build_application_response(application) for application in applications]
+
+
+@router.patch(
+    "/{post_id}/applications/{application_id}",
+    response_model=RecruitApplicationResponse,
+)
+def update_recruit_application_status(
+    post_id: int,
+    application_id: int,
+    payload: RecruitApplicationStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    post = _ensure_recruit_post_or_400(db, post_id)
+    if post.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+
+    application = crud_recruit_application.get_application(db, application_id)
+    if not application or application.recruit_post_id != post.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="지원 내역을 찾을 수 없습니다.",
+        )
+
+    updated = crud_recruit_application.update_application_status(
+        db,
+        application=application,
+        status=payload.status,
+    )
+
+    if updated.applicant_id != current_user.id:
+        try:
+            status_label = (
+                "수락"
+                if payload.status == RECRUIT_APPLICATION_STATUS_ACCEPTED
+                else "거절"
+                if payload.status == RECRUIT_APPLICATION_STATUS_REJECTED
+                else payload.status
+            )
+            crud_notification.create_notification(
+                db,
+                NotificationCreate(
+                    user_id=updated.applicant_id,
+                    type="recruit_application_status",
+                    content=f"모집 지원 결과가 {status_label}되었습니다.",
+                    related_post_id=post.id,
+                ),
+            )
+        except Exception:
+            pass
+
+    refreshed = crud_recruit_application.get_application(db, updated.id)
+    return _build_application_response(refreshed)
 
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -237,7 +460,6 @@ def delete_post(
             detail="Post not found",
         )
 
-    # Check if user is the author or admin
     if db_post.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

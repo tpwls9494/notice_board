@@ -2,8 +2,25 @@ import { Link } from 'react-router-dom';
 import { hasInlineAttachmentInContent } from '../../utils/richContent';
 import AttachmentIcon from './AttachmentIcon';
 
+function getRecruitDdayLabel(deadlineAt) {
+  if (!deadlineAt) return null;
+  const target = new Date(deadlineAt);
+  if (Number.isNaN(target.getTime())) return null;
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTarget = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const diffDays = Math.floor((startOfTarget.getTime() - startOfToday.getTime()) / 86_400_000);
+
+  if (diffDays < 0) return '마감';
+  if (diffDays === 0) return 'D-day';
+  return `D-${diffDays}`;
+}
+
 function PostCard({ post, index }) {
   const hasInlineAttachment = hasInlineAttachmentInContent(post.content);
+  const isRecruitPost = post.post_type === 'RECRUIT';
+  const recruitDdayLabel = getRecruitDdayLabel(post?.recruit_meta?.deadline_at);
 
   return (
     <Link
@@ -14,6 +31,16 @@ function PostCard({ post, index }) {
         <div className="flex items-center gap-1.5 mb-1">
           {post.category_name && (
             <span className="badge-default text-[10px] flex-shrink-0">{post.category_name}</span>
+          )}
+          {isRecruitPost && (
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 flex-shrink-0">
+              모집
+            </span>
+          )}
+          {isRecruitPost && recruitDdayLabel && (
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 flex-shrink-0">
+              {recruitDdayLabel}
+            </span>
           )}
           <h3 className="text-[13px] font-semibold text-ink-900 truncate flex-1">{post.title}</h3>
           {hasInlineAttachment && <AttachmentIcon />}

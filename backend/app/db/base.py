@@ -7,3 +7,6 @@ engine = create_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+# Ensure all models are imported so SQLAlchemy can resolve relationship strings.
+import app.models  # noqa: E402,F401

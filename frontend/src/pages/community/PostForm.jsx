@@ -17,6 +17,17 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024
 const IMAGE_RESIZE_MIN_WIDTH = 140
 const IMAGE_RESIZE_EDGE_HITBOX = 14
 const IMAGE_MOVE_POINTER_THRESHOLD = 4
+const POST_TYPE_NORMAL = 'NORMAL'
+const POST_TYPE_RECRUIT = 'RECRUIT'
+const RECRUIT_STATUS_OPEN = 'OPEN'
+const RECRUIT_STATUS_CLOSED = 'CLOSED'
+const RECRUIT_TYPE_OPTIONS = [
+  { value: 'PROJECT', label: '프로젝트' },
+  { value: 'STUDY', label: '스터디' },
+  { value: 'HACKATHON', label: '해커톤/공모전' },
+  { value: 'CLUB', label: '동아리/커뮤니티' },
+  { value: 'ETC', label: '기타' },
+]
 
 const ALLOWED_UPLOAD_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -46,6 +57,21 @@ const EXTENSION_TO_MIME = {
   '.xls': 'application/vnd.ms-excel',
   '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   '.txt': 'text/plain',
+}
+
+const toInputDateTimeLocal = (value) => {
+  if (!value) return ''
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return ''
+  const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 16)
+}
+
+const toIsoDateTime = (value) => {
+  if (!value) return null
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+  return parsed.toISOString()
 }
 
 const isImageMimeType = (mimeType = '') => mimeType.startsWith(IMAGE_MIME_PREFIX)
@@ -173,6 +199,14 @@ function PostForm() {
 
   const [title, setTitle] = useState('')
   const [categoryId, setCategoryId] = useState('')
+  const [postType, setPostType] = useState(POST_TYPE_NORMAL)
+  const [recruitType, setRecruitType] = useState('')
+  const [recruitStatus, setRecruitStatus] = useState(RECRUIT_STATUS_OPEN)
+  const [recruitIsOnline, setRecruitIsOnline] = useState(true)
+  const [recruitLocationText, setRecruitLocationText] = useState('')
+  const [recruitScheduleText, setRecruitScheduleText] = useState('')
+  const [recruitHeadcountMax, setRecruitHeadcountMax] = useState('')
+  const [recruitDeadlineAt, setRecruitDeadlineAt] = useState('')
   const [uploadProgress, setUploadProgress] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
   const [pendingInlineUploads, setPendingInlineUploads] = useState([])
@@ -281,17 +315,45 @@ function PostForm() {
     if (!editorRef.current) return
 
     if (postData?.data) {
+      const nextPostType = postData.data.post_type || POST_TYPE_NORMAL
+      const recruitMeta = postData.data.recruit_meta || null
       setTitle(postData.data.title || '')
       setCategoryId(String(postData.data.category_id || ''))
+      setPostType(nextPostType)
+      setRecruitType(recruitMeta?.recruit_type || '')
+      setRecruitStatus(recruitMeta?.status || RECRUIT_STATUS_OPEN)
+      setRecruitIsOnline(recruitMeta?.is_online ?? true)
+      setRecruitLocationText(recruitMeta?.location_text || '')
+      setRecruitScheduleText(recruitMeta?.schedule_text || '')
+      setRecruitHeadcountMax(
+        recruitMeta?.headcount_max != null
+          ? String(recruitMeta.headcount_max)
+          : '',
+      )
+      setRecruitDeadlineAt(toInputDateTimeLocal(recruitMeta?.deadline_at))
       setEditorHtml(normalizeStoredContentForEditor(postData.data.content || ''))
       clearPendingInlineUploads()
       return
     }
 
     if (!isEdit) {
+      setPostType(POST_TYPE_NORMAL)
+      setRecruitType('')
+      setRecruitStatus(RECRUIT_STATUS_OPEN)
+      setRecruitIsOnline(true)
+      setRecruitLocationText('')
+      setRecruitScheduleText('')
+      setRecruitHeadcountMax('')
+      setRecruitDeadlineAt('')
       setEditorHtml('<p><br></p>')
     }
   }, [postData, isEdit])
+
+  useEffect(() => {
+    if (recruitIsOnline) {
+      setRecruitLocationText('')
+    }
+  }, [recruitIsOnline])
 
   const ensureEditorRange = () => {
     const editor = editorRef.current
@@ -1027,6 +1089,7 @@ function PostForm() {
 
     const trimmedTitle = title.trim()
     const serializedContent = serializeContentWithPlaceholders()
+    const isRecruitPost = postType === POST_TYPE_RECRUIT
 
     if (!trimmedTitle || !hasMeaningfulContent(serializedContent)) {
       toast.error('제목과 내용을 모두 입력해주세요.')
@@ -1038,10 +1101,46 @@ function PostForm() {
       return
     }
 
+    if (isRecruitPost) {
+      if (!recruitType) {
+        toast.error('모집 유형을 선택해주세요.')
+        return
+      }
+      if (!recruitScheduleText.trim()) {
+        toast.error('일정 정보를 입력해주세요.')
+        return
+      }
+      if (!recruitHeadcountMax || Number(recruitHeadcountMax) < 1) {
+        toast.error('모집 인원을 확인해주세요.')
+        return
+      }
+      if (!recruitDeadlineAt || !toIsoDateTime(recruitDeadlineAt)) {
+        toast.error('마감일을 정확히 입력해주세요.')
+        return
+      }
+      if (!recruitIsOnline && !recruitLocationText.trim()) {
+        toast.error('오프라인 모집은 장소를 입력해주세요.')
+        return
+      }
+    }
+
     const data = {
       title: trimmedTitle,
       content: serializedContent,
       category_id: parseInt(categoryId, 10),
+      post_type: postType,
+    }
+
+    if (isRecruitPost) {
+      data.recruit_meta = {
+        recruit_type: recruitType,
+        status: recruitStatus,
+        is_online: recruitIsOnline,
+        location_text: recruitIsOnline ? null : recruitLocationText.trim(),
+        schedule_text: recruitScheduleText.trim(),
+        headcount_max: Number(recruitHeadcountMax),
+        deadline_at: toIsoDateTime(recruitDeadlineAt),
+      }
     }
 
     setUploadProgress(true)
@@ -1162,6 +1261,171 @@ function PostForm() {
               </span>
             </div>
           </div>
+
+          <div>
+            <p className="block text-sm font-semibold text-ink-700 mb-2">
+              글 유형 <span className="text-red-500">*</span>
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPostType(POST_TYPE_NORMAL)}
+                className={`h-[46px] rounded-lg border text-sm font-medium transition-colors ${
+                  postType === POST_TYPE_NORMAL
+                    ? 'bg-ink-900 text-paper-50 border-ink-900'
+                    : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
+                }`}
+              >
+                일반 글
+              </button>
+              <button
+                type="button"
+                onClick={() => setPostType(POST_TYPE_RECRUIT)}
+                className={`h-[46px] rounded-lg border text-sm font-medium transition-colors ${
+                  postType === POST_TYPE_RECRUIT
+                    ? 'bg-ink-900 text-paper-50 border-ink-900'
+                    : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
+                }`}
+              >
+                모집 글
+              </button>
+            </div>
+          </div>
+
+          {postType === POST_TYPE_RECRUIT && (
+            <div className="rounded-xl border border-ink-200 bg-paper-50/70 p-4 space-y-4">
+              <h2 className="text-sm font-semibold text-ink-800">모집 정보</h2>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="recruit-type" className="block text-xs font-semibold text-ink-600 mb-1.5">
+                    모집 유형 <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="recruit-type"
+                    value={recruitType}
+                    onChange={(e) => setRecruitType(e.target.value)}
+                    className="input-field !py-2.5"
+                    required={postType === POST_TYPE_RECRUIT}
+                  >
+                    <option value="">유형 선택</option>
+                    {RECRUIT_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="recruit-status" className="block text-xs font-semibold text-ink-600 mb-1.5">
+                    모집 상태
+                  </label>
+                  <select
+                    id="recruit-status"
+                    value={recruitStatus}
+                    onChange={(e) => setRecruitStatus(e.target.value)}
+                    className="input-field !py-2.5"
+                  >
+                    <option value={RECRUIT_STATUS_OPEN}>모집중</option>
+                    <option value={RECRUIT_STATUS_CLOSED}>마감</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-3">
+                <div>
+                  <p className="block text-xs font-semibold text-ink-600 mb-1.5">
+                    진행 방식 <span className="text-red-500">*</span>
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRecruitIsOnline(true)}
+                      className={`h-[40px] rounded-lg border text-xs font-medium transition-colors ${
+                        recruitIsOnline
+                          ? 'bg-ink-900 text-paper-50 border-ink-900'
+                          : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
+                      }`}
+                    >
+                      온라인
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRecruitIsOnline(false)}
+                      className={`h-[40px] rounded-lg border text-xs font-medium transition-colors ${
+                        !recruitIsOnline
+                          ? 'bg-ink-900 text-paper-50 border-ink-900'
+                          : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
+                      }`}
+                    >
+                      오프라인
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="recruit-headcount" className="block text-xs font-semibold text-ink-600 mb-1.5">
+                    모집 인원 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="recruit-headcount"
+                    type="number"
+                    min={1}
+                    value={recruitHeadcountMax}
+                    onChange={(e) => setRecruitHeadcountMax(e.target.value)}
+                    className="input-field !py-2.5"
+                    placeholder="예: 5"
+                    required={postType === POST_TYPE_RECRUIT}
+                  />
+                </div>
+              </div>
+
+              {!recruitIsOnline && (
+                <div>
+                  <label htmlFor="recruit-location" className="block text-xs font-semibold text-ink-600 mb-1.5">
+                    장소 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="recruit-location"
+                    type="text"
+                    value={recruitLocationText}
+                    onChange={(e) => setRecruitLocationText(e.target.value)}
+                    className="input-field !py-2.5"
+                    placeholder="예: 강남역 인근 스터디룸"
+                    required={postType === POST_TYPE_RECRUIT && !recruitIsOnline}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="recruit-schedule" className="block text-xs font-semibold text-ink-600 mb-1.5">
+                  일정 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="recruit-schedule"
+                  type="text"
+                  value={recruitScheduleText}
+                  onChange={(e) => setRecruitScheduleText(e.target.value)}
+                  className="input-field !py-2.5"
+                  placeholder="예: 매주 화/목 20:00 온라인 진행"
+                  required={postType === POST_TYPE_RECRUIT}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="recruit-deadline" className="block text-xs font-semibold text-ink-600 mb-1.5">
+                  모집 마감일 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="recruit-deadline"
+                  type="datetime-local"
+                  value={recruitDeadlineAt}
+                  onChange={(e) => setRecruitDeadlineAt(e.target.value)}
+                  className="input-field !py-2.5"
+                  required={postType === POST_TYPE_RECRUIT}
+                />
+              </div>
+            </div>
+          )}
 
           <div>
             <label htmlFor="title" className="block text-sm font-semibold text-ink-700 mb-2">

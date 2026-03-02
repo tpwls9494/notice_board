@@ -1,30 +1,85 @@
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, List, Optional, Set
+
+from sqlalchemy import asc, case, desc, func, or_
 from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, or_
-from app.models.post import Post
+
+from app.models.bookmark import Bookmark
 from app.models.comment import Comment
 from app.models.like import Like
-from app.models.bookmark import Bookmark
-from app.schemas.post import PostCreate, PostUpdate
+from app.models.post import Post
+from app.models.recruit_meta import RecruitMeta
+from app.schemas.post import POST_TYPE_NORMAL, POST_TYPE_RECRUIT, PostCreate, PostUpdate
 
 
 def get_post(db: Session, post_id: int) -> Optional[Post]:
     return db.query(Post).filter(Post.id == post_id).first()
 
 
-def _apply_base_filters(query, search: Optional[str], category_id: Optional[int]):
-    """Apply search and category filters to a query."""
+def _normalize_post_type(post_type: Optional[str]) -> Optional[str]:
+    if not post_type:
+        return None
+    normalized = post_type.strip().upper()
+    if normalized in {POST_TYPE_NORMAL, POST_TYPE_RECRUIT}:
+        return normalized
+    return None
+
+
+def _normalize_recruit_status(status: Optional[str]) -> Optional[str]:
+    if not status:
+        return None
+    normalized = status.strip().upper()
+    if normalized in {"OPEN", "CLOSED"}:
+        return normalized
+    return None
+
+
+def _apply_base_filters(
+    query,
+    search: Optional[str],
+    category_id: Optional[int],
+    post_type: Optional[str],
+):
+    """Apply search/category/post-type filters to a query."""
     if search:
         search_filter = f"%{search}%"
         query = query.filter(
             or_(
                 Post.title.ilike(search_filter),
-                Post.content.ilike(search_filter)
+                Post.content.ilike(search_filter),
             )
         )
     if category_id:
         query = query.filter(Post.category_id == category_id)
+    if post_type:
+        query = query.filter(Post.post_type == post_type)
+    return query
+
+
+def _apply_recruit_filters(
+    query,
+    recruit_type: Optional[str],
+    recruit_status: Optional[str],
+    recruit_is_online: Optional[bool],
+    ensure_join: bool = False,
+):
+    normalized_recruit_type = recruit_type.strip().upper() if recruit_type else None
+    normalized_recruit_status = _normalize_recruit_status(recruit_status)
+
+    needs_join = ensure_join or bool(
+        normalized_recruit_type
+        or normalized_recruit_status
+        or recruit_is_online is not None
+    )
+    if needs_join:
+        query = query.join(RecruitMeta, RecruitMeta.post_id == Post.id)
+        if normalized_recruit_type:
+            query = query.filter(RecruitMeta.recruit_type == normalized_recruit_type)
+        if normalized_recruit_status:
+            query = query.filter(RecruitMeta.status == normalized_recruit_status)
+        if recruit_is_online is not None:
+            query = query.filter(RecruitMeta.is_online == recruit_is_online)
+
     return query
 
 
@@ -36,25 +91,56 @@ def get_posts(
     category_id: Optional[int] = None,
     sort: str = "latest",
     window: str = "24h",
+    post_type: Optional[str] = None,
+    recruit_type: Optional[str] = None,
+    recruit_status: Optional[str] = None,
+    recruit_is_online: Optional[bool] = None,
 ) -> tuple[List[Post], int]:
-    # --- Pinned posts (page 1 only) ---
+    normalized_post_type = _normalize_post_type(post_type)
+    normalized_sort = (sort or "latest").lower()
+
+    # deadline sorting is meaningful only for recruit posts
+    if normalized_sort == "deadline" and not normalized_post_type:
+        normalized_post_type = POST_TYPE_RECRUIT
+
+    is_recruit_listing = bool(
+        normalized_post_type == POST_TYPE_RECRUIT
+        or recruit_type
+        or recruit_status
+        or recruit_is_online is not None
+        or normalized_sort == "deadline"
+    )
+
+    # --- Pinned posts (page 1 only, normal board only) ---
     pinned_posts: List[Post] = []
-    if skip == 0:
+    if skip == 0 and not is_recruit_listing:
         pinned_q = db.query(Post).filter(Post.is_pinned == True)  # noqa: E712
-        pinned_q = _apply_base_filters(pinned_q, search, category_id)
+        pinned_q = _apply_base_filters(pinned_q, search, category_id, normalized_post_type)
         pinned_posts = pinned_q.order_by(
-            func.coalesce(Post.pinned_order, 9999), desc(Post.created_at)
+            func.coalesce(Post.pinned_order, 9999),
+            desc(Post.created_at),
         ).all()
 
     # --- Normal (non-pinned) posts ---
     query = db.query(Post).filter(
         or_(Post.is_pinned == False, Post.is_pinned == None)  # noqa: E711,E712
     )
-    query = _apply_base_filters(query, search, category_id)
+    query = _apply_base_filters(query, search, category_id, normalized_post_type)
+    query = _apply_recruit_filters(
+        query,
+        recruit_type=recruit_type,
+        recruit_status=recruit_status,
+        recruit_is_online=recruit_is_online,
+        ensure_join=is_recruit_listing,
+    )
 
     # Time window for hot sort
-    window_map = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
-    if sort == "hot":
+    window_map = {
+        "24h": timedelta(hours=24),
+        "7d": timedelta(days=7),
+        "30d": timedelta(days=30),
+    }
+    if normalized_sort == "hot":
         window_delta = window_map.get(window, timedelta(hours=24))
         window_start = datetime.now(timezone.utc) - window_delta
         query = query.filter(Post.created_at >= window_start)
@@ -63,34 +149,38 @@ def get_posts(
     total = len(pinned_posts) + normal_total
 
     # Apply sort
-    if sort == "views":
+    if normalized_sort == "views":
         query = query.order_by(desc(Post.views), desc(Post.created_at))
-    elif sort == "likes":
+    elif normalized_sort == "likes":
         likes_sub = (
             db.query(Like.post_id, func.count(Like.id).label("lc"))
-            .group_by(Like.post_id).subquery()
+            .group_by(Like.post_id)
+            .subquery()
         )
         query = (
             query.outerjoin(likes_sub, Post.id == likes_sub.c.post_id)
             .order_by(desc(func.coalesce(likes_sub.c.lc, 0)), desc(Post.created_at))
         )
-    elif sort == "comments":
+    elif normalized_sort == "comments":
         comments_sub = (
             db.query(Comment.post_id, func.count(Comment.id).label("cnt"))
-            .group_by(Comment.post_id).subquery()
+            .group_by(Comment.post_id)
+            .subquery()
         )
         query = (
             query.outerjoin(comments_sub, Post.id == comments_sub.c.post_id)
             .order_by(desc(func.coalesce(comments_sub.c.cnt, 0)), desc(Post.created_at))
         )
-    elif sort == "hot":
+    elif normalized_sort == "hot":
         likes_sub = (
             db.query(Like.post_id, func.count(Like.id).label("lc"))
-            .group_by(Like.post_id).subquery()
+            .group_by(Like.post_id)
+            .subquery()
         )
         comments_sub = (
             db.query(Comment.post_id, func.count(Comment.id).label("cc"))
-            .group_by(Comment.post_id).subquery()
+            .group_by(Comment.post_id)
+            .subquery()
         )
         score = (
             func.coalesce(likes_sub.c.lc, 0) * 3
@@ -103,6 +193,12 @@ def get_posts(
             .outerjoin(comments_sub, Post.id == comments_sub.c.post_id)
             .order_by(desc(score), desc(Post.created_at))
         )
+    elif normalized_sort == "deadline":
+        query = query.order_by(
+            case((RecruitMeta.deadline_at.is_(None), 1), else_=0),
+            asc(RecruitMeta.deadline_at),
+            desc(Post.created_at),
+        )
     else:
         # latest (default)
         query = query.order_by(desc(Post.created_at))
@@ -113,8 +209,24 @@ def get_posts(
 
 
 def create_post(db: Session, post: PostCreate, user_id: int) -> Post:
-    db_post = Post(**post.model_dump(), user_id=user_id)
+    post_data = post.model_dump(exclude={"recruit_meta"})
+    recruit_meta_data = (
+        post.recruit_meta.model_dump()
+        if post.recruit_meta is not None
+        else None
+    )
+
+    db_post = Post(**post_data, user_id=user_id)
     db.add(db_post)
+    db.flush()
+
+    if db_post.post_type == POST_TYPE_RECRUIT:
+        if recruit_meta_data is None:
+            raise ValueError("모집 글에는 모집 정보를 입력해야 합니다.")
+        if recruit_meta_data.get("is_online"):
+            recruit_meta_data["location_text"] = None
+        db.add(RecruitMeta(post_id=db_post.id, **recruit_meta_data))
+
     db.commit()
     db.refresh(db_post)
     return db_post
@@ -125,9 +237,48 @@ def update_post(db: Session, post_id: int, post_update: PostUpdate) -> Optional[
     if not db_post:
         return None
 
-    update_data = post_update.model_dump(exclude_unset=True)
+    update_data = post_update.model_dump(exclude_unset=True, exclude={"recruit_meta"})
+    recruit_meta_update_data = (
+        post_update.recruit_meta.model_dump(exclude_unset=True)
+        if post_update.recruit_meta is not None
+        else None
+    )
+
     for key, value in update_data.items():
         setattr(db_post, key, value)
+
+    if db_post.post_type == POST_TYPE_RECRUIT:
+        if recruit_meta_update_data is not None:
+            recruit_meta = db_post.recruit_meta
+            if recruit_meta is None:
+                required_keys = {
+                    "recruit_type",
+                    "status",
+                    "is_online",
+                    "schedule_text",
+                    "headcount_max",
+                    "deadline_at",
+                }
+                if not required_keys.issubset(recruit_meta_update_data.keys()):
+                    raise ValueError("모집 글로 전환할 때 모집 정보를 모두 입력해야 합니다.")
+
+                if recruit_meta_update_data.get("is_online"):
+                    recruit_meta_update_data["location_text"] = None
+
+                db_post.recruit_meta = RecruitMeta(
+                    post_id=db_post.id,
+                    **recruit_meta_update_data,
+                )
+            else:
+                for key, value in recruit_meta_update_data.items():
+                    setattr(recruit_meta, key, value)
+                if recruit_meta.is_online:
+                    recruit_meta.location_text = None
+        elif db_post.recruit_meta is None:
+            raise ValueError("모집 글에는 모집 정보가 필요합니다.")
+    else:
+        if db_post.recruit_meta is not None:
+            db.delete(db_post.recruit_meta)
 
     db.commit()
     db.refresh(db_post)
