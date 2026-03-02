@@ -50,7 +50,7 @@ echo -e "${YELLOW}🛠 Running database migrations...${NC}"
 docker compose -f docker-compose.prod.yml exec -T backend alembic upgrade head
 
 echo -e "${YELLOW}🌱 Ensuring default category data...${NC}"
-docker compose -f docker-compose.prod.yml exec -T backend python -m app.ensure_default_categories || echo -e "${YELLOW}⚠️  Default category ensure failed${NC}"
+docker compose -f docker-compose.prod.yml exec -T backend python -m app.ensure_default_categories
 
 echo -e "${YELLOW}🧩 Seeding MCP marketplace data...${NC}"
 docker compose -f docker-compose.prod.yml exec -T backend python -m app.seed_mcp_data || echo -e "${YELLOW}⚠️  MCP marketplace seeding failed${NC}"
