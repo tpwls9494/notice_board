@@ -16,9 +16,7 @@ const IMAGE_MIME_PREFIX = 'image/'
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const IMAGE_RESIZE_MIN_WIDTH = 140
 const IMAGE_RESIZE_EDGE_HITBOX = 14
-const INLINE_IMAGE_DRAG_MIME = 'application/x-notice-board-inline-image'
-const INLINE_IMAGE_DRAG_ID_ATTR = 'data-inline-drag-id'
-const INLINE_IMAGE_DRAG_TEXT_PREFIX = 'inline-image:'
+const IMAGE_MOVE_POINTER_THRESHOLD = 4
 
 const ALLOWED_UPLOAD_TYPES = [
   'image/jpeg', 'image/png', 'image/gif', 'image/webp',
@@ -185,8 +183,7 @@ function PostForm() {
   const resizeSessionRef = useRef(null)
   const resizeHoverImageRef = useRef(null)
   const selectedImageRef = useRef(null)
-  const draggingImageRef = useRef(null)
-  const dragCandidateImageRef = useRef(null)
+  const imageMoveSessionRef = useRef(null)
 
   const { categories, fetchCategories } = useCategoriesStore()
   const user = useAuthStore((state) => state.user)
@@ -222,14 +219,16 @@ function PostForm() {
       selectedImage.classList.remove('is-selected')
       selectedImageRef.current = null
     }
-    const draggingImage = draggingImageRef.current
-    if (draggingImage) {
-      draggingImage.classList.remove('is-dragging')
-      draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
-      draggingImageRef.current = null
+    const moveSession = imageMoveSessionRef.current
+    if (moveSession) {
+      document.removeEventListener('pointermove', moveSession.onPointerMove)
+      document.removeEventListener('pointerup', moveSession.onPointerUp)
+      document.removeEventListener('pointercancel', moveSession.onPointerCancel)
+      moveSession.imageElement.classList.remove('is-dragging')
+      imageMoveSessionRef.current = null
     }
-    dragCandidateImageRef.current = null
     document.body.style.cursor = ''
+    document.body.style.userSelect = ''
     if (editorRef.current) {
       editorRef.current.style.cursor = ''
     }
@@ -266,7 +265,7 @@ function PostForm() {
 
     Array.from(editor.querySelectorAll('img, figure[data-editor-image="true"] img')).forEach((imageElement) => {
       imageElement.setAttribute('data-editor-image', 'true')
-      imageElement.setAttribute('draggable', 'true')
+      imageElement.setAttribute('draggable', 'false')
     })
   }
 
@@ -458,7 +457,7 @@ function PostForm() {
         }
 
         insertHtmlAtCursor(
-          `<img data-editor-image="true" draggable="true" src="${previewSrc}" alt="" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />`,
+          `<img data-editor-image="true" draggable="false" src="${previewSrc}" alt="" data-upload-token="${token}" data-upload-placeholder="${placeholder}" />`,
         )
       } else {
         insertHtmlAtCursor(
@@ -472,44 +471,24 @@ function PostForm() {
   }
 
   const handleEditorDragEnter = (event) => {
-    if (!event.dataTransfer) return
-
-    const hasInlineDragPayload = isInlineImageDrag(event)
-    const hasFilePayload = hasFileDragPayload(event)
-    if (!hasFilePayload && !hasInlineDragPayload) return
-
+    if (!hasFileDragPayload(event)) return
     event.preventDefault()
-    event.dataTransfer.dropEffect = hasInlineDragPayload ? 'move' : 'copy'
-
-    if (hasFilePayload) {
-      setIsDragOver(true)
-    }
+    event.dataTransfer.dropEffect = 'copy'
+    setIsDragOver(true)
   }
 
   const handleEditorDragOver = (event) => {
-    if (!event.dataTransfer) return
-
-    const hasInlineDragPayload = isInlineImageDrag(event)
-    const hasFilePayload = hasFileDragPayload(event)
-    if (!hasFilePayload && !hasInlineDragPayload) return
-
+    if (!hasFileDragPayload(event)) return
     event.preventDefault()
-    event.dataTransfer.dropEffect = hasInlineDragPayload ? 'move' : 'copy'
-
-    if (hasFilePayload && !isDragOver) {
+    event.dataTransfer.dropEffect = 'copy'
+    if (!isDragOver) {
       setIsDragOver(true)
     }
   }
 
   const handleEditorDragLeave = (event) => {
-    if (hasFileDragPayload(event)) {
-      event.preventDefault()
-    }
-
-    if (isInlineImageDrag(event)) {
-      event.preventDefault()
-      return
-    }
+    if (!hasFileDragPayload(event)) return
+    event.preventDefault()
 
     const editor = editorRef.current
     if (!editor) {
@@ -526,52 +505,12 @@ function PostForm() {
 
   const handleEditorDrop = (event) => {
     const hasFilePayload = hasFileDragPayload(event, { requireFiles: true })
-    const editor = editorRef.current
-    const draggingImage = editor ? resolveDraggingImage(editor, event) : null
-    if (!hasFilePayload && !draggingImage) return
+    if (!hasFilePayload) return
 
     event.preventDefault()
     event.stopPropagation()
     setIsDragOver(false)
-
-    if (draggingImage) {
-      const targetImage = findEditorImageElement(event.target)
-      if (targetImage && targetImage !== draggingImage) {
-        const targetRect = targetImage.getBoundingClientRect()
-        if (event.clientY > targetRect.top + (targetRect.height / 2)) {
-          targetImage.after(draggingImage)
-        } else {
-          targetImage.before(draggingImage)
-        }
-      } else {
-        const dropRange = getDropRangeFromPoint(event, editor)
-        if (dropRange && !draggingImage.contains(dropRange.startContainer)) {
-          dropRange.insertNode(draggingImage)
-        }
-      }
-
-      draggingImage.classList.remove('is-dragging')
-      draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
-      draggingImageRef.current = null
-      dragCandidateImageRef.current = null
-
-      const selection = window.getSelection()
-      if (selection) {
-        const range = document.createRange()
-        range.setStartAfter(draggingImage)
-        range.collapse(true)
-        selection.removeAllRanges()
-        selection.addRange(range)
-      }
-
-      setEditorHtmlSnapshot(editor.innerHTML)
-      return
-    }
-
-    if (hasFilePayload) {
-      void handleInsertFiles(event.dataTransfer?.files || [])
-      return
-    }
+    void handleInsertFiles(event.dataTransfer?.files || [])
   }
 
   const handleEditorPaste = (event) => {
@@ -710,47 +649,6 @@ function PostForm() {
     return legacyFrame?.querySelector('img') || null
   }
 
-  const getInlineDragIdFromEvent = (event) => {
-    const transfer = event?.dataTransfer
-    if (!transfer) return ''
-
-    try {
-      const types = Array.from(transfer.types || [])
-      if (types.includes(INLINE_IMAGE_DRAG_MIME)) {
-        return transfer.getData(INLINE_IMAGE_DRAG_MIME) || ''
-      }
-
-      if (types.includes('text/plain')) {
-        const textPayload = transfer.getData('text/plain') || ''
-        if (textPayload.startsWith(INLINE_IMAGE_DRAG_TEXT_PREFIX)) {
-          return textPayload.slice(INLINE_IMAGE_DRAG_TEXT_PREFIX.length)
-        }
-      }
-    } catch (_error) {
-      return ''
-    }
-
-    return ''
-  }
-
-  const isInlineImageDrag = (event) => {
-    if (draggingImageRef.current) return true
-    return Boolean(getInlineDragIdFromEvent(event))
-  }
-
-  const resolveDraggingImage = (editor, event) => {
-    if (!editor) return null
-
-    const current = draggingImageRef.current
-    if (current && editor.contains(current)) return current
-
-    const dragId = getInlineDragIdFromEvent(event)
-    if (!dragId) return null
-
-    const byDragId = editor.querySelector(`img[data-editor-image="true"][${INLINE_IMAGE_DRAG_ID_ATTR}="${dragId}"]`)
-    return byDragId || null
-  }
-
   const getDropRangeFromPoint = (event, editor) => {
     if (!event || !editor) return null
 
@@ -783,6 +681,125 @@ function PostForm() {
     fallbackRange.selectNodeContents(editor)
     fallbackRange.collapse(false)
     return fallbackRange
+  }
+
+  const placeImageByPointerPosition = (imageElement, pointerEvent, editor) => {
+    if (!imageElement || !pointerEvent || !editor) return false
+
+    const targetElement = document.elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)
+    const targetImage = findEditorImageElement(targetElement)
+
+    if (targetImage && targetImage !== imageElement) {
+      const targetRect = targetImage.getBoundingClientRect()
+      if (pointerEvent.clientY > targetRect.top + (targetRect.height / 2)) {
+        targetImage.after(imageElement)
+      } else {
+        targetImage.before(imageElement)
+      }
+      return true
+    }
+
+    const dropRange = getDropRangeFromPoint(pointerEvent, editor)
+    if (!dropRange || imageElement.contains(dropRange.startContainer)) return false
+
+    dropRange.insertNode(imageElement)
+    return true
+  }
+
+  const stopImageMoveSession = (applyDrop = false, pointerEvent = null) => {
+    const session = imageMoveSessionRef.current
+    if (!session) return
+
+    document.removeEventListener('pointermove', session.onPointerMove)
+    document.removeEventListener('pointerup', session.onPointerUp)
+    document.removeEventListener('pointercancel', session.onPointerCancel)
+    imageMoveSessionRef.current = null
+
+    const editor = editorRef.current
+    if (editor) {
+      editor.style.cursor = ''
+    }
+    document.body.style.userSelect = ''
+
+    const { imageElement, moved } = session
+    imageElement.classList.remove('is-dragging')
+
+    if (!applyDrop || !moved || !editor || !pointerEvent) return
+
+    const didMove = placeImageByPointerPosition(imageElement, pointerEvent, editor)
+    if (!didMove) return
+
+    const selection = window.getSelection()
+    if (selection) {
+      const range = document.createRange()
+      range.setStartAfter(imageElement)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+
+    setEditorHtmlSnapshot(editor.innerHTML)
+  }
+
+  const handleEditorPointerDown = (event) => {
+    if (event.button !== 0) return
+
+    const editor = editorRef.current
+    const imageElement = findEditorImageElement(event.target)
+    if (!editor || !imageElement) return
+
+    if (getImageResizeMode(event, imageElement)) return
+
+    if (imageMoveSessionRef.current) {
+      stopImageMoveSession(false)
+    }
+
+    const onPointerMove = (moveEvent) => {
+      const session = imageMoveSessionRef.current
+      if (!session || moveEvent.pointerId !== session.pointerId) return
+
+      const distance = Math.hypot(
+        moveEvent.clientX - session.startX,
+        moveEvent.clientY - session.startY,
+      )
+
+      if (!session.moved) {
+        if (distance < IMAGE_MOVE_POINTER_THRESHOLD) return
+        session.moved = true
+        session.imageElement.classList.add('is-dragging')
+        document.body.style.userSelect = 'none'
+        editor.style.cursor = 'grabbing'
+      }
+
+      moveEvent.preventDefault()
+    }
+
+    const onPointerUp = (upEvent) => {
+      const session = imageMoveSessionRef.current
+      if (!session || upEvent.pointerId !== session.pointerId) return
+      stopImageMoveSession(true, upEvent)
+    }
+
+    const onPointerCancel = (cancelEvent) => {
+      const session = imageMoveSessionRef.current
+      if (!session || cancelEvent.pointerId !== session.pointerId) return
+      stopImageMoveSession(false)
+    }
+
+    imageMoveSessionRef.current = {
+      pointerId: event.pointerId,
+      imageElement,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel,
+    }
+
+    document.addEventListener('pointermove', onPointerMove)
+    document.addEventListener('pointerup', onPointerUp)
+    document.addEventListener('pointercancel', onPointerCancel)
   }
 
   const handleEditorMouseMove = (event) => {
@@ -837,12 +854,10 @@ function PostForm() {
 
     if (!imageElement) {
       clearSelectedImageFrame()
-      dragCandidateImageRef.current = null
       return
     }
 
     setSelectedImageFrame(imageElement)
-    dragCandidateImageRef.current = resizeMode ? null : imageElement
 
     if (!imageElement || !resizeMode) return
 
@@ -918,40 +933,7 @@ function PostForm() {
     const imageElement = findEditorImageElement(event.target)
     const editor = editorRef.current
     if (!editor || !imageElement) return
-    dragCandidateImageRef.current = null
     editor.focus()
-  }
-
-  const handleEditorDragStart = (event) => {
-    let imageElement = findEditorImageElement(event.target)
-    if (!imageElement) {
-      const candidate = dragCandidateImageRef.current
-      if (candidate && editorRef.current?.contains(candidate)) {
-        imageElement = candidate
-      }
-    }
-    if (!imageElement) return
-
-    const dragId = createUploadToken()
-    draggingImageRef.current = imageElement
-    dragCandidateImageRef.current = null
-    imageElement.classList.add('is-dragging')
-    imageElement.setAttribute(INLINE_IMAGE_DRAG_ID_ATTR, dragId)
-
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move'
-      event.dataTransfer.setData(INLINE_IMAGE_DRAG_MIME, dragId)
-      event.dataTransfer.setData('text/plain', `${INLINE_IMAGE_DRAG_TEXT_PREFIX}${dragId}`)
-    }
-  }
-
-  const handleEditorDragEnd = () => {
-    const draggingImage = draggingImageRef.current
-    if (!draggingImage) return
-    draggingImage.classList.remove('is-dragging')
-    draggingImage.removeAttribute(INLINE_IMAGE_DRAG_ID_ATTR)
-    draggingImageRef.current = null
-    dragCandidateImageRef.current = null
   }
 
   const hasMeaningfulContent = (htmlText) => {
@@ -1206,14 +1188,13 @@ function PostForm() {
               suppressContentEditableWarning
               className={`rich-editor ${isDragOver ? 'is-drag-over' : ''}`}
               onMouseDown={handleEditorMouseDown}
+              onPointerDown={handleEditorPointerDown}
               onClick={handleEditorClick}
               onMouseMove={handleEditorMouseMove}
               onMouseLeave={handleEditorMouseLeave}
               onKeyDown={handleEditorKeyDown}
               onInput={handleEditorInput}
               onPaste={handleEditorPaste}
-              onDragStart={handleEditorDragStart}
-              onDragEnd={handleEditorDragEnd}
               onDragEnter={handleEditorDragEnter}
               onDragOver={handleEditorDragOver}
               onDragLeave={handleEditorDragLeave}
