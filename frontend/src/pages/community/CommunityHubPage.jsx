@@ -5,16 +5,16 @@ import useAuthStore from '../../stores/authStore';
 import CommunityHero from '../../components/community/CommunityHero';
 import CommunityTopFeeds from '../../components/community/CommunityTopFeeds';
 import CategoryPreviewGrid from '../../components/community/CategoryPreviewGrid';
+import CommunityTabs from '../../components/community/CommunityTabs';
 import WeeklySummaryCard from '../../components/community/WeeklySummaryCard';
 import OpenRecruitsSection from '../../components/community/OpenRecruitsSection';
+import { sortCategoriesByOrder } from '../../utils/communityCategories';
 import { useSeo } from '../../utils/seo';
 
 function CommunityHubPage() {
   const navigate = useNavigate();
   const token = useAuthStore((state) => state.token);
   const { categories, fetchCategories } = useCategoriesStore();
-  const tabButtonBaseClass =
-    'inline-flex items-center px-3 py-1.5 text-[12px] font-medium rounded-full border whitespace-nowrap transition-all duration-200 ease-out hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.98]';
 
   useSeo({
     title: '커뮤니티',
@@ -27,10 +27,7 @@ function CommunityHubPage() {
   }, [fetchCategories]);
 
   const sortedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => {
-      if (a.order != null && b.order != null) return a.order - b.order;
-      return a.id - b.id;
-    });
+    return sortCategoriesByOrder(categories);
   }, [categories]);
 
   return (
@@ -39,43 +36,11 @@ function CommunityHubPage() {
       <WeeklySummaryCard />
       <OpenRecruitsSection />
 
-      <section className="mb-3.5">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-          <button
-            onClick={() => navigate('/community')}
-            className={`${tabButtonBaseClass} bg-ink-900 text-paper-50 border-ink-900`}
-          >
-            전체
-          </button>
-          <button
-            onClick={() => navigate('/community/recruits')}
-            className={`${tabButtonBaseClass} bg-white text-ink-600 border-ink-200 hover:bg-paper-100`}
-          >
-            모집
-          </button>
-          {sortedCategories.map((category) => (
-            <button
-              key={category.id}
-              onClick={() => navigate(`/community/${category.slug}`)}
-              className={`${tabButtonBaseClass} ${
-                category.slug === 'notice'
-                  ? 'bg-paper-100 text-ink-500 border-ink-200 hover:bg-paper-200'
-                  : 'bg-white text-ink-600 border-ink-200 hover:bg-paper-100'
-              }`}
-            >
-              {category.name}
-            </button>
-          ))}
-          {token && (
-            <button
-              onClick={() => navigate('/community/following')}
-              className={`${tabButtonBaseClass} bg-white text-ink-600 border-ink-200 hover:bg-paper-100`}
-            >
-              팔로잉
-            </button>
-          )}
-        </div>
-      </section>
+      <CommunityTabs
+        categories={sortedCategories}
+        showFollowing={Boolean(token)}
+        activeTab="home"
+      />
 
       <CommunityTopFeeds categoryId={null} />
 

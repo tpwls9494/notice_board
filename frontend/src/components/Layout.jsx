@@ -68,9 +68,9 @@ function Layout() {
     ? 'max-w-6xl xl:max-w-[1240px] mx-auto px-6 lg:px-8'
     : 'max-w-6xl mx-auto px-6 lg:px-8';
 
-  const mainClassName = isCommunityHub
-    ? `${contentContainerClassName} py-8 animate-fade-in`
-    : `${contentContainerClassName} py-8 animate-fade-in`;
+  const mainClassName = `${contentContainerClassName} py-8 animate-fade-in ${
+    isCommunityArea ? 'font-body leading-relaxed' : ''
+  }`;
 
   const { data: unreadCountData } = useQuery({
     queryKey: ['notifications-unread-count'],

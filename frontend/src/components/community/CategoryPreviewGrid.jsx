@@ -3,10 +3,10 @@ import { useQueries } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { postsAPI } from '../../services/api';
 import { hasInlineAttachmentInContent } from '../../utils/richContent';
+import { getPreviewCategories } from '../../utils/communityCategories';
 import AttachmentIcon from './AttachmentIcon';
 
 const PREVIEW_LIMIT = 5;
-const EXCLUDED_CATEGORY_SLUGS = new Set(['notice']);
 const MAX_CATEGORY_CARDS = 6;
 
 function formatRelativeTime(dateValue) {
@@ -32,11 +32,7 @@ function formatRelativeTime(dateValue) {
 
 function CategoryPreviewGrid({ categories, onSelectCategory }) {
   const orderedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => {
-      if (a.order != null && b.order != null) return a.order - b.order;
-      return a.id - b.id;
-    })
-      .filter((category) => !EXCLUDED_CATEGORY_SLUGS.has(category.slug))
+    return getPreviewCategories(categories)
       .slice(0, MAX_CATEGORY_CARDS);
   }, [categories]);
 

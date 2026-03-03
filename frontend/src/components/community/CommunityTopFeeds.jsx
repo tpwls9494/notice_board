@@ -1,43 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { communityAPI, postsAPI } from '../../services/api';
-import useCategoriesStore from '../../stores/categoriesStore';
 import { hasInlineAttachmentInContent } from '../../utils/richContent';
 import AttachmentIcon from './AttachmentIcon';
 
 const LIST_LIMIT = 5;
 const LATEST_MORE_LINK = '/community/posts?sort=latest';
 const HOT_MORE_LINK = '/community/posts?sort=hot&window=24h';
-
-const CATEGORY_FALLBACK_SLUG = {
-  '공지': 'notice',
-  '자유': 'free',
-  '유머': 'humor',
-  '질문': 'qna',
-  'IT 뉴스': 'dev-news',
-  '팁 추천': 'tips',
-  '프로젝트': 'showcase',
-};
-
-const CATEGORY_BAR_COLOR = {
-  notice: '#A5B3C2',
-  free: '#8EA3B3',
-  humor: '#8FA598',
-  qna: '#B5A48F',
-  'dev-news': '#9CA9C1',
-  tips: '#8EA7A5',
-  showcase: '#AE9B9B',
-  default: '#D4DDE6',
-};
-
-function resolveCategorySlug(post, categorySlugById) {
-  if (post?.category_id != null && categorySlugById[post.category_id]) {
-    return categorySlugById[post.category_id];
-  }
-
-  return CATEGORY_FALLBACK_SLUG[post?.category_name] || 'default';
-}
 
 function formatRelativeTime(dateValue) {
   if (!dateValue) return '방금 전';
@@ -66,7 +36,7 @@ function formatRelativeTime(dateValue) {
   return `${Math.floor(diffDays / 365)}년 전`;
 }
 
-function FeedRows({ posts, showPopularity = false, isLoading = false, categorySlugById = {} }) {
+function FeedRows({ posts, isLoading = false }) {
   const visiblePosts = posts.slice(0, LIST_LIMIT);
 
   if (isLoading) {
@@ -88,46 +58,33 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
   return (
     <ul className="px-2.5 py-2.5 space-y-1.5">
       {visiblePosts.map((post) => {
-        const categorySlug = resolveCategorySlug(post, categorySlugById);
-        const barColor = CATEGORY_BAR_COLOR[categorySlug] || CATEGORY_BAR_COLOR.default;
         const author = post.author_username || '익명';
         const relativeTime = formatRelativeTime(post.created_at);
         const authorMeta = `${author} · ${relativeTime}`;
-        const metaText = showPopularity
-          ? `추천 ${post.likes_count || 0} · 조회 ${post.views || 0} · 댓글 ${post.comment_count || 0}`
-          : `댓글 ${post.comment_count || 0}`;
+        const metaText = `조회 ${post.views || 0} · 댓글 ${post.comment_count || 0}`;
         const hasInlineAttachment = hasInlineAttachmentInContent(post.content);
 
         return (
           <li key={post.id}>
             <Link
               to={`/posts/${post.id}`}
-              className="group relative block rounded-lg border border-transparent px-3 py-2.5 pl-4 hover:bg-paper-50/90 hover:border-ink-100 transition-colors"
+              className="group block rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:border-ink-100 hover:bg-paper-50/90"
             >
-              <span
-                className="absolute left-1 top-2.5 bottom-2.5 w-[1.5px] rounded-full opacity-35 group-hover:opacity-80 transition-opacity"
-                style={{ backgroundColor: barColor }}
-                aria-hidden="true"
-              />
-              <div className="min-w-0">
-                <div className="flex items-start gap-2 min-w-0">
-                  {post.category_name && (
-                    <span className="mt-[1px] inline-flex items-center rounded-full border border-ink-100 bg-paper-50 px-1.5 py-[2px] text-[11px] font-medium text-ink-500 shrink-0 leading-none">
-                      {post.category_name}
-                    </span>
-                  )}
-                  <div className="min-w-0 flex items-center gap-1.5 flex-1">
-                    <h3 className="truncate text-[14px] font-semibold text-ink-900 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex items-center gap-1.5">
+                    <h3 className="flex-1 truncate text-[14px] font-bold text-ink-900">
                       {post.title}
                     </h3>
                     {hasInlineAttachment && <AttachmentIcon />}
                   </div>
+                  <p className="mt-1 truncate text-[12px] text-ink-400">
+                    {authorMeta}
+                  </p>
                 </div>
-
-                <div className="mt-1 flex items-center justify-between gap-2 text-[12px] text-ink-400">
-                  <span className="truncate">{authorMeta}</span>
-                  <span className="shrink-0 whitespace-nowrap">{metaText}</span>
-                </div>
+                <span className="shrink-0 whitespace-nowrap text-[12px] text-ink-500">
+                  {metaText}
+                </span>
               </div>
             </Link>
           </li>
@@ -137,12 +94,12 @@ function FeedRows({ posts, showPopularity = false, isLoading = false, categorySl
   );
 }
 
-function FeedPanel({ title, posts, isLoading, showPopularity = false, categorySlugById, moreLink }) {
+function FeedPanel({ title, posts, isLoading, moreLink }) {
   return (
     <section className="card rounded-xl overflow-hidden min-h-[312px] xl:min-h-[336px] flex flex-col">
       <header className="px-4 py-3 border-b border-ink-100">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[15px] font-semibold tracking-tight text-ink-900">{title}</h2>
+          <h2 className="text-[15px] font-bold tracking-tight text-ink-900">{title}</h2>
           <Link
             to={moreLink}
             className="text-[12px] font-medium text-ink-500 hover:text-ink-700 transition-colors"
@@ -154,9 +111,7 @@ function FeedPanel({ title, posts, isLoading, showPopularity = false, categorySl
       <div className="flex-1">
         <FeedRows
           posts={posts}
-          showPopularity={showPopularity}
           isLoading={isLoading}
-          categorySlugById={categorySlugById}
         />
       </div>
     </section>
@@ -165,13 +120,6 @@ function FeedPanel({ title, posts, isLoading, showPopularity = false, categorySl
 
 function CommunityTopFeeds({ categoryId }) {
   const [mobileTab, setMobileTab] = useState('latest');
-  const { categories, fetchCategories } = useCategoriesStore();
-
-  useEffect(() => {
-    if (categories.length === 0) {
-      fetchCategories();
-    }
-  }, [categories.length, fetchCategories]);
 
   const { data: latestData, isLoading: latestLoading } = useQuery({
     queryKey: ['community', 'latest', categoryId],
@@ -190,13 +138,6 @@ function CommunityTopFeeds({ categoryId }) {
     [latestData]
   );
   const hotPosts = useMemo(() => hotData?.data || [], [hotData]);
-  const categorySlugById = useMemo(() => {
-    const map = {};
-    categories.forEach((category) => {
-      map[category.id] = category.slug;
-    });
-    return map;
-  }, [categories]);
 
   return (
     <section className="mb-4">
@@ -228,15 +169,12 @@ function CommunityTopFeeds({ categoryId }) {
           title="최신글"
           posts={latestPosts}
           isLoading={latestLoading}
-          categorySlugById={categorySlugById}
           moreLink={LATEST_MORE_LINK}
         />
         <FeedPanel
           title="인기글 (24h)"
           posts={hotPosts}
           isLoading={hotLoading}
-          showPopularity
-          categorySlugById={categorySlugById}
           moreLink={HOT_MORE_LINK}
         />
       </div>
@@ -247,7 +185,6 @@ function CommunityTopFeeds({ categoryId }) {
             title="최신글"
             posts={latestPosts}
             isLoading={latestLoading}
-            categorySlugById={categorySlugById}
             moreLink={LATEST_MORE_LINK}
           />
         ) : (
@@ -255,8 +192,6 @@ function CommunityTopFeeds({ categoryId }) {
             title="인기글 (24h)"
             posts={hotPosts}
             isLoading={hotLoading}
-            showPopularity
-            categorySlugById={categorySlugById}
             moreLink={HOT_MORE_LINK}
           />
         )}

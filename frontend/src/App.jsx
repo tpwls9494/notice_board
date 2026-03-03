@@ -83,6 +83,7 @@ function App() {
           <Route path="community" element={<CommunityHubPage />} />
           <Route path="community/posts" element={<CommunityPostsPage />} />
           <Route path="community/recruits" element={<RecruitPostsPage />} />
+          <Route path="community/team-recruit" element={<Navigate to="/community/recruits" replace />} />
           <Route
             path="community/following"
             element={(
