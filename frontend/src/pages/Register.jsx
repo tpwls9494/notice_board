@@ -8,7 +8,8 @@ import useAuthStore from '../stores/authStore'
 function Register() {
   const navigate = useNavigate()
   const { register, isLoading, error, clearError } = useAuthStore()
-  const inlineActionButtonClass = 'shrink-0 whitespace-nowrap rounded-lg border border-ink-200 px-2.5 py-1.5 text-xs font-medium leading-none text-ink-700 hover:bg-ink-50 disabled:opacity-60 disabled:cursor-not-allowed'
+  const verificationInputClass = 'input-field !h-10 !px-3 !py-0 text-sm placeholder:text-sm'
+  const inlineActionButtonClass = 'inline-flex h-10 min-w-[84px] shrink-0 items-center justify-center whitespace-nowrap rounded-lg border border-ink-200 bg-white px-3 text-sm font-semibold leading-none text-ink-700 transition-colors hover:bg-ink-50 disabled:opacity-60 disabled:cursor-not-allowed'
 
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
@@ -139,7 +140,7 @@ function Register() {
                   setEmail(event.target.value)
                   if (error) clearError()
                 }}
-                className="input-field flex-1 min-w-0"
+                className={`${verificationInputClass} flex-1 min-w-0`}
                 placeholder="name@example.com"
               />
               <button
@@ -166,7 +167,7 @@ function Register() {
                 type="text"
                 value={code}
                 onChange={(event) => setCode(event.target.value)}
-                className="input-field flex-1 min-w-0"
+                className={`${verificationInputClass} flex-1 min-w-0`}
                 placeholder="메일로 받은 코드 입력"
               />
               <button
