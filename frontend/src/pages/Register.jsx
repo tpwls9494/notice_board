@@ -19,8 +19,8 @@ function Register() {
     }
     const success = await register(email, username, password)
     if (success) {
-      toast.success('회원가입 성공! 로그인해주세요.')
-      navigate('/')
+      toast.success('회원가입 완료! 이메일 인증 후 글/댓글 작성이 가능합니다.')
+      navigate('/login')
     }
   }
 

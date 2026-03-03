@@ -1,5 +1,6 @@
 import logging
 import time
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -198,6 +199,10 @@ def ensure_bootstrap_admin_user(db: Session) -> None:
         if not target_user.is_admin:
             target_user.is_admin = True
             updated = True
+        if not target_user.email_verified:
+            target_user.email_verified = True
+            target_user.email_verified_at = datetime.now(timezone.utc)
+            updated = True
         if updated:
             db.commit()
             logger.info("Bootstrap admin account updated.")
@@ -209,6 +214,8 @@ def ensure_bootstrap_admin_user(db: Session) -> None:
             username=username,
             hashed_password=get_password_hash(password),
             is_admin=True,
+            email_verified=True,
+            email_verified_at=datetime.now(timezone.utc),
         )
     )
     db.commit()

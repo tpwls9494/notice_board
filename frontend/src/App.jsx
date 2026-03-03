@@ -6,6 +6,7 @@ import Layout from './components/Layout'
 import { ConfirmProvider } from './components/ConfirmModal'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import VerifyEmail from './pages/VerifyEmail'
 import MyPage from './pages/MyPage'
 import OAuthCallback from './pages/OAuthCallback'
 import TermsPage from './pages/TermsPage'
@@ -73,6 +74,7 @@ function App() {
         {/* Standalone auth pages (fallback) */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
 
         {/* Main app with public Layout */}

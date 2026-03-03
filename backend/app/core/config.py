@@ -34,6 +34,22 @@ class Settings(BaseSettings):
     GITHUB_OAUTH_CLIENT_ID: Optional[str] = None
     GITHUB_OAUTH_CLIENT_SECRET: Optional[str] = None
     OAUTH_FRONTEND_DEFAULT_REDIRECT: str = "http://localhost:5173/oauth/callback"
+    EMAIL_VERIFICATION_FRONTEND_BASE_URL: Optional[str] = None
+
+    # Email verification
+    EMAIL_VERIFICATION_TOKEN_TTL_HOURS: int = 24
+    EMAIL_VERIFICATION_RESEND_WINDOW_SECONDS: int = 600
+    EMAIL_VERIFICATION_RESEND_MAX_ATTEMPTS: int = 5
+
+    # SMTP (optional)
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM_EMAIL: Optional[str] = None
+    SMTP_FROM_NAME: str = "jion"
+    SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
 
     # MCP Playground settings
     MCP_ALLOWED_SERVERS: str = "fetch-server"  # 실제 연결 허용 서버 slug (쉼표 구분)

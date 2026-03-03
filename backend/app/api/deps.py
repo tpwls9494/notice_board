@@ -68,3 +68,12 @@ def get_current_active_admin(current_user: User = Depends(get_current_user)) -> 
             detail="Not enough permissions",
         )
     return current_user
+
+
+def get_current_verified_user(current_user: User = Depends(get_current_user)) -> User:
+    if not current_user.email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email verification is required to create posts, comments, or uploads",
+        )
+    return current_user

@@ -54,6 +54,8 @@ export const authAPI = {
     });
     return `${API_BASE_URL}/api/v1/auth/oauth/${provider}/start?${params.toString()}`;
   },
+  verifyEmail: (token) => api.post('/auth/verify-email', { token }),
+  resendVerification: (email) => api.post('/auth/resend-verification', { email }),
   updateMeProfile: (data) => api.patch('/auth/me/profile', data),
   updateMePassword: (data) => api.patch('/auth/me/password', data),
   uploadProfileImage: (file) => {

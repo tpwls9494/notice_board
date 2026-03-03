@@ -24,6 +24,8 @@ class UserResponse(UserBase):
     id: int
     is_admin: bool
     has_local_password: bool = True
+    email_verified: bool = False
+    email_verified_at: Optional[datetime] = None
     created_at: datetime
     profile_image_url: Optional[str] = None
     bio: Optional[str] = None
@@ -55,3 +57,11 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     user_id: Optional[int] = None
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(..., min_length=16, max_length=512)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=255)

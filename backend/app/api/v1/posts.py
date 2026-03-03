@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_current_user_optional
+from app.api.deps import get_current_user, get_current_user_optional, get_current_verified_user
 from app.crud import follow as crud_follow
 from app.crud import notification as crud_notification
 from app.crud import post as crud_post
@@ -287,7 +287,7 @@ def get_post(
 @router.post("/", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 def create_post(
     post: PostCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
     category = get_category_or_404(db, post.category_id)
@@ -316,7 +316,7 @@ def create_post(
 def update_post(
     post_id: int,
     post_update: PostUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
     db_post = crud_post.get_post(db, post_id)
@@ -366,7 +366,7 @@ def update_post(
 def apply_recruit_post(
     post_id: int,
     application: RecruitApplicationCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
     post = _ensure_recruit_post_or_400(db, post_id)

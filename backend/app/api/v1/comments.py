@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_verified_user
 from app.schemas.comment import CommentCreate, CommentResponse
 from app.schemas.notification import NotificationCreate
 from app.models.user import User
@@ -54,7 +54,7 @@ def get_comments(post_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=CommentResponse, status_code=status.HTTP_201_CREATED)
 def create_comment(
     comment: CommentCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_verified_user),
     db: Session = Depends(get_db),
 ):
     # Check if post exists

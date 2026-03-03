@@ -10,7 +10,7 @@ from app.db.session import get_db
 from app.schemas.file import FileResponse as FileSchema
 from app.crud import file as crud_file
 from app.crud import post as crud_post
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_verified_user
 from app.models.user import User
 
 router = APIRouter()
@@ -40,7 +40,7 @@ async def upload_file(
     post_id: int,
     file: UploadFile = FastAPIFile(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_verified_user)
 ):
     """Upload a file and attach it to a post"""
     # Check if post exists

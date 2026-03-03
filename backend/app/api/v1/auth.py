@@ -1,19 +1,26 @@
 import logging
+import hashlib
+import smtplib
+import threading
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 import mimetypes
 import os
 import re
 import secrets
 import uuid
-from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl
+from urllib.parse import urlencode, urlparse, urlunparse, parse_qsl, quote_plus
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, status, File as FastAPIFile
 from fastapi.responses import FileResponse, RedirectResponse
 from jose import JWTError, jwt
+from sqlalchemy import and_
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.user import (
+    EmailVerificationRequest,
+    ResendVerificationRequest,
     UserCreate,
     UserLogin,
     UserResponse,
@@ -26,6 +33,7 @@ from app.core.config import settings
 from app.core.security import get_password_hash
 from app.crud import user as crud_user
 from app.api.deps import get_current_user
+from app.models.email_verification_token import EmailVerificationToken
 from app.models.user import User
 
 router = APIRouter()
@@ -56,6 +64,139 @@ GITHUB_AUTH_URL = "https://github.com/login/oauth/authorize"
 GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
 GITHUB_USER_URL = "https://api.github.com/user"
 GITHUB_EMAILS_URL = "https://api.github.com/user/emails"
+EMAIL_VERIFICATION_RESEND_RESPONSE = {
+    "detail": "If the account exists and needs verification, a verification email will be sent shortly.",
+}
+_EMAIL_RESEND_ATTEMPTS_BY_KEY: dict[str, list[datetime]] = {}
+_EMAIL_RESEND_ATTEMPTS_LOCK = threading.Lock()
+
+
+def _hash_email_verification_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _email_verification_frontend_base_url() -> str:
+    configured = (settings.EMAIL_VERIFICATION_FRONTEND_BASE_URL or "").strip()
+    candidate = configured or settings.OAUTH_FRONTEND_DEFAULT_REDIRECT
+    parsed = urlparse(candidate)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return "http://localhost:5173"
+
+
+def _build_email_verification_url(token: str) -> str:
+    frontend_base = _email_verification_frontend_base_url().rstrip("/")
+    return f"{frontend_base}/verify-email?token={quote_plus(token)}"
+
+
+def _send_email_verification_email(to_email: str, verification_url: str) -> None:
+    smtp_host = (settings.SMTP_HOST or "").strip()
+    from_email = (settings.SMTP_FROM_EMAIL or "").strip()
+    if not smtp_host or not from_email:
+        logger.warning("SMTP is not configured. Verification email skipped for %s", to_email)
+        logger.info("Email verification URL for %s: %s", to_email, verification_url)
+        return
+
+    message = EmailMessage()
+    sender_name = (settings.SMTP_FROM_NAME or "jion").strip()
+    message["Subject"] = "[jion] Verify your email address"
+    message["From"] = f"{sender_name} <{from_email}>" if sender_name else from_email
+    message["To"] = to_email
+    message.set_content(
+        "Welcome to jion!\n\n"
+        "Please verify your email by opening the link below.\n"
+        f"{verification_url}\n\n"
+        f"This link expires in {settings.EMAIL_VERIFICATION_TOKEN_TTL_HOURS} hours."
+    )
+
+    smtp_port = settings.SMTP_PORT
+    smtp_username = (settings.SMTP_USERNAME or "").strip()
+    smtp_password = settings.SMTP_PASSWORD or ""
+
+    try:
+        if settings.SMTP_USE_SSL:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20) as server:
+                if smtp_username and smtp_password:
+                    server.login(smtp_username, smtp_password)
+                server.send_message(message)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+                if settings.SMTP_USE_TLS:
+                    server.starttls()
+                if smtp_username and smtp_password:
+                    server.login(smtp_username, smtp_password)
+                server.send_message(message)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to send email verification mail to %s: %s", to_email, exc)
+        logger.info("Email verification URL for %s: %s", to_email, verification_url)
+
+
+def _issue_email_verification_token(db: Session, user: User) -> str | None:
+    expires_at = datetime.now(timezone.utc) + timedelta(hours=settings.EMAIL_VERIFICATION_TOKEN_TTL_HOURS)
+
+    for _ in range(3):
+        raw_token = secrets.token_urlsafe(48)
+        token_hash = _hash_email_verification_token(raw_token)
+        if db.query(EmailVerificationToken.id).filter(EmailVerificationToken.token_hash == token_hash).first():
+            continue
+
+        db_token = EmailVerificationToken(
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=expires_at,
+        )
+        db.add(db_token)
+        try:
+            db.commit()
+            return raw_token
+        except Exception as exc:  # noqa: BLE001
+            db.rollback()
+            logger.warning("Failed to issue email verification token for user_id=%s: %s", user.id, exc)
+            return None
+
+    logger.warning("Failed to issue email verification token due to repeated collisions for user_id=%s", user.id)
+    return None
+
+
+def _send_email_verification_for_user(db: Session, user: User) -> None:
+    raw_token = _issue_email_verification_token(db, user)
+    if not raw_token:
+        return
+    verification_url = _build_email_verification_url(raw_token)
+    _send_email_verification_email(user.email, verification_url)
+
+
+def _request_ip(request: Request) -> str:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()[:64] or "unknown"
+    if request.client and request.client.host:
+        return request.client.host[:64]
+    return "unknown"
+
+
+def _consume_resend_rate_limit(request: Request, normalized_email: str) -> bool:
+    now = datetime.now(timezone.utc)
+    window = timedelta(seconds=settings.EMAIL_VERIFICATION_RESEND_WINDOW_SECONDS)
+    key = f"{_request_ip(request)}:{normalized_email}"
+
+    with _EMAIL_RESEND_ATTEMPTS_LOCK:
+        attempts = _EMAIL_RESEND_ATTEMPTS_BY_KEY.get(key, [])
+        attempts = [attempt for attempt in attempts if now - attempt <= window]
+
+        if len(attempts) >= settings.EMAIL_VERIFICATION_RESEND_MAX_ATTEMPTS:
+            _EMAIL_RESEND_ATTEMPTS_BY_KEY[key] = attempts
+            return False
+
+        attempts.append(now)
+        _EMAIL_RESEND_ATTEMPTS_BY_KEY[key] = attempts
+        return True
 
 
 def _remove_old_profile_image(profile_image_url: str | None) -> None:
@@ -173,17 +314,26 @@ def _make_unique_username(db: Session, base: str) -> str:
 
 
 def _get_or_create_oauth_user(db: Session, email: str, username_hint: str) -> User:
-    user = crud_user.get_user_by_email(db, email)
+    normalized_email = crud_user.normalize_email(email)
+    user = crud_user.get_user_by_email(db, normalized_email)
     if user:
+        if not user.email_verified:
+            user.email_verified = True
+            user.email_verified_at = datetime.now(timezone.utc)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
         return user
 
     username = _make_unique_username(db, username_hint)
     random_password = secrets.token_urlsafe(24)
     user = User(
-        email=email,
+        email=normalized_email,
         username=username,
         hashed_password=get_password_hash(random_password),
         has_local_password=False,
+        email_verified=True,
+        email_verified_at=datetime.now(timezone.utc),
     )
     db.add(user)
     db.commit()
@@ -295,8 +445,10 @@ async def _fetch_github_profile(code: str, redirect_uri: str) -> tuple[str, str]
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user: UserCreate, db: Session = Depends(get_db)):
+    normalized_email = crud_user.normalize_email(str(user.email))
+
     # Check if user already exists
-    if crud_user.get_user_by_email(db, user.email):
+    if crud_user.get_user_by_email(db, normalized_email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered",
@@ -308,7 +460,13 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         )
 
     # Create user
-    db_user = crud_user.create_user(db, user)
+    db_user = crud_user.create_user(
+        db,
+        user.model_copy(update={"email": normalized_email}),
+    )
+
+    # Do not fail registration if email delivery fails; user can request resend.
+    _send_email_verification_for_user(db, db_user)
     return db_user
 
 
@@ -326,6 +484,77 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
         data={"sub": str(user.id)}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/verify-email")
+def verify_email(payload: EmailVerificationRequest, db: Session = Depends(get_db)):
+    token_hash = _hash_email_verification_token(payload.token.strip())
+    now = datetime.now(timezone.utc)
+
+    db_token = (
+        db.query(EmailVerificationToken)
+        .filter(EmailVerificationToken.token_hash == token_hash)
+        .first()
+    )
+    if not db_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    if db_token.used_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This verification token has already been used",
+        )
+
+    if _to_utc(db_token.expires_at) <= now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    user = crud_user.get_user_by_id(db, db_token.user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    db_token.used_at = now
+    user.email_verified = True
+    user.email_verified_at = now
+
+    db.add(db_token)
+    db.add(user)
+    db.query(EmailVerificationToken).filter(
+        and_(
+            EmailVerificationToken.user_id == user.id,
+            EmailVerificationToken.used_at.is_(None),
+            EmailVerificationToken.id != db_token.id,
+        )
+    ).update({"used_at": now}, synchronize_session=False)
+    db.commit()
+
+    return {"detail": "Email verified successfully"}
+
+
+@router.post("/resend-verification")
+def resend_verification_email(
+    payload: ResendVerificationRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    normalized_email = crud_user.normalize_email(payload.email)
+    if not _consume_resend_rate_limit(request, normalized_email):
+        return EMAIL_VERIFICATION_RESEND_RESPONSE
+
+    user = crud_user.get_user_by_email(db, normalized_email)
+    if not user or user.email_verified:
+        return EMAIL_VERIFICATION_RESEND_RESPONSE
+
+    _send_email_verification_for_user(db, user)
+    return EMAIL_VERIFICATION_RESEND_RESPONSE
 
 
 @router.get("/oauth/providers")

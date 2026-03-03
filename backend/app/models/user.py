@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, true
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, false, true
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.base import Base
@@ -12,6 +12,8 @@ class User(Base):
     username = Column(String(50), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     has_local_password = Column(Boolean, nullable=False, default=True, server_default=true())
+    email_verified = Column(Boolean, nullable=False, default=False, server_default=false())
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -54,5 +56,10 @@ class User(Base):
     recruit_applications = relationship(
         "RecruitApplication",
         back_populates="applicant",
+        cascade="all, delete-orphan",
+    )
+    email_verification_tokens = relationship(
+        "EmailVerificationToken",
+        back_populates="user",
         cascade="all, delete-orphan",
     )
