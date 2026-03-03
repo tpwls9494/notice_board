@@ -190,6 +190,7 @@ function Register() {
               id="username"
               type="text"
               required
+              minLength={2}
               autoComplete="username"
               disabled={!isEmailVerified}
               value={username}

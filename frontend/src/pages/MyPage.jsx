@@ -72,8 +72,8 @@ function MyPage() {
     event.preventDefault();
 
     const nextUsername = username.trim();
-    if (nextUsername.length < 3) {
-      toast.error('닉네임은 3자 이상이어야 합니다.');
+    if (nextUsername.length < 2) {
+      toast.error('닉네임은 2자 이상이어야 합니다.');
       return;
     }
 
@@ -266,7 +266,7 @@ function MyPage() {
               <input
                 id="nickname"
                 type="text"
-                minLength={3}
+                minLength={2}
                 maxLength={50}
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}

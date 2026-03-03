@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getMainNavCategories } from '../../utils/communityCategories';
 
 const tabButtonBaseClass =
-  'inline-flex min-h-11 items-center justify-center rounded-xl border px-4 py-2 text-sm font-semibold leading-tight whitespace-normal break-keep text-center transition-all duration-200 ease-out hover:-translate-y-[1px] active:translate-y-0 active:scale-[0.98]';
+  'inline-flex h-9 items-center justify-center rounded-lg border px-3 text-[13px] font-semibold leading-none whitespace-nowrap transition-colors duration-200 ease-out hover:bg-paper-100 active:scale-[0.98]';
 
 function resolveTabClassName({ isActive, isNotice = false }) {
   if (isActive) {
@@ -25,17 +25,31 @@ function CommunityTabs({
 }) {
   const navigate = useNavigate();
   const navCategories = useMemo(() => getMainNavCategories(categories), [categories]);
+  const noticeCategory = navCategories.find((category) => category.slug === 'notice');
+  const boardCategories = navCategories.filter((category) => category.slug !== 'notice');
 
   return (
     <section className="sticky top-[5.25rem] sm:top-[4.25rem] z-20 mb-3.5">
-      <div className="rounded-xl border border-ink-200/70 bg-paper-50/95 px-2 py-2 backdrop-blur supports-[backdrop-filter]:bg-paper-50/85">
-        <div className="flex flex-wrap items-stretch gap-2">
+      <div className="overflow-x-auto pb-1 scrollbar-hide sm:overflow-visible">
+        <div className="flex min-w-max items-center gap-1.5 sm:min-w-0 sm:flex-wrap">
           <button
             onClick={() => navigate('/community')}
             className={resolveTabClassName({ isActive: activeTab === 'home' })}
           >
             전체
           </button>
+
+          {noticeCategory && (
+            <button
+              onClick={() => navigate(`/community/${noticeCategory.slug}`)}
+              className={resolveTabClassName({
+                isActive: activeCategorySlug === noticeCategory.slug,
+                isNotice: true,
+              })}
+            >
+              {noticeCategory.name}
+            </button>
+          )}
 
           <button
             onClick={() => navigate('/community/recruits')}
@@ -44,7 +58,7 @@ function CommunityTabs({
             모집
           </button>
 
-          {navCategories.map((category) => (
+          {boardCategories.map((category) => (
             <button
               key={category.id}
               onClick={() => navigate(`/community/${category.slug}`)}

@@ -676,10 +676,10 @@ def confirm_signup_email_verification_code(
 def register(user: UserCreate, db: Session = Depends(get_db)):
     normalized_email = crud_user.normalize_email(str(user.email))
     normalized_username = crud_user.normalize_username(user.username)
-    if len(normalized_username) < 3:
+    if len(normalized_username) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username must be at least 3 characters long",
+            detail="Username must be at least 2 characters long",
         )
 
     # Check if user already exists
@@ -919,10 +919,10 @@ def update_me_profile(
 ):
     new_username = crud_user.normalize_username(profile.username)
 
-    if len(new_username) < 3:
+    if len(new_username) < 2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username must be at least 3 characters long",
+            detail="Username must be at least 2 characters long",
         )
 
     existing_user = crud_user.get_user_by_username(db, new_username)
