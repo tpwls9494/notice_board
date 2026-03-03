@@ -54,6 +54,8 @@ export const authAPI = {
     });
     return `${API_BASE_URL}/api/v1/auth/oauth/${provider}/start?${params.toString()}`;
   },
+  sendSignupEmailCode: (email) => api.post('/auth/email-verification/send-code', { email }),
+  confirmSignupEmailCode: (email, code) => api.post('/auth/email-verification/confirm-code', { email, code }),
   verifyEmail: (token) => api.post('/auth/verify-email', { token }),
   resendVerification: (email) => api.post('/auth/resend-verification', { email }),
   updateMeProfile: (data) => api.patch('/auth/me/profile', data),

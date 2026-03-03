@@ -10,6 +10,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str = Field(..., min_length=6)
+    email_verification_ticket: str = Field(..., min_length=16, max_length=1024)
 
 
 class UserLogin(BaseModel):
@@ -65,3 +66,12 @@ class EmailVerificationRequest(BaseModel):
 
 class ResendVerificationRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=255)
+
+
+class SignupEmailCodeSendRequest(BaseModel):
+    email: EmailStr
+
+
+class SignupEmailCodeConfirmRequest(BaseModel):
+    email: EmailStr
+    code: str = Field(..., min_length=4, max_length=12)

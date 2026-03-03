@@ -74,6 +74,6 @@ def get_current_verified_user(current_user: User = Depends(get_current_user)) ->
     if not current_user.email_verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email verification is required to create posts, comments, or uploads",
+            detail="이메일 인증 후 글/댓글/첨부를 작성할 수 있습니다.",
         )
     return current_user

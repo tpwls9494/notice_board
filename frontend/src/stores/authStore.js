@@ -46,10 +46,15 @@ const useAuthStore = create((set) => ({
     }
   },
 
-  register: async (email, username, password) => {
+  register: async (email, username, password, emailVerificationTicket) => {
     set({ isLoading: true, error: null });
     try {
-      await authAPI.register({ email, username, password });
+      await authAPI.register({
+        email,
+        username,
+        password,
+        email_verification_ticket: emailVerificationTicket,
+      });
       set({ isLoading: false });
       return true;
     } catch (error) {

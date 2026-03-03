@@ -34,14 +34,16 @@ def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     return db.query(User).filter(User.id == user_id).first()
 
 
-def create_user(db: Session, user: UserCreate) -> User:
+def create_user(db: Session, user: UserCreate, email_verified: bool = False) -> User:
     hashed_password = get_password_hash(user.password)
+    verified_at = datetime.now(timezone.utc) if email_verified else None
     db_user = User(
         email=normalize_email(str(user.email)),
         username=normalize_username(user.username),
         hashed_password=hashed_password,
         has_local_password=True,
-        email_verified=False,
+        email_verified=email_verified,
+        email_verified_at=verified_at,
     )
     db.add(db_user)
     db.commit()

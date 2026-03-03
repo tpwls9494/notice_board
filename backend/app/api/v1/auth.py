@@ -21,6 +21,8 @@ from app.db.session import get_db
 from app.schemas.user import (
     EmailVerificationRequest,
     ResendVerificationRequest,
+    SignupEmailCodeConfirmRequest,
+    SignupEmailCodeSendRequest,
     UserCreate,
     UserLogin,
     UserResponse,
@@ -34,6 +36,7 @@ from app.core.security import get_password_hash
 from app.crud import user as crud_user
 from app.api.deps import get_current_user
 from app.models.email_verification_token import EmailVerificationToken
+from app.models.signup_email_verification import SignupEmailVerification
 from app.models.user import User
 
 router = APIRouter()
@@ -65,10 +68,18 @@ GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
 GITHUB_USER_URL = "https://api.github.com/user"
 GITHUB_EMAILS_URL = "https://api.github.com/user/emails"
 EMAIL_VERIFICATION_RESEND_RESPONSE = {
-    "detail": "If the account exists and needs verification, a verification email will be sent shortly.",
+    "detail": "계정이 존재하고 인증이 필요하면 인증 메일을 발송했습니다.",
 }
+SIGNUP_CODE_SEND_RESPONSE = {
+    "detail": "입력한 이메일로 인증 코드를 발송했습니다. 메일함을 확인해 주세요.",
+}
+SIGNUP_VERIFICATION_TICKET_PURPOSE = "signup_email_verified"
 _EMAIL_RESEND_ATTEMPTS_BY_KEY: dict[str, list[datetime]] = {}
 _EMAIL_RESEND_ATTEMPTS_LOCK = threading.Lock()
+_SIGNUP_CODE_SEND_ATTEMPTS_BY_KEY: dict[str, list[datetime]] = {}
+_SIGNUP_CODE_SEND_ATTEMPTS_LOCK = threading.Lock()
+_SIGNUP_CODE_CONFIRM_ATTEMPTS_BY_KEY: dict[str, list[datetime]] = {}
+_SIGNUP_CODE_CONFIRM_ATTEMPTS_LOCK = threading.Lock()
 
 
 def _hash_email_verification_token(token: str) -> str:
@@ -181,22 +192,144 @@ def _request_ip(request: Request) -> str:
     return "unknown"
 
 
-def _consume_resend_rate_limit(request: Request, normalized_email: str) -> bool:
+def _consume_sliding_window_rate_limit(
+    bucket: dict[str, list[datetime]],
+    lock: threading.Lock,
+    key: str,
+    max_attempts: int,
+    window_seconds: int,
+) -> bool:
     now = datetime.now(timezone.utc)
-    window = timedelta(seconds=settings.EMAIL_VERIFICATION_RESEND_WINDOW_SECONDS)
-    key = f"{_request_ip(request)}:{normalized_email}"
-
-    with _EMAIL_RESEND_ATTEMPTS_LOCK:
-        attempts = _EMAIL_RESEND_ATTEMPTS_BY_KEY.get(key, [])
+    window = timedelta(seconds=window_seconds)
+    with lock:
+        attempts = bucket.get(key, [])
         attempts = [attempt for attempt in attempts if now - attempt <= window]
 
-        if len(attempts) >= settings.EMAIL_VERIFICATION_RESEND_MAX_ATTEMPTS:
-            _EMAIL_RESEND_ATTEMPTS_BY_KEY[key] = attempts
+        if len(attempts) >= max_attempts:
+            bucket[key] = attempts
             return False
 
         attempts.append(now)
-        _EMAIL_RESEND_ATTEMPTS_BY_KEY[key] = attempts
+        bucket[key] = attempts
         return True
+
+
+def _consume_resend_rate_limit(request: Request, normalized_email: str) -> bool:
+    key = f"{_request_ip(request)}:{normalized_email}"
+    return _consume_sliding_window_rate_limit(
+        bucket=_EMAIL_RESEND_ATTEMPTS_BY_KEY,
+        lock=_EMAIL_RESEND_ATTEMPTS_LOCK,
+        key=key,
+        max_attempts=settings.EMAIL_VERIFICATION_RESEND_MAX_ATTEMPTS,
+        window_seconds=settings.EMAIL_VERIFICATION_RESEND_WINDOW_SECONDS,
+    )
+
+
+def _consume_signup_send_code_rate_limit(request: Request, normalized_email: str) -> bool:
+    key = f"{_request_ip(request)}:{normalized_email}"
+    return _consume_sliding_window_rate_limit(
+        bucket=_SIGNUP_CODE_SEND_ATTEMPTS_BY_KEY,
+        lock=_SIGNUP_CODE_SEND_ATTEMPTS_LOCK,
+        key=key,
+        max_attempts=settings.SIGNUP_EMAIL_SEND_MAX_ATTEMPTS,
+        window_seconds=settings.SIGNUP_EMAIL_SEND_WINDOW_SECONDS,
+    )
+
+
+def _consume_signup_confirm_code_rate_limit(request: Request, normalized_email: str) -> bool:
+    key = f"{_request_ip(request)}:{normalized_email}"
+    return _consume_sliding_window_rate_limit(
+        bucket=_SIGNUP_CODE_CONFIRM_ATTEMPTS_BY_KEY,
+        lock=_SIGNUP_CODE_CONFIRM_ATTEMPTS_LOCK,
+        key=key,
+        max_attempts=settings.SIGNUP_EMAIL_CONFIRM_MAX_ATTEMPTS,
+        window_seconds=settings.SIGNUP_EMAIL_CONFIRM_WINDOW_SECONDS,
+    )
+
+
+def _generate_signup_email_code() -> str:
+    length = max(4, min(10, settings.SIGNUP_EMAIL_CODE_LENGTH))
+    number = secrets.randbelow(10**length)
+    return str(number).zfill(length)
+
+
+def _hash_signup_email_code(code: str) -> str:
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()
+
+
+def _build_signup_email_code_expiry() -> datetime:
+    return datetime.now(timezone.utc) + timedelta(minutes=settings.SIGNUP_EMAIL_CODE_TTL_MINUTES)
+
+
+def _send_signup_email_code_email(to_email: str, code: str) -> None:
+    smtp_host = (settings.SMTP_HOST or "").strip()
+    from_email = (settings.SMTP_FROM_EMAIL or "").strip()
+    if not smtp_host or not from_email:
+        logger.warning("SMTP is not configured. Signup code email skipped for %s", to_email)
+        logger.info("Signup email code for %s: %s", to_email, code)
+        return
+
+    message = EmailMessage()
+    sender_name = (settings.SMTP_FROM_NAME or "jion").strip()
+    message["Subject"] = "[jion] 이메일 인증 코드"
+    message["From"] = f"{sender_name} <{from_email}>" if sender_name else from_email
+    message["To"] = to_email
+    message.set_content(
+        "jion 회원가입 이메일 인증 코드입니다.\n\n"
+        f"인증 코드: {code}\n\n"
+        f"코드는 {settings.SIGNUP_EMAIL_CODE_TTL_MINUTES}분 뒤 만료됩니다."
+    )
+
+    smtp_port = settings.SMTP_PORT
+    smtp_username = (settings.SMTP_USERNAME or "").strip()
+    smtp_password = settings.SMTP_PASSWORD or ""
+
+    try:
+        if settings.SMTP_USE_SSL:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20) as server:
+                if smtp_username and smtp_password:
+                    server.login(smtp_username, smtp_password)
+                server.send_message(message)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
+                if settings.SMTP_USE_TLS:
+                    server.starttls()
+                if smtp_username and smtp_password:
+                    server.login(smtp_username, smtp_password)
+                server.send_message(message)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Failed to send signup email code to %s: %s", to_email, exc)
+        logger.info("Signup email code for %s: %s", to_email, code)
+
+
+def _create_signup_verification_ticket(email: str) -> str:
+    now = datetime.now(timezone.utc)
+    payload = {
+        "purpose": SIGNUP_VERIFICATION_TICKET_PURPOSE,
+        "email": email,
+        "iat": int(now.timestamp()),
+        "exp": int(
+            (
+                now
+                + timedelta(minutes=settings.SIGNUP_EMAIL_VERIFICATION_TICKET_TTL_MINUTES)
+            ).timestamp()
+        ),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def _validate_signup_verification_ticket(ticket: str, email: str) -> bool:
+    try:
+        payload = jwt.decode(ticket, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+    except JWTError:
+        return False
+
+    if not isinstance(payload, dict):
+        return False
+    if payload.get("purpose") != SIGNUP_VERIFICATION_TICKET_PURPOSE:
+        return False
+    ticket_email = crud_user.normalize_email(str(payload.get("email") or ""))
+    return ticket_email == crud_user.normalize_email(email)
 
 
 def _remove_old_profile_image(profile_image_url: str | None) -> None:
@@ -459,6 +592,86 @@ async def _fetch_github_profile(code: str, redirect_uri: str) -> tuple[str, str,
     return email, username_hint, email_verified
 
 
+@router.post("/email-verification/send-code")
+def send_signup_email_verification_code(
+    payload: SignupEmailCodeSendRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    normalized_email = crud_user.normalize_email(str(payload.email))
+
+    if not _consume_signup_send_code_rate_limit(request, normalized_email):
+        return SIGNUP_CODE_SEND_RESPONSE
+
+    # Do not disclose account existence.
+    if crud_user.get_user_by_email(db, normalized_email):
+        return SIGNUP_CODE_SEND_RESPONSE
+
+    now = datetime.now(timezone.utc)
+    db.query(SignupEmailVerification).filter(
+        and_(
+            SignupEmailVerification.email == normalized_email,
+            SignupEmailVerification.used_at.is_(None),
+        )
+    ).update({"used_at": now}, synchronize_session=False)
+
+    code = _generate_signup_email_code()
+    db.add(
+        SignupEmailVerification(
+            email=normalized_email,
+            code_hash=_hash_signup_email_code(code),
+            expires_at=_build_signup_email_code_expiry(),
+        )
+    )
+    db.commit()
+    _send_signup_email_code_email(normalized_email, code)
+    return SIGNUP_CODE_SEND_RESPONSE
+
+
+@router.post("/email-verification/confirm-code")
+def confirm_signup_email_verification_code(
+    payload: SignupEmailCodeConfirmRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    normalized_email = crud_user.normalize_email(str(payload.email))
+    if not _consume_signup_confirm_code_rate_limit(request, normalized_email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="인증 코드가 올바르지 않거나 만료되었습니다.",
+        )
+
+    now = datetime.now(timezone.utc)
+    code_hash = _hash_signup_email_code(payload.code.strip())
+    db_code = (
+        db.query(SignupEmailVerification)
+        .filter(
+            and_(
+                SignupEmailVerification.email == normalized_email,
+                SignupEmailVerification.code_hash == code_hash,
+                SignupEmailVerification.used_at.is_(None),
+            )
+        )
+        .order_by(SignupEmailVerification.created_at.desc())
+        .first()
+    )
+
+    if not db_code or _to_utc(db_code.expires_at) <= now:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="인증 코드가 올바르지 않거나 만료되었습니다.",
+        )
+
+    db_code.used_at = now
+    db.add(db_code)
+    db.commit()
+
+    return {
+        "detail": "이메일 인증이 완료되었습니다.",
+        "verification_ticket": _create_signup_verification_ticket(normalized_email),
+    }
+
+
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user: UserCreate, db: Session = Depends(get_db)):
     normalized_email = crud_user.normalize_email(str(user.email))
@@ -473,22 +686,26 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     if crud_user.get_user_by_email(db, normalized_email):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered",
+            detail="이미 등록된 이메일입니다.",
         )
     if crud_user.get_user_by_username(db, normalized_username):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already taken",
+            detail="이미 사용 중인 아이디입니다.",
+        )
+
+    if not _validate_signup_verification_ticket(user.email_verification_ticket, normalized_email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이메일 인증을 먼저 완료해 주세요.",
         )
 
     # Create user
     db_user = crud_user.create_user(
         db,
         user.model_copy(update={"email": normalized_email, "username": normalized_username}),
+        email_verified=True,
     )
-
-    # Do not fail registration if email delivery fails; user can request resend.
-    _send_email_verification_for_user(db, db_user)
     return db_user
 
 
@@ -521,26 +738,26 @@ def verify_email(payload: EmailVerificationRequest, db: Session = Depends(get_db
     if not db_token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification token",
+            detail="유효하지 않거나 만료된 인증 토큰입니다.",
         )
 
     if db_token.used_at is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification token",
+            detail="유효하지 않거나 만료된 인증 토큰입니다.",
         )
 
     if _to_utc(db_token.expires_at) <= now:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification token",
+            detail="유효하지 않거나 만료된 인증 토큰입니다.",
         )
 
     user = crud_user.get_user_by_id(db, db_token.user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid or expired verification token",
+            detail="유효하지 않거나 만료된 인증 토큰입니다.",
         )
 
     db_token.used_at = now
@@ -558,7 +775,7 @@ def verify_email(payload: EmailVerificationRequest, db: Session = Depends(get_db
     ).update({"used_at": now}, synchronize_session=False)
     db.commit()
 
-    return {"detail": "Email verified successfully"}
+    return {"detail": "이메일 인증이 완료되었습니다."}
 
 
 @router.post("/resend-verification")
