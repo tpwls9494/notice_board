@@ -1,9 +1,11 @@
 import re
 from typing import List, Optional, Tuple
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, or_, func as sa_func
+from sqlalchemy import case, desc, or_, func as sa_func
 from app.models.mcp_server import McpServer
 from app.models.mcp_review import McpReview
+from app.models.mcp_tool import McpTool
+from app.models.mcp_install_guide import McpInstallGuide
 from app.schemas.mcp_server import McpServerCreate, McpServerUpdate
 
 
@@ -13,6 +15,50 @@ def _slugify(name: str) -> str:
     slug = re.sub(r'[\s_]+', '-', slug)
     slug = re.sub(r'-+', '-', slug)
     return slug.strip('-')
+
+
+def _build_hybrid_score_expression(db: Session):
+    # Per-server counts via correlated subqueries.
+    tool_count_subquery = (
+        db.query(sa_func.count(McpTool.id))
+        .filter(McpTool.server_id == McpServer.id)
+        .correlate(McpServer)
+        .scalar_subquery()
+    )
+    guide_count_subquery = (
+        db.query(sa_func.count(McpInstallGuide.id))
+        .filter(McpInstallGuide.server_id == McpServer.id)
+        .correlate(McpServer)
+        .scalar_subquery()
+    )
+
+    # Bayesian rating keeps low-review servers from being over-ranked.
+    global_avg_rating = (
+        db.query(sa_func.coalesce(sa_func.avg(McpReview.rating), 0.0))
+        .scalar()
+        or 0.0
+    )
+    prior_review_weight = 5.0
+
+    review_count_expr = sa_func.coalesce(McpServer.review_count, 0)
+    avg_rating_expr = sa_func.coalesce(McpServer.avg_rating, 0.0)
+    bayesian_rating_expr = (
+        (avg_rating_expr * review_count_expr) + (prior_review_weight * global_avg_rating)
+    ) / (review_count_expr + prior_review_weight)
+
+    # Weighted hybrid score:
+    # quality + popularity + review confidence + completeness (+ lightweight curation bonus).
+    hybrid_score_expr = (
+        (bayesian_rating_expr / 5.0) * 0.42
+        + (sa_func.coalesce(McpServer.github_stars, 0) / 100000.0) * 0.20
+        + (review_count_expr / 50.0) * 0.14
+        + (sa_func.coalesce(tool_count_subquery, 0) / 20.0) * 0.12
+        + (sa_func.coalesce(guide_count_subquery, 0) / 8.0) * 0.08
+        + case((McpServer.is_verified.is_(True), 0.03), else_=0.0)
+        + case((McpServer.is_featured.is_(True), 0.02), else_=0.0)
+    )
+
+    return hybrid_score_expr
 
 
 def get_mcp_server(db: Session, server_id: int) -> Optional[McpServer]:
@@ -55,6 +101,14 @@ def get_mcp_servers(
         query = query.order_by(desc(McpServer.github_stars))
     elif sort_by == "rating":
         query = query.order_by(desc(McpServer.avg_rating))
+    elif sort_by in {"hybrid", "recommended"}:
+        hybrid_score_expr = _build_hybrid_score_expression(db)
+        query = query.order_by(
+            desc(hybrid_score_expr),
+            desc(McpServer.avg_rating),
+            desc(McpServer.review_count),
+            desc(McpServer.created_at),
+        )
     else:
         query = query.order_by(desc(McpServer.created_at))
 

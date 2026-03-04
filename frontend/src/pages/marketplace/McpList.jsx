@@ -9,7 +9,7 @@ function McpList() {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [categoryId, setCategoryId] = useState(null);
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('hybrid');
 
   const { categories, fetchCategories } = useMcpCategoriesStore();
 
@@ -102,6 +102,7 @@ function McpList() {
               onChange={(e) => { setSortBy(e.target.value); setPage(1); }}
               className="input-field sm:w-40"
             >
+              <option value="hybrid">추천순</option>
               <option value="newest">최신순</option>
               <option value="stars">GitHub 스타순</option>
               <option value="rating">별점순</option>
