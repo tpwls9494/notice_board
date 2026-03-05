@@ -1259,6 +1259,13 @@ function PostForm() {
 
       if (action === 'proofread') {
         if (data.revised_text) {
+          if (
+            String(data.revised_text).trim().startsWith('{')
+            && String(data.revised_text).includes('"revised_text"')
+          ) {
+            toast.error('AI 교정 응답 형식이 올바르지 않습니다. 다시 시도해주세요.')
+            return
+          }
           setEditorHtml(plainTextToEditorHtml(data.revised_text))
           toast.success('본문 교정 결과를 적용했습니다.')
         }
@@ -1289,6 +1296,13 @@ function PostForm() {
 
       if (action === 'mask') {
         if (data.masked_text) {
+          if (
+            String(data.masked_text).trim().startsWith('{')
+            && String(data.masked_text).includes('"masked_text"')
+          ) {
+            toast.error('AI 마스킹 응답 형식이 올바르지 않습니다. 다시 시도해주세요.')
+            return
+          }
           setEditorHtml(plainTextToEditorHtml(data.masked_text))
           toast.success('민감정보 마스킹 결과를 적용했습니다.')
         }

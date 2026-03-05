@@ -364,7 +364,7 @@ class AiService:
                 model=model_name,
                 system_prompt=EDITOR_HELP_PROMPT,
                 user_prompt=user_prompt,
-                max_tokens=settings.AI_EDITOR_MAX_TOKENS,
+                max_tokens=self._resolve_editor_max_tokens(action=action, text=text),
                 temperature=0.0,
                 timeout_seconds=max(1, int(settings.AI_EDITOR_TIMEOUT_SECONDS)),
                 force_json=True,
@@ -403,6 +403,16 @@ class AiService:
             if not normalized:
                 model_result.status = "invalid_schema"
                 model_result.error_message = "editor model output does not match expected schema"
+                continue
+
+            if action == "proofread" and self._looks_truncated_fulltext(source=text, output=normalized.get("revised_text", "")):
+                model_result.status = "truncated_output"
+                model_result.error_message = "proofread output looks truncated"
+                continue
+
+            if action == "mask" and self._looks_truncated_fulltext(source=text, output=normalized.get("masked_text", "")):
+                model_result.status = "truncated_output"
+                model_result.error_message = "mask output looks truncated"
                 continue
 
             return normalized, model_result
@@ -1033,7 +1043,12 @@ class AiService:
         if not fenced:
             return None
 
+        if self._looks_like_json_payload(fenced):
+            return None
+
         if action == "proofread":
+            if self._looks_truncated_fulltext(source=source_text, output=fenced):
+                return None
             return {
                 "revised_text": fenced,
                 "changes": [],
@@ -1041,6 +1056,8 @@ class AiService:
             }
 
         if action == "mask":
+            if self._looks_truncated_fulltext(source=source_text, output=fenced):
+                return None
             if any(token in fenced for token in ("[EMAIL]", "[PHONE]", "[URL]", "[NUMBER]")):
                 return {
                     "masked_text": fenced,
@@ -1050,6 +1067,40 @@ class AiService:
             return self._mask_sensitive_text(text=source_text)
 
         return None
+
+    @staticmethod
+    def _looks_like_json_payload(text: str) -> bool:
+        stripped = str(text or "").strip()
+        if not stripped:
+            return False
+        if stripped.startswith("{") or stripped.startswith("["):
+            return True
+        if '"revised_text"' in stripped or '"masked_text"' in stripped or '"titles"' in stripped:
+            return True
+        return False
+
+    @staticmethod
+    def _looks_truncated_fulltext(*, source: str, output: str) -> bool:
+        source_text = str(source or "").strip()
+        output_text = str(output or "").strip()
+        if not source_text or not output_text:
+            return True
+        if len(source_text) < 500:
+            return False
+        # For full-text rewrite tasks, much shorter output usually means truncation.
+        if len(output_text) < int(len(source_text) * 0.6):
+            return True
+        return False
+
+    def _resolve_editor_max_tokens(self, *, action: str, text: str) -> int:
+        base = max(1, int(settings.AI_EDITOR_MAX_TOKENS))
+        if action not in {"proofread", "mask"}:
+            return base
+
+        source_len = len(str(text or ""))
+        # Heuristic for full-text rewrite tasks.
+        estimated = max(base, min(2600, max(1100, (source_len // 2) + 300)))
+        return int(estimated)
 
     @staticmethod
     def _normalize_tag(raw: str) -> str:
