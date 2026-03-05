@@ -147,6 +147,12 @@ const plainTextToEditorHtml = (value = '') => {
     .join('')
 }
 
+const isApplePlatform = () => {
+  if (typeof navigator === 'undefined') return false
+  const detectedPlatform = navigator.userAgentData?.platform || navigator.platform || ''
+  return /mac|iphone|ipad|ipod/i.test(detectedPlatform)
+}
+
 const AI_TEXT_BLOCK_TAGS = new Set([
   'p', 'div', 'li', 'blockquote', 'pre',
   'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -764,6 +770,24 @@ function PostForm() {
   }
 
   const handleEditorKeyDown = (event) => {
+    const key = String(event.key || '').toLowerCase()
+    const applePlatform = isApplePlatform()
+    const primaryModifierPressed = applePlatform ? event.metaKey : event.ctrlKey
+    const unsupportedPrimaryModifier = applePlatform ? event.ctrlKey : event.metaKey
+
+    if (
+      primaryModifierPressed
+      && !unsupportedPrimaryModifier
+      && !event.altKey
+      && (key === 'z' || (!applePlatform && key === 'y' && !event.shiftKey))
+    ) {
+      if (!applePlatform && key === 'y' && typeof document.execCommand === 'function') {
+        event.preventDefault()
+        document.execCommand('redo')
+      }
+      return
+    }
+
     if (event.key !== 'Backspace' && event.key !== 'Delete') return
 
     const editor = editorRef.current
