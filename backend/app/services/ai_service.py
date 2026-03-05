@@ -353,7 +353,12 @@ class AiService:
             model_result.error_message = "editor model output is not valid JSON"
             return fallback, model_result
 
-        normalized = self._normalize_editor_json(action=action, payload=parsed)
+        normalized = self._normalize_editor_json(
+            action=action,
+            payload=parsed,
+            source_text=text,
+            source_title=title,
+        )
         if not normalized:
             model_result.status = "invalid_schema"
             model_result.error_message = "editor model output does not match expected schema"
@@ -707,7 +712,8 @@ class AiService:
             )
         if action == "title":
             return (
-                "- Generate specific Korean titles reflecting key topics.\n"
+                "- Generate specific Korean titles reflecting key topics from the input text.\n"
+                "- Summarize the actual content rather than using generic templates.\n"
                 "- Avoid vague patterns and ban clich\u00e9 endings.\n"
                 "- Return 3-5 distinct options."
             )
@@ -754,16 +760,10 @@ class AiService:
                 "note": "잠시 후 다시 시도해 주세요.",
             }
         if action == "title":
-            seeds = self._extract_keywords(text=(title or "") + " " + text, limit=3)
-            base = seeds[0] if seeds else "프로젝트"
-            titles = [
-                f"{base} 경험 공유",
-                f"{base} 진행기와 배운 점",
-                f"{base} 시작 가이드",
-            ]
+            titles = self._build_fallback_title_candidates(text=text, title=title)
             return {
-                "titles": titles[:3],
-                "rationale": "핵심 키워드를 중심으로 읽기 쉬운 제목 후보를 만들었습니다.",
+                "titles": titles[:5],
+                "rationale": "본문 핵심 문장과 키워드를 요약해 제목 후보를 구성했습니다.",
             }
         if action == "template":
             template = (
@@ -790,7 +790,14 @@ class AiService:
         # mask
         return self._mask_sensitive_text(text=text)
 
-    def _normalize_editor_json(self, *, action: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    def _normalize_editor_json(
+        self,
+        *,
+        action: str,
+        payload: dict[str, Any],
+        source_text: str = "",
+        source_title: str | None = None,
+    ) -> dict[str, Any] | None:
         if action == "proofread":
             revised_text = str(payload.get("revised_text", "")).strip()
             if not revised_text:
@@ -812,8 +819,11 @@ class AiService:
                 if re.fullmatch(r"[0-9\W_]+", normalized):
                     continue
                 titles.append(normalized)
-            # De-duplicate while preserving order.
-            titles = list(dict.fromkeys(titles))[:5]
+            titles = self._rank_title_candidates(
+                titles=titles,
+                source_text=source_text,
+                source_title=source_title,
+            )[:5]
             if not titles:
                 return None
             rationale = str(payload.get("rationale", "")).strip() or None
@@ -871,6 +881,79 @@ class AiService:
             counts[normalized] = counts.get(normalized, 0) + 1
         sorted_items = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
         return [item[0] for item in sorted_items[:limit]]
+
+    def _build_fallback_title_candidates(self, *, text: str, title: str | None) -> list[str]:
+        source_text = self._normalize_spaces((text or "").replace("\r", "\n"))
+        normalized_title = self._normalize_spaces(title or "")
+        lines = [line.strip(" -#*[]") for line in source_text.split("\n") if line.strip()]
+        first_meaningful_line = next((line for line in lines if len(line) >= 8), "")
+
+        sentence_parts = re.split(r"[.!?\n。]+", source_text)
+        first_sentence = next((part.strip() for part in sentence_parts if len(part.strip()) >= 8), "")
+
+        keywords = self._extract_keywords(text=f"{normalized_title} {source_text}", limit=6)
+        keyword_pair = " / ".join(keywords[:2]) if len(keywords) >= 2 else (keywords[0] if keywords else "")
+        topic_seed = normalized_title or first_sentence or first_meaningful_line or keyword_pair or "이슈"
+
+        base = re.sub(r"\s+", " ", topic_seed).strip().strip(".,:;")
+        if len(base) > 42:
+            base = f"{base[:42].rstrip()}..."
+
+        candidates = [
+            base,
+            f"{base} 원인과 해결 정리",
+            f"{base} 핵심 포인트 요약",
+        ]
+        if keyword_pair:
+            candidates.append(f"{keyword_pair} 적용 이슈 정리")
+
+        return self._rank_title_candidates(
+            titles=[item for item in candidates if item and len(item) >= 6],
+            source_text=source_text,
+            source_title=normalized_title,
+        )
+
+    def _rank_title_candidates(
+        self,
+        *,
+        titles: list[str],
+        source_text: str,
+        source_title: str | None,
+    ) -> list[str]:
+        if not titles:
+            return []
+
+        source_keywords = self._extract_keywords(
+            text=f"{source_title or ''} {source_text or ''}",
+            limit=8,
+        )
+
+        deduplicated: list[tuple[int, str]] = []
+        seen = set()
+        for index, raw_title in enumerate(titles):
+            normalized = re.sub(r"\s+", " ", str(raw_title or "").strip())
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            deduplicated.append((index, normalized))
+
+        def score_item(item: tuple[int, str]) -> tuple[float, int]:
+            original_index, candidate = item
+            lower_candidate = candidate.lower()
+            score = 0.0
+            if 12 <= len(candidate) <= 46:
+                score += 1.0
+            for keyword in source_keywords[:5]:
+                if keyword and keyword in lower_candidate:
+                    score += 1.8
+            if (source_title or "").strip() and (source_title or "").strip().lower() in lower_candidate:
+                score += 2.0
+            if re.search(r"(경험 공유|시작 가이드|진행기와 배운 점)", candidate):
+                score -= 5.0
+            return (score, -original_index)
+
+        ranked = sorted(deduplicated, key=score_item, reverse=True)
+        return [title for _, title in ranked]
 
     @staticmethod
     def _normalize_tag(raw: str) -> str:

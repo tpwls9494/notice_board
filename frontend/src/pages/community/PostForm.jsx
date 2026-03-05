@@ -26,7 +26,6 @@ const RECRUIT_STATUS_CLOSED = 'CLOSED'
 const EDITOR_AI_ACTIONS = [
   { key: 'proofread', label: '교정' },
   { key: 'title', label: '제목' },
-  { key: 'template', label: '템플릿' },
   { key: 'tags', label: '태그' },
   { key: 'mask', label: '마스킹' },
 ]
@@ -1273,21 +1272,6 @@ function PostForm() {
           toast.success('제목 추천안을 적용했습니다.')
         } else {
           toast.warning('추천 제목을 생성하지 못했습니다.')
-        }
-        return
-      }
-
-      if (action === 'template') {
-        if (data.template) {
-          const templateHtml = plainTextToEditorHtml(data.template)
-          const currentEditorHtml = editorRef.current?.innerHTML || ''
-          if (hasMeaningfulContent(serializedContent) && currentEditorHtml.trim()) {
-            setEditorHtml(`${currentEditorHtml}<p><br></p>${templateHtml}`)
-            toast.success('템플릿을 본문 하단에 추가했습니다.')
-          } else {
-            setEditorHtml(templateHtml)
-            toast.success('템플릿을 본문에 적용했습니다.')
-          }
         }
         return
       }
