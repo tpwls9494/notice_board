@@ -40,6 +40,21 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/company_board
       - REDIS_URL=redis://redis:6379/0
+      - AI_API_KEY=${AI_API_KEY}
+      - AI_BASE_URL=${AI_BASE_URL:-https://api.openai.com/v1}
+      - AI_ROUTE_MODEL=${AI_ROUTE_MODEL:-gpt-4.1-mini}
+      - AI_CHAT_MODEL=${AI_CHAT_MODEL:-gpt-4.1-mini}
+      - AI_EDITOR_MODEL=${AI_EDITOR_MODEL:-gpt-4.1-mini}
+      - AI_TIMEOUT_SECONDS=${AI_TIMEOUT_SECONDS:-12}
+      - AI_ROUTE_MAX_TOKENS=${AI_ROUTE_MAX_TOKENS:-120}
+      - AI_CHAT_MAX_TOKENS=${AI_CHAT_MAX_TOKENS:-600}
+      - AI_EDITOR_MAX_TOKENS=${AI_EDITOR_MAX_TOKENS:-900}
+      - AI_RATE_LIMIT_WINDOW_SECONDS=${AI_RATE_LIMIT_WINDOW_SECONDS:-60}
+      - AI_RATE_LIMIT_MAX_REQUESTS=${AI_RATE_LIMIT_MAX_REQUESTS:-20}
+      - AI_CACHE_TTL_SECONDS=${AI_CACHE_TTL_SECONDS:-180}
+      - AI_CACHE_MAX_ITEMS=${AI_CACHE_MAX_ITEMS:-500}
+      - AI_INPUT_COST_PER_1K_USD=${AI_INPUT_COST_PER_1K_USD:-0}
+      - AI_OUTPUT_COST_PER_1K_USD=${AI_OUTPUT_COST_PER_1K_USD:-0}
     depends_on:
       postgres:
         condition: service_healthy
