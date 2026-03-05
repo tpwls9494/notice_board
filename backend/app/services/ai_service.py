@@ -332,38 +332,72 @@ class AiService:
             category_slug=category_slug,
         )
 
-        model_result = self._call_chat_completion(
-            model=settings.AI_EDITOR_MODEL,
-            system_prompt=EDITOR_HELP_PROMPT,
-            user_prompt=self._editor_user_prompt(
-                action=action,
-                text=text,
-                title=title,
-                category_slug=category_slug,
-            ),
-            max_tokens=settings.AI_EDITOR_MAX_TOKENS,
-            temperature=0.0,
-        )
-        if model_result.status != "success" or not model_result.text.strip():
-            return fallback, model_result
-
-        parsed = self._try_parse_json(model_result.text)
-        if not isinstance(parsed, dict):
-            model_result.status = "invalid_json"
-            model_result.error_message = "editor model output is not valid JSON"
-            return fallback, model_result
-
-        normalized = self._normalize_editor_json(
+        user_prompt = self._editor_user_prompt(
             action=action,
-            payload=parsed,
-            source_text=text,
-            source_title=title,
+            text=text,
+            title=title,
+            category_slug=category_slug,
         )
-        if not normalized:
-            model_result.status = "invalid_schema"
-            model_result.error_message = "editor model output does not match expected schema"
-            return fallback, model_result
-        return normalized, model_result
+
+        candidate_models = [str(settings.AI_EDITOR_MODEL or "").strip()]
+        fallback_model = str(settings.AI_EDITOR_FALLBACK_MODEL or "").strip()
+        if fallback_model and fallback_model not in candidate_models:
+            candidate_models.append(fallback_model)
+
+        last_result = ModelCallResult(
+            text="",
+            model=None,
+            status="failed",
+            error_message="no editor model configured",
+            latency_ms=0.0,
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=0,
+            cost_usd=0.0,
+        )
+
+        for model_name in candidate_models:
+            if not model_name:
+                continue
+
+            model_result = self._call_chat_completion(
+                model=model_name,
+                system_prompt=EDITOR_HELP_PROMPT,
+                user_prompt=user_prompt,
+                max_tokens=settings.AI_EDITOR_MAX_TOKENS,
+                temperature=0.0,
+                timeout_seconds=max(1, int(settings.AI_EDITOR_TIMEOUT_SECONDS)),
+            )
+            last_result = model_result
+
+            if model_result.status != "success":
+                continue
+
+            if not model_result.text.strip():
+                model_result.status = "empty_output"
+                model_result.error_message = "editor model returned empty content"
+                continue
+
+            parsed = self._try_parse_json(model_result.text)
+            if not isinstance(parsed, dict):
+                model_result.status = "invalid_json"
+                model_result.error_message = "editor model output is not valid JSON"
+                continue
+
+            normalized = self._normalize_editor_json(
+                action=action,
+                payload=parsed,
+                source_text=text,
+                source_title=title,
+            )
+            if not normalized:
+                model_result.status = "invalid_schema"
+                model_result.error_message = "editor model output does not match expected schema"
+                continue
+
+            return normalized, model_result
+
+        return fallback, last_result
 
     def out_of_scope_refusal(self) -> str:
         return "요청하신 주제는 이 도우미의 지원 범위를 벗어나서 답변할 수 없습니다."
@@ -434,6 +468,7 @@ class AiService:
         user_prompt: str,
         max_tokens: int,
         temperature: float = 0.2,
+        timeout_seconds: int | None = None,
     ) -> ModelCallResult:
         if not self.is_model_enabled:
             return ModelCallResult(
@@ -475,7 +510,8 @@ class AiService:
 
         start = time.perf_counter()
         try:
-            with httpx.Client(timeout=max(1, int(settings.AI_TIMEOUT_SECONDS))) as client:
+            effective_timeout = max(1, int(timeout_seconds or settings.AI_TIMEOUT_SECONDS))
+            with httpx.Client(timeout=effective_timeout) as client:
                 response = client.post(url, headers=headers, json=payload)
                 response.raise_for_status()
                 body = response.json()
@@ -714,6 +750,7 @@ class AiService:
             return (
                 "- Generate specific Korean titles reflecting key topics from the input text.\n"
                 "- Summarize the actual content rather than using generic templates.\n"
+                "- Include key entities/numbers if they are important in the text.\n"
                 "- Avoid vague patterns and ban clich\u00e9 endings.\n"
                 "- Return 3-5 distinct options."
             )
@@ -817,6 +854,8 @@ class AiService:
                 if any(phrase in normalized for phrase in forbidden_phrases):
                     continue
                 if re.fullmatch(r"[0-9\W_]+", normalized):
+                    continue
+                if len(normalized) < 8:
                     continue
                 titles.append(normalized)
             titles = self._rank_title_candidates(

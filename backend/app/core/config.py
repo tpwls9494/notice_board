@@ -71,7 +71,9 @@ class Settings(BaseSettings):
     AI_ROUTE_MODEL: str = "gpt-4.1-mini"
     AI_CHAT_MODEL: str = "gpt-4.1-mini"
     AI_EDITOR_MODEL: str = "gpt-4.1-mini"
+    AI_EDITOR_FALLBACK_MODEL: Optional[str] = "gpt-4.1-mini"
     AI_TIMEOUT_SECONDS: int = 12
+    AI_EDITOR_TIMEOUT_SECONDS: int = 45
     AI_ROUTE_MAX_TOKENS: int = 120
     AI_CHAT_MAX_TOKENS: int = 600
     AI_EDITOR_MAX_TOKENS: int = 900

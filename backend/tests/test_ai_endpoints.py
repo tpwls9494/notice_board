@@ -56,3 +56,13 @@ def test_intent_router_returns_editor_help_for_editor_source():
         allow_model=False,
     )
     assert decision["intent"] == INTENT_EDITOR_HELP
+
+
+def test_fallback_title_candidates_are_not_generic():
+    titles = ai_service._build_fallback_title_candidates(
+        text="케이뱅크 상장 첫날 주가 흐름과 공모가 대비 상승 폭을 정리한다.",
+        title="",
+    )
+    assert len(titles) >= 1
+    assert all("경험 공유" not in title for title in titles)
+    assert any("케이뱅크" in title for title in titles)
