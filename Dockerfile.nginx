@@ -21,7 +21,7 @@ FROM node:18-alpine as blog-builder
 
 WORKDIR /app
 
-COPY frontend-blog/package*.json ./
+COPY frontend-blog/package*.json frontend-blog/.npmrc ./
 RUN npm install
 
 COPY frontend-blog/ ./
