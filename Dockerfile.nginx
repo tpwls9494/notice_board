@@ -1,39 +1,60 @@
-# Build frontend
+# Stage 1: Build main frontend
 FROM node:18-alpine as frontend-builder
 
 WORKDIR /app
 
-# Copy frontend files
 COPY frontend/package*.json ./
 RUN npm install
 
 COPY frontend/ ./
 
-# Build argument for API URL
 ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
-# Build the frontend
 RUN npm run build
 
-# Verify build output
 RUN ls -la /app/dist && \
     test -f /app/dist/index.html || (echo "ERROR: index.html not found in dist!" && exit 1)
 
-# Nginx stage
+# Stage 2: Build blog frontend
+FROM node:18-alpine as blog-builder
+
+WORKDIR /app
+
+COPY frontend-blog/package*.json ./
+RUN npm install
+
+COPY frontend-blog/ ./
+
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
+RUN npm run build
+
+RUN ls -la /app/dist && \
+    test -f /app/dist/index.html || (echo "ERROR: blog index.html not found in dist!" && exit 1)
+
+# Stage 3: Nginx
 FROM nginx:alpine
 
-# Copy built frontend files
+# Copy main frontend
 COPY --from=frontend-builder /app/dist /usr/share/nginx/html
 
-# Verify files were copied
 RUN ls -la /usr/share/nginx/html && \
     test -f /usr/share/nginx/html/index.html || (echo "ERROR: index.html not copied!" && exit 1)
+
+# Copy blog frontend
+COPY --from=blog-builder /app/dist /usr/share/nginx/blog
+
+RUN ls -la /usr/share/nginx/blog && \
+    test -f /usr/share/nginx/blog/index.html || (echo "ERROR: blog index.html not copied!" && exit 1)
 
 # Copy nginx configuration
 COPY nginx/nginx.prod.conf /etc/nginx/nginx.conf
 
-# Expose port 80
+# Create certbot webroot directory
+RUN mkdir -p /var/www/certbot
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

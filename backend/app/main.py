@@ -25,6 +25,7 @@ from app.api.v1 import (
 )
 from app.api.v1 import mcp_categories, mcp_playground, mcp_reviews, mcp_servers
 from app.api.v1 import analytics
+from app.api.v1 import blog
 from app.core.config import settings
 from app.core.security import get_password_hash, verify_password
 from app.db.session import SessionLocal
@@ -157,6 +158,7 @@ app.include_router(mcp_reviews.router, prefix="/api/v1/mcp-reviews", tags=["mcp-
 app.include_router(
     mcp_playground.router, prefix="/api/v1/mcp-playground", tags=["mcp-playground"]
 )
+app.include_router(blog.router, prefix="/api/v1/blog", tags=["blog"])
 
 
 def ensure_bootstrap_admin_user(db: Session) -> None:

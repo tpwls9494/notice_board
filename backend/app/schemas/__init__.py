@@ -64,6 +64,13 @@ from app.schemas.analytics import (
     AnalyticsSummaryItem,
     AnalyticsSummaryResponse,
 )
+from app.schemas.blog_post import (
+    BlogPostCreate,
+    BlogPostUpdate,
+    BlogPostResponse,
+    BlogPostListItem,
+    BlogPostListResponse,
+)
 
 __all__ = [
     "UserCreate",
@@ -133,4 +140,9 @@ __all__ = [
     "AnalyticsEventCreateResponse",
     "AnalyticsSummaryItem",
     "AnalyticsSummaryResponse",
+    "BlogPostCreate",
+    "BlogPostUpdate",
+    "BlogPostResponse",
+    "BlogPostListItem",
+    "BlogPostListResponse",
 ]

@@ -20,6 +20,7 @@ from app.models.user_block import UserBlock
 from app.models.email_verification_token import EmailVerificationToken
 from app.models.signup_email_verification import SignupEmailVerification
 from app.models.ai_action_log import AiActionLog
+from app.models.blog_post import BlogPost
 
 __all__ = [
     "User", "Post", "Comment", "Category", "Like", "File", "Bookmark", "Notification",
@@ -28,4 +29,5 @@ __all__ = [
     "EmailVerificationToken",
     "SignupEmailVerification",
     "AiActionLog",
+    "BlogPost",
 ]
