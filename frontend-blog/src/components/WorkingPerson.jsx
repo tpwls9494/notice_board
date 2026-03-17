@@ -20,13 +20,13 @@ export default function WorkingPerson() {
         <path d="M110 68 C108 72, 108 82, 110 88 L116 88 C118 82, 118 72, 116 68 Z" fill="#2a2a2a" />
         <line x1="110" y1="74" x2="116" y2="74" stroke="#3a3a3a" strokeWidth="0.5" />
         <line x1="110" y1="80" x2="116" y2="80" stroke="#3a3a3a" strokeWidth="0.5" />
-        <path d="M92 120 L120 120 L122 127 L90 127 Z" fill="#2a2a2a" />
-        <path d="M90 125 L122 125 L122 127 L90 127 Z" fill="#333" />
-        <rect x="104" y="127" width="4" height="14" rx="1.5" fill="#444" />
-        <path d="M92 141 L120 141" stroke="#444" strokeWidth="2.5" strokeLinecap="round" />
-        <path d="M94 112 L112 112" stroke="#3a3a3a" strokeWidth="2" strokeLinecap="round" />
-        <rect x="92" y="108" width="2.5" height="12" rx="1" fill="#3a3a3a" />
-        <circle cx="92" cy="143" r="2.5" fill="#555" />
+        <path d="M95 120 L120 120 L122 127 L93 127 Z" fill="#2a2a2a" />
+        <path d="M93 125 L122 125 L122 127 L93 127 Z" fill="#333" />
+        <rect x="106" y="127" width="4" height="14" rx="1.5" fill="#444" />
+        <path d="M95 141 L120 141" stroke="#444" strokeWidth="2.5" strokeLinecap="round" />
+        <path d="M97 112 L112 112" stroke="#3a3a3a" strokeWidth="2" strokeLinecap="round" />
+        <rect x="95" y="108" width="2.5" height="12" rx="1" fill="#3a3a3a" />
+        <circle cx="95" cy="143" r="2.5" fill="#555" />
         <circle cx="120" cy="143" r="2.5" fill="#555" />
 
         {/* === MacBook === */}
@@ -42,114 +42,128 @@ export default function WorkingPerson() {
         </g>
         <path d="M51 59 L90 56.5 L92 88 L53 91 Z" fill="white" opacity="0.03" />
 
-        {/* === Person === */}
+        {/* === Person (back/side view — seeing mostly the back of head) === */}
 
-        {/* Head (profile) */}
-        <g className="person-head">
-          {/* Head shape */}
-          <path
-            d="M100 46 C94 42, 86 44, 83 50 C81 56, 82 62, 86 65 L90 67 C94 67, 98 63, 100 58 C102 52, 102 48, 100 46 Z"
-            fill="#ddd"
-          />
-          {/* Wolf cut — top layers (choppy, textured) */}
-          <path
-            d="M101 43 C97 36, 87 35, 82 40 C79 43, 78 48, 79 52
-               C80 47, 84 42, 91 40 C96 39, 100 41, 101 44 Z"
-            fill="#1a1a1a"
-          />
-          {/* Wolf cut — front face-framing pieces (wispy bangs) */}
-          <path
-            d="M84 44 C82 47, 81 51, 82 54 C82.5 51, 83 48, 84.5 45 Z"
-            fill="#222"
-          />
-          <path
-            d="M86 43 C84 46, 83 50, 83.5 53 C84 49, 85 46, 86.5 44 Z"
-            fill="#1a1a1a"
-          />
-          {/* Wolf cut — layered side pieces (longer, past ear, tapered) */}
-          <path
-            d="M100 43 C102 47, 103 53, 103 58 C103 62, 102 66, 100 69
-               C99 67, 99 64, 99.5 60 C100 55, 100.5 49, 100 44 Z"
-            fill="#1a1a1a"
-          />
-          <path
-            d="M101 46 C103 50, 104 56, 103 62 C102 66, 100 69, 98 70
-               C99 67, 100 63, 100 58 C100.5 53, 101 49, 101 47 Z"
-            fill="#222"
-          />
-          {/* Wolf cut — back layers (shorter on top, longer below) */}
-          <path
-            d="M101 42 C103 44, 104 48, 104 52 C104 48, 103 44, 101 43 Z"
-            fill="#1a1a1a"
-          />
-          {/* Ear (peeking through layers) */}
-          <ellipse cx="98.5" cy="55" rx="1.8" ry="2.5" fill="#ccc" />
-          {/* Nose */}
-          <path d="M83 53 L80 56 L83 57" fill="none" stroke="#bbb" strokeWidth="0.8" strokeLinecap="round" />
-          {/* Jaw */}
-          <path d="M86 65 L90 67" fill="none" stroke="#c5c5c5" strokeWidth="0.5" />
-        </g>
-
-        {/* Neck */}
-        <path d="M93 64 L97 64 L99 72 L91 72 Z" fill="#ddd" />
-
-        {/* Torso */}
+        {/* Torso (slimmer) */}
         <path
-          d="M87 72 C83 76, 81 84, 82 94 L84 120 L110 120 L112 94 C112 82, 108 72, 102 70 Z"
+          d="M90 72 C87 76, 85 84, 86 94 L87 120 L107 120 L108 94 C108 82, 106 72, 100 70 Z"
           fill="#1a1a1a"
         />
-        <path d="M90 72 C92 74, 96 74, 98 72" fill="none" stroke="#333" strokeWidth="1" />
+        {/* Collar/neckline hint */}
+        <path d="M92 72 C94 73, 97 73, 99 72" fill="none" stroke="#333" strokeWidth="0.8" />
+
+        {/* Neck (slim) */}
+        <path d="M94 64 L98 64 L99 72 L93 72 Z" fill="#ddd" />
+
+        {/* Head — back of head view, almost entirely hair */}
+        <g className="person-head">
+          {/* Base head shape (barely visible under hair) */}
+          <ellipse cx="96" cy="54" rx="13" ry="14" fill="#ddd" />
+
+          {/* Hair — full back-of-head coverage */}
+          {/* Main hair mass covering the whole back of head */}
+          <path
+            d="M83 50 C82 42, 86 36, 96 34 C106 36, 110 42, 109 50
+               C109 56, 108 62, 106 66 C104 68, 100 70, 96 70
+               C92 70, 88 68, 86 66 C84 62, 83 56, 83 50 Z"
+            fill="#1a1a1a"
+          />
+          {/* Wolf cut top layers — choppy texture on crown */}
+          <path
+            d="M88 38 C90 35, 94 33, 98 34 C96 36, 92 37, 89 39 Z"
+            fill="#222"
+          />
+          <path
+            d="M100 34 C103 35, 106 38, 107 42 C105 40, 102 37, 100 35 Z"
+            fill="#222"
+          />
+          {/* Wolf cut — left side layers (viewer's right, longer pieces) */}
+          <path
+            d="M83 48 C82 54, 82 60, 83 66 C84 68, 85 70, 86 71
+               C85 69, 84 64, 83.5 58 C83 54, 83 50, 83.5 48 Z"
+            fill="#222"
+          />
+          {/* Wolf cut — right side layers (viewer's left, tapered) */}
+          <path
+            d="M109 48 C110 54, 110 60, 109 66 C108 68, 107 70, 106 71
+               C107 69, 108 64, 108.5 58 C109 54, 109 50, 108.5 48 Z"
+            fill="#222"
+          />
+          {/* Hair parting/texture lines on back of head */}
+          <path d="M96 36 C96 42, 96 50, 96 58" fill="none" stroke="#222" strokeWidth="0.6" />
+          <path d="M92 38 C91 44, 90 52, 90 60" fill="none" stroke="#222" strokeWidth="0.4" />
+          <path d="M100 38 C101 44, 102 52, 102 60" fill="none" stroke="#222" strokeWidth="0.4" />
+
+          {/* Wispy ends at nape — wolf cut signature */}
+          <path
+            d="M88 66 C87 69, 86 72, 87 73 C88 72, 88 70, 88.5 67 Z"
+            fill="#1a1a1a"
+          />
+          <path
+            d="M104 66 C105 69, 106 72, 105 73 C104 72, 104 70, 103.5 67 Z"
+            fill="#1a1a1a"
+          />
+          <path
+            d="M92 68 C91 71, 91 73, 92 74 C92.5 73, 92 71, 92 69 Z"
+            fill="#1a1a1a"
+          />
+          <path
+            d="M100 68 C101 71, 101 73, 100 74 C99.5 73, 100 71, 100 69 Z"
+            fill="#1a1a1a"
+          />
+
+          {/* Tiny ear peek on right side (just barely visible) */}
+          <ellipse cx="109" cy="54" rx="1.5" ry="2.5" fill="#ccc" />
+        </g>
 
         {/* === Arms & Hands (typing) === */}
         {/* Far arm */}
-        <path d="M87 78 C83 82, 80 88, 78 92" fill="none" stroke="#1a1a1a" strokeWidth="6" strokeLinecap="round" />
-        <path d="M78 92 C74 94, 70 95, 66 95" fill="none" stroke="#222" strokeWidth="5" strokeLinecap="round" />
+        <path d="M90 78 C87 82, 84 88, 82 92" fill="none" stroke="#1a1a1a" strokeWidth="5" strokeLinecap="round" />
+        <path d="M82 92 C78 94, 74 95, 70 95" fill="none" stroke="#222" strokeWidth="4.5" strokeLinecap="round" />
 
         {/* Far hand + fingers */}
         <g className="hand-far">
-          <ellipse cx="64" cy="95" rx="4" ry="2.5" fill="#ddd" />
+          <ellipse cx="68" cy="95" rx="3.5" ry="2.2" fill="#ddd" />
           <g className="fingers-far">
-            <line x1="61" y1="94" x2="59.5" y2="92.5" stroke="#ddd" strokeWidth="1.5" strokeLinecap="round" />
-            <line x1="63" y1="93.5" x2="61.5" y2="91.5" stroke="#ddd" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="65.5" y1="94" x2="64" y2="92.5" stroke="#ddd" strokeWidth="1.3" strokeLinecap="round" />
+            <line x1="67" y1="93.5" x2="65.5" y2="91.5" stroke="#ddd" strokeWidth="1.3" strokeLinecap="round" />
           </g>
         </g>
 
         {/* Near arm */}
-        <path d="M89 80 C85 84, 83 90, 81 93" fill="none" stroke="#111" strokeWidth="6.5" strokeLinecap="round" />
-        <path d="M81 93 C78 94, 76 95, 74 95" fill="none" stroke="#1a1a1a" strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M92 80 C89 84, 87 90, 85 93" fill="none" stroke="#111" strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M85 93 C82 94, 80 95, 78 95" fill="none" stroke="#1a1a1a" strokeWidth="5" strokeLinecap="round" />
 
         {/* Near hand + fingers */}
         <g className="hand-near">
-          <ellipse cx="73" cy="94.5" rx="4.5" ry="2.8" fill="#ddd" />
+          <ellipse cx="76.5" cy="94.5" rx="4" ry="2.5" fill="#ddd" />
           <g className="fingers-near">
-            <line x1="70" y1="93" x2="68.5" y2="91" stroke="#ddd" strokeWidth="1.8" strokeLinecap="round" />
-            <line x1="72" y1="92.5" x2="71" y2="90.5" stroke="#ddd" strokeWidth="1.8" strokeLinecap="round" />
+            <line x1="74" y1="93" x2="72.5" y2="91" stroke="#ddd" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="75.5" y1="92.5" x2="74.5" y2="90.5" stroke="#ddd" strokeWidth="1.5" strokeLinecap="round" />
           </g>
         </g>
 
         {/* === Legs (crossed, side view) === */}
-        {/* Back leg (underneath) — thigh extends forward, shin tucks back */}
+        {/* Back leg */}
         <path
-          d="M88 118 C82 120, 74 122, 70 124 C68 126, 68 130, 72 134 L78 148"
+          d="M90 118 C84 120, 76 122, 72 124 C70 126, 70 130, 74 134 L80 148"
           fill="none"
           stroke="#333"
+          strokeWidth="5.5"
+          strokeLinecap="round"
+        />
+        <path d="M76 146 L84 146 L84 150 L74 150 Z" fill="#2a2a2a" />
+
+        {/* Front leg (crossed on top) */}
+        <path
+          d="M94 118 C88 120, 80 121, 74 120 C70 119, 66 120, 64 124 L60 138"
+          fill="none"
+          stroke="#2a2a2a"
           strokeWidth="6"
           strokeLinecap="round"
         />
-        {/* Back shoe */}
-        <path d="M74 146 L82 146 L82 150 L72 150 Z" fill="#2a2a2a" />
-
-        {/* Front leg (on top) — crosses over, ankle rests on other knee */}
-        <path
-          d="M92 118 C86 120, 78 121, 72 120 C68 119, 64 120, 62 124 L58 138"
-          fill="none"
-          stroke="#2a2a2a"
-          strokeWidth="6.5"
-          strokeLinecap="round"
-        />
-        {/* Front shoe (dangling) */}
-        <path d="M54 136 L62 136 L62 140 L52 140 Z" fill="#1a1a1a" />
-        <path d="M52 140 L62 140 L62 141.5 L51 141.5 Z" fill="#333" />
+        <path d="M56 136 L64 136 L64 140 L54 140 Z" fill="#1a1a1a" />
+        <path d="M54 140 L64 140 L64 141.5 L53 141.5 Z" fill="#333" />
       </svg>
     </div>
   )

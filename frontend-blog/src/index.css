@@ -217,13 +217,13 @@ body {
 /* Typing — natural staggered rhythm */
 .fingers-far {
   animation: tap-a 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-  transform-origin: 62px 94px;
+  transform-origin: 66px 94px;
 }
 
 .fingers-near {
   animation: tap-b 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   animation-delay: 0.2s;
-  transform-origin: 71px 93px;
+  transform-origin: 75px 93px;
 }
 
 @keyframes tap-a {
@@ -247,13 +247,13 @@ body {
 /* Hand micro-movement while typing */
 .hand-far {
   animation: hand-a 1.2s ease-in-out infinite;
-  transform-origin: 64px 95px;
+  transform-origin: 68px 95px;
 }
 
 .hand-near {
   animation: hand-b 1.2s ease-in-out infinite;
   animation-delay: 0.4s;
-  transform-origin: 73px 94px;
+  transform-origin: 76px 94px;
 }
 
 @keyframes hand-a {
