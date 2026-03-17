@@ -216,31 +216,31 @@ body {
 
 /* Finger tapping — far hand (타닥) */
 .fingers-far {
-  animation: tap-far 0.35s ease-in-out infinite;
-  transform-origin: 63px 96px;
+  animation: tap-far 0.3s ease-in-out infinite;
+  transform-origin: 62px 94px;
 }
 
 @keyframes tap-far {
   0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-8deg) translateY(-2px); }
+  50% { transform: rotate(-10deg) translateY(-2px); }
 }
 
 /* Finger tapping — near hand (타닥) offset */
 .fingers-near {
-  animation: tap-near 0.35s ease-in-out infinite;
-  animation-delay: 0.15s;
-  transform-origin: 79px 93px;
+  animation: tap-near 0.3s ease-in-out infinite;
+  animation-delay: 0.12s;
+  transform-origin: 71px 93px;
 }
 
 @keyframes tap-near {
   0%, 100% { transform: rotate(0deg); }
-  50% { transform: rotate(-10deg) translateY(-2.5px); }
+  50% { transform: rotate(-12deg) translateY(-2.5px); }
 }
 
 /* Hand bob while typing */
 .hand-far {
-  animation: hand-bob-far 0.7s ease-in-out infinite;
-  transform-origin: 66px 96px;
+  animation: hand-bob-far 0.6s ease-in-out infinite;
+  transform-origin: 64px 95px;
 }
 
 @keyframes hand-bob-far {
@@ -249,9 +249,9 @@ body {
 }
 
 .hand-near {
-  animation: hand-bob-near 0.7s ease-in-out infinite;
-  animation-delay: 0.3s;
-  transform-origin: 80px 94px;
+  animation: hand-bob-near 0.6s ease-in-out infinite;
+  animation-delay: 0.25s;
+  transform-origin: 73px 94px;
 }
 
 @keyframes hand-bob-near {
@@ -262,7 +262,7 @@ body {
 /* Subtle head bob (side view) */
 .person-head {
   animation: head-bob 3s ease-in-out infinite;
-  transform-origin: 92px 65px;
+  transform-origin: 93px 58px;
 }
 
 @keyframes head-bob {
