@@ -31,9 +31,8 @@ export default function Header() {
   return (
     <header className="bg-[#0a0a0a] sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-        <Link to="/" className="no-underline">
-          <span className="text-lg font-bold text-white tracking-tight block leading-none">Jion Blog</span>
-          <span className="text-[10px] text-white/30 font-medium tracking-widest uppercase">Dev · AI · Life</span>
+        <Link to="/" className="text-lg font-bold text-white no-underline tracking-tight">
+          Jion Blog
         </Link>
         <nav className="flex items-center gap-3 text-sm">
           {user?.is_admin && (
