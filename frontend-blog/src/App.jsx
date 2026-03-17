@@ -14,17 +14,19 @@ function App() {
   const isHome = location.pathname === '/' || location.search.includes('category=')
 
   return (
-    <div className="min-h-screen flex flex-col relative">
-      {/* Background 3D lines */}
-      <div className="bg-lines" aria-hidden="true">
-        <div className="bg-line bg-line-1" />
-        <div className="bg-line bg-line-2" />
-        <div className="bg-line bg-line-3" />
-      </div>
+    <div className={`min-h-screen flex flex-col relative ${!isHome ? 'bg-white' : ''}`}>
+      {/* Background 3D lines - only on home */}
+      {isHome && (
+        <div className="bg-lines" aria-hidden="true">
+          <div className="bg-line bg-line-1" />
+          <div className="bg-line bg-line-2" />
+          <div className="bg-line bg-line-3" />
+        </div>
+      )}
 
       {isHome ? <HeroBanner /> : <SimpleHeader />}
 
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-10 relative z-10">
+      <main className={`flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-10 relative z-10 ${!isHome ? 'bg-white' : ''}`}>
         <div className="page-enter" key={location.pathname}>
           <Routes>
             <Route path="/" element={<BlogList />} />
