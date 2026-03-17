@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { blogAPI } from '../services/api'
 
 export default function BlogList() {
+  const [searchParams] = useSearchParams()
+  const category = searchParams.get('category') || 'all'
+
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -10,16 +13,24 @@ export default function BlogList() {
   const pageSize = 10
 
   useEffect(() => {
+    setPage(1)
+  }, [category])
+
+  useEffect(() => {
     setLoading(true)
+    const params = { page, page_size: pageSize }
+    if (category !== 'all') {
+      params.tag = category
+    }
     blogAPI
-      .getPosts({ page, page_size: pageSize })
+      .getPosts(params)
       .then((res) => {
         setPosts(res.data.items)
         setTotal(res.data.total)
       })
       .catch(() => setPosts([]))
       .finally(() => setLoading(false))
-  }, [page])
+  }, [page, category])
 
   const totalPages = Math.ceil(total / pageSize)
 
@@ -32,71 +43,89 @@ export default function BlogList() {
     })
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <div className="w-6 h-6 border-2 border-ink-300 border-t-ink-800 rounded-full animate-spin" />
-      </div>
-    )
-  }
-
-  if (posts.length === 0) {
-    return (
-      <div className="text-center py-20 text-ink-400">
-        <p className="text-lg">아직 작성된 글이 없습니다.</p>
-      </div>
-    )
-  }
-
   return (
     <div>
-      <div className="space-y-10">
-        {posts.map((post) => (
-          <article key={post.id}>
-            <Link
-              to={`/${post.slug}`}
-              className="block group no-underline"
-            >
-              {post.thumbnail_url && (
-                <img
-                  src={post.thumbnail_url}
-                  alt={post.title}
-                  className="w-full h-48 object-cover rounded-lg mb-3"
-                />
-              )}
-              <h2 className="text-xl font-bold text-ink-900 group-hover:text-blue-600 transition-colors mb-1">
-                {post.title}
-              </h2>
-              {post.summary && (
-                <p className="text-ink-500 text-sm mb-2 line-clamp-2">
-                  {post.summary}
-                </p>
-              )}
-              <div className="flex items-center gap-3 text-xs text-ink-400">
-                <span>{formatDate(post.published_at || post.created_at)}</span>
-                <span>&middot;</span>
-                <span>조회 {post.views}</span>
-                {post.tags && (
-                  <>
-                    <span>&middot;</span>
-                    <span>
-                      {post.tags.split(',').map((t) => t.trim()).filter(Boolean).map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-block bg-paper-200 rounded px-1.5 py-0.5 mr-1"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </span>
-                  </>
-                )}
-              </div>
-            </Link>
-          </article>
-        ))}
-      </div>
+      {/* Hero Section */}
+      <section className="hero-section mb-10">
+        <div className="hero-content">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+            Jion Blog
+          </h1>
+          <p className="text-base md:text-lg text-white/80 max-w-lg">
+            개발, AI, 그리고 일상에 대한 생각을 기록합니다.
+          </p>
+        </div>
+      </section>
 
+      {/* Posts */}
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="w-6 h-6 border-2 border-ink-300 border-t-ink-800 rounded-full animate-spin" />
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="text-center py-20 text-ink-400">
+          <p className="text-lg">아직 작성된 글이 없습니다.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {posts.map((post) => (
+            <article key={post.id} className="blog-card group">
+              <Link to={`/${post.slug}`} className="block no-underline">
+                <div className="aspect-[16/9] overflow-hidden rounded-t-lg">
+                  {post.thumbnail_url ? (
+                    <img
+                      src={post.thumbnail_url}
+                      alt={post.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-ink-200 to-ink-100 flex items-center justify-center">
+                      <span className="text-4xl text-ink-300">
+                        {post.title.charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <h2 className="text-lg font-bold text-ink-900 group-hover:text-blue-600 transition-colors mb-1 line-clamp-2">
+                    {post.title}
+                  </h2>
+                  {post.summary && (
+                    <p className="text-ink-500 text-sm mb-3 line-clamp-2">
+                      {post.summary}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-ink-400">
+                    <span>
+                      {formatDate(post.published_at || post.created_at)}
+                    </span>
+                    <span>&middot;</span>
+                    <span>조회 {post.views}</span>
+                  </div>
+                  {post.tags && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {post.tags
+                        .split(',')
+                        .map((t) => t.trim())
+                        .filter(Boolean)
+                        .map((tag) => (
+                          <span
+                            key={tag}
+                            className="inline-block bg-paper-200 text-ink-500 rounded px-2 py-0.5 text-xs"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              </Link>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex justify-center gap-2 mt-12">
           <button
