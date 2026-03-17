@@ -45,13 +45,8 @@ export default function BlogList() {
 
   return (
     <div>
-      {/* Hero Section */}
-      <section className="hero-section mb-12">
-        <div className="hero-lines">
-          <div className="hero-line hero-line-1" />
-          <div className="hero-line hero-line-2" />
-          <div className="hero-line hero-line-3" />
-        </div>
+      {/* Hero Section — flush to top */}
+      <section className="hero-section mb-12 -mt-8">
         <div className="hero-content">
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
             Jion Blog
@@ -72,7 +67,7 @@ export default function BlogList() {
           <p className="text-lg">아직 작성된 글이 없습니다.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {posts.map((post) => (
             <article key={post.id} className="blog-card group">
               <Link to={`/${post.slug}`} className="block no-underline">

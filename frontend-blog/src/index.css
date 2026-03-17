@@ -87,6 +87,55 @@ body {
   margin: 2em 0;
 }
 
+/* ── Background 3D Lines (page-level) ── */
+.bg-lines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.bg-line {
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.06) 15%,
+    rgba(0, 0, 0, 0.12) 40%,
+    rgba(0, 0, 0, 0.15) 50%,
+    rgba(0, 0, 0, 0.12) 60%,
+    rgba(0, 0, 0, 0.06) 85%,
+    transparent 100%
+  );
+}
+
+.bg-line-1 {
+  top: 35%;
+  transform: rotate(-6deg) perspective(500px) rotateY(8deg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 0 16px rgba(0, 0, 0, 0.04);
+}
+
+.bg-line-2 {
+  top: 50%;
+  transform: rotate(3deg) perspective(500px) rotateY(-6deg);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06), 0 0 20px rgba(0, 0, 0, 0.03);
+  opacity: 0.7;
+}
+
+.bg-line-3 {
+  top: 68%;
+  transform: rotate(-2deg) perspective(700px) rotateY(10deg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  opacity: 0.4;
+}
+
 /* ── Hero Section ── */
 .hero-section {
   background: #0a0a0a;
@@ -106,49 +155,6 @@ body {
   background:
     radial-gradient(ellipse 60% 50% at 70% 40%, rgba(255,255,255,0.04) 0%, transparent 100%),
     radial-gradient(ellipse 40% 60% at 20% 80%, rgba(255,255,255,0.02) 0%, transparent 100%);
-}
-
-/* 3D black lines piercing through */
-.hero-lines {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  overflow: hidden;
-}
-
-.hero-line {
-  position: absolute;
-  height: 1px;
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 20%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.15) 80%, transparent 100%);
-  transform-origin: center;
-}
-
-.hero-line-1 {
-  top: 25%;
-  left: -10%;
-  right: -10%;
-  transform: rotate(-8deg) perspective(400px) rotateY(5deg);
-  box-shadow: 0 0 8px rgba(255,255,255,0.1), 0 0 20px rgba(255,255,255,0.05);
-}
-
-.hero-line-2 {
-  top: 55%;
-  left: -10%;
-  right: -10%;
-  transform: rotate(4deg) perspective(400px) rotateY(-8deg);
-  box-shadow: 0 0 12px rgba(255,255,255,0.08), 0 0 30px rgba(255,255,255,0.03);
-  opacity: 0.6;
-}
-
-.hero-line-3 {
-  top: 78%;
-  left: -10%;
-  right: -10%;
-  transform: rotate(-3deg) perspective(600px) rotateY(12deg);
-  box-shadow: 0 0 6px rgba(255,255,255,0.06);
-  opacity: 0.35;
 }
 
 .hero-content {
