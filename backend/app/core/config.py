@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     BOOTSTRAP_ADMIN_USERNAME: Optional[str] = None
     BOOTSTRAP_ADMIN_PASSWORD: Optional[str] = None
 
+    # SEO — Search Console verification codes (leave empty to skip)
+    GOOGLE_SITE_VERIFICATION: Optional[str] = None
+    NAVER_SITE_VERIFICATION: Optional[str] = None
+
     # Monitoring
     REQUEST_LOG_ENABLED: bool = True
     SLOW_REQUEST_THRESHOLD_MS: int = 500

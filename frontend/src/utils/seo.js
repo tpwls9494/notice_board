@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 const SITE_NAME = 'jion community';
 const DEFAULT_TITLE = 'jion community';
 const DEFAULT_DESCRIPTION = 'MCP, 개발, IT 뉴스를 다루는 커뮤니티 게시판';
-const DEFAULT_OG_IMAGE_PATH = '/og/default.svg';
+const DEFAULT_OG_IMAGE_PATH = '/api/v1/seo/og/default.png';
 
 const MAX_DESCRIPTION_LENGTH = 170;
 

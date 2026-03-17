@@ -376,7 +376,7 @@ function PostDetail() {
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
   const publicPostUrl = post ? `${currentOrigin}/posts/${post.id}` : `${currentOrigin}/posts/${postId}`;
   const sharePreviewUrl = post ? `${currentOrigin}/share/posts/${post.id}` : `${currentOrigin}/share/posts/${postId}`;
-  const ogImageUrl = `${API_BASE_URL}/api/v1/seo/og/posts/${postId}.svg`;
+  const ogImageUrl = `${API_BASE_URL}/api/v1/seo/og/posts/${postId}.png`;
 
   useSeo({
     title: post?.title || '게시글',

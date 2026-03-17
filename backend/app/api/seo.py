@@ -10,6 +10,7 @@ from sqlalchemy import desc
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.db.session import get_db
 from app.models.category import Category
 from app.models.post import Post
@@ -129,7 +130,35 @@ def robots_txt(request: Request) -> Response:
     return Response(content=body, media_type="text/plain")
 
 
+@public_router.get("/verification-meta", include_in_schema=False)
+def verification_meta() -> Response:
+    """Return search console verification codes as JSON.
+
+    Frontend can fetch this at build-time or runtime to inject meta tags,
+    or the codes can be added directly to index.html.
+    """
+    data: dict[str, str] = {}
+    if settings.GOOGLE_SITE_VERIFICATION:
+        data["google-site-verification"] = settings.GOOGLE_SITE_VERIFICATION
+    if settings.NAVER_SITE_VERIFICATION:
+        data["naver-site-verification"] = settings.NAVER_SITE_VERIFICATION
+    import json
+
+    return Response(content=json.dumps(data), media_type="application/json")
+
+
 @api_router.get("/og/posts/{post_id}.svg", include_in_schema=False)
+def post_og_image_svg_redirect(post_id: int) -> Response:
+    """Legacy SVG path — redirect to PNG."""
+    from starlette.responses import RedirectResponse
+
+    return RedirectResponse(
+        url=f"/api/v1/seo/og/posts/{post_id}.png",
+        status_code=301,
+    )
+
+
+@api_router.get("/og/posts/{post_id}.png", include_in_schema=False)
 def post_og_image(post_id: int, db: Session = Depends(get_db)) -> Response:
     row = (
         db.query(Post.title, Category.name)
@@ -140,32 +169,28 @@ def post_og_image(post_id: int, db: Session = Depends(get_db)) -> Response:
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
-    title = html.escape(_excerpt(row.title, limit=80), quote=False)
-    category_name = html.escape(_excerpt(row.name or "Community", limit=24), quote=False)
+    title = _excerpt(row.title, limit=120)
+    category_name = _excerpt(row.name or "Community", limit=24)
 
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="{title}">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#1f2937" />
-    </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#0ea5e9" />
-      <stop offset="100%" stop-color="#22d3ee" />
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="630" fill="url(#bg)" />
-  <rect x="74" y="74" width="220" height="56" rx="16" fill="#111827" stroke="#334155" />
-  <text x="184" y="111" fill="#cbd5e1" text-anchor="middle" font-family="Pretendard, Noto Sans KR, sans-serif" font-size="28" font-weight="700">{category_name}</text>
-  <text x="74" y="224" fill="#f8fafc" font-family="Pretendard, Noto Sans KR, sans-serif" font-size="64" font-weight="800">{title}</text>
-  <rect x="74" y="518" width="308" height="10" rx="5" fill="url(#accent)" />
-  <text x="74" y="570" fill="#94a3b8" font-family="Pretendard, Noto Sans KR, sans-serif" font-size="30" font-weight="600">jion community</text>
-</svg>"""
+    from app.services.og_image import generate_post_og
+
+    png_bytes = generate_post_og(title=title, category_name=category_name)
 
     headers = {
         "Cache-Control": "public, max-age=1800",
     }
-    return Response(content=svg, media_type="image/svg+xml", headers=headers)
+    return Response(content=png_bytes, media_type="image/png", headers=headers)
+
+
+@api_router.get("/og/default.png", include_in_schema=False)
+def default_og_image() -> Response:
+    from app.services.og_image import generate_default_og
+
+    png_bytes = generate_default_og()
+    headers = {
+        "Cache-Control": "public, max-age=86400",
+    }
+    return Response(content=png_bytes, media_type="image/png", headers=headers)
 
 
 @public_router.get("/share/posts/{post_id}", include_in_schema=False)
@@ -182,7 +207,7 @@ def post_share_landing(post_id: int, request: Request, db: Session = Depends(get
     origin = _build_public_origin(request)
     canonical_url = _join_url(origin, f"/posts/{row.id}")
     share_url = _join_url(origin, f"/share/posts/{row.id}")
-    og_image_url = _join_url(origin, f"/api/v1/seo/og/posts/{row.id}.svg")
+    og_image_url = _join_url(origin, f"/api/v1/seo/og/posts/{row.id}.png")
 
     title = _excerpt(row.title, limit=90) or "Community Post"
     description = _excerpt(row.content, limit=170) or "Community post details"
