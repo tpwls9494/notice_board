@@ -197,7 +197,7 @@ body {
   display: none;
 }
 
-/* ── Working Person Animation ── */
+/* ── Working Person Animation (side view) ── */
 .working-person {
   position: fixed;
   bottom: 16px;
@@ -214,78 +214,77 @@ body {
   opacity: 0.85;
 }
 
-/* Typing arms animation */
-.arm-left {
-  animation: type-left 0.6s ease-in-out infinite alternate;
-  transform-origin: 92px 95px;
+/* Finger tapping — far hand (타닥) */
+.fingers-far {
+  animation: tap-far 0.35s ease-in-out infinite;
+  transform-origin: 63px 96px;
 }
 
-.arm-right {
-  animation: type-right 0.6s ease-in-out infinite alternate-reverse;
-  transform-origin: 108px 95px;
+@keyframes tap-far {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-8deg) translateY(-2px); }
 }
 
-@keyframes type-left {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(-2deg) translateY(-1px); }
+/* Finger tapping — near hand (타닥) offset */
+.fingers-near {
+  animation: tap-near 0.35s ease-in-out infinite;
+  animation-delay: 0.15s;
+  transform-origin: 79px 93px;
 }
 
-@keyframes type-right {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(2deg) translateY(-1px); }
+@keyframes tap-near {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-10deg) translateY(-2.5px); }
 }
 
-/* Subtle head bob */
+/* Hand bob while typing */
+.hand-far {
+  animation: hand-bob-far 0.7s ease-in-out infinite;
+  transform-origin: 66px 96px;
+}
+
+@keyframes hand-bob-far {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+.hand-near {
+  animation: hand-bob-near 0.7s ease-in-out infinite;
+  animation-delay: 0.3s;
+  transform-origin: 80px 94px;
+}
+
+@keyframes hand-bob-near {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+/* Subtle head bob (side view) */
 .person-head {
   animation: head-bob 3s ease-in-out infinite;
-  transform-origin: 100px 70px;
+  transform-origin: 92px 65px;
 }
 
 @keyframes head-bob {
   0%, 100% { transform: rotate(0deg); }
-  30% { transform: rotate(1.5deg) translateY(-0.5px); }
-  70% { transform: rotate(-1deg); }
-}
-
-/* Blinking eyes */
-.person-eyes {
-  animation: blink 4s ease-in-out infinite;
-}
-
-@keyframes blink {
-  0%, 42%, 44%, 100% { transform: scaleY(1); }
-  43% { transform: scaleY(0.1); }
+  30% { transform: rotate(1deg) translateY(-0.5px); }
+  70% { transform: rotate(-0.5deg); }
 }
 
 /* Screen content typing effect */
-.screen-lines rect {
+.screen-lines line {
   animation: screen-flicker 2s ease-in-out infinite;
 }
 
-.screen-lines rect:nth-child(1) { animation-delay: 0s; }
-.screen-lines rect:nth-child(2) { animation-delay: 0.3s; }
-.screen-lines rect:nth-child(3) { animation-delay: 0.6s; }
-.screen-lines rect:nth-child(4) { animation-delay: 0.9s; }
-.screen-lines rect:nth-child(5) { animation-delay: 1.2s; }
+.screen-lines line:nth-child(1) { animation-delay: 0s; }
+.screen-lines line:nth-child(2) { animation-delay: 0.3s; }
+.screen-lines line:nth-child(3) { animation-delay: 0.6s; }
+.screen-lines line:nth-child(4) { animation-delay: 0.9s; }
+.screen-lines line:nth-child(5) { animation-delay: 1.2s; }
 
 @keyframes screen-flicker {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.9; }
-}
-
-/* Steam rising from coffee */
-.steam path {
-  animation: steam-rise 2.5s ease-in-out infinite;
-}
-
-.steam path:nth-child(2) {
-  animation-delay: 0.8s;
-}
-
-@keyframes steam-rise {
-  0% { opacity: 0; transform: translateY(0); }
-  50% { opacity: 0.15; }
-  100% { opacity: 0; transform: translateY(-6px); }
 }
 
 /* Hide on small screens */
