@@ -142,7 +142,7 @@ body {
 /* ── Hero Section (full-width banner) ── */
 .hero-section {
   background: #0a0a0a;
-  padding: 5rem 0;
+  padding: 2rem 0 2.5rem;
   position: relative;
   overflow: hidden;
 }
