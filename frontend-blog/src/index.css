@@ -186,45 +186,6 @@ body {
   opacity: 0.45;
 }
 
-/* ── Hero Header (sticky dark nav) ── */
-.hero-header {
-  background: #0a0a0a;
-}
-
-/* ── Hero Section (intro text) ── */
-.hero-section {
-  background: #0a0a0a;
-  padding: 3rem 0 3.5rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.hero-section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(ellipse 60% 80% at 75% 20%, rgba(255,255,255,0.06) 0%, transparent 100%),
-    radial-gradient(ellipse 40% 60% at 15% 70%, rgba(255,255,255,0.03) 0%, transparent 100%);
-}
-
-.hero-section::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
-}
-
-.hero-content {
-  position: relative;
-  z-index: 1;
-}
 
 /* ── Blog Card ── */
 .blog-card {
