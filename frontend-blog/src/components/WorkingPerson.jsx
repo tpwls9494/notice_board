@@ -51,35 +51,26 @@ export default function WorkingPerson() {
         />
         <path d="M92 72 C94 73, 97 73, 99 72" fill="none" stroke="#333" strokeWidth="0.8" />
 
-        {/* Neck (clearly visible below hairline) */}
-        <path d="M89 60 L103 60 L104 72 L88 72 Z" fill="#ddd" />
+        {/* Neck (skin visible below hairline) */}
+        <path d="M86 60 L103 60 L104 72 L85 72 Z" fill="#ddd" />
         {/* Nape center line */}
         <path d="M96 60 L96 66" fill="none" stroke="#ccc" strokeWidth="0.4" />
         {/* Neck side shadow */}
-        <path d="M89 60 C88 63, 88 67, 88 72" fill="none" stroke="#c8c8c8" strokeWidth="0.5" />
+        <path d="M86 60 C85 63, 85 67, 85 72" fill="none" stroke="#c8c8c8" strokeWidth="0.5" />
 
         {/* Head */}
         <g className="person-head">
-          {/* Base head shape */}
-          <ellipse cx="96" cy="48" rx="14" ry="14" fill="#ddd" />
+          {/* Base head shape (dark — hair covers most of it) */}
+          <ellipse cx="96" cy="48" rx="14" ry="14" fill="#333" />
 
-          {/* Left cheek/jaw visible */}
+          {/* Left cheek/jaw — small skin area */}
           <path
-            d="M82 46 C81 50, 81 54, 82 57 C83 59, 85 60, 88 61
-               L88 57 C86 55, 84 52, 83 49 C83 47, 82.5 46.5, 82 46 Z"
+            d="M82 48 C81 51, 81 55, 83 58 C84 59, 86 60, 88 61
+               L88 58 C86 56, 84 53, 83 50 Z"
             fill="#ddd"
           />
           {/* Jawline */}
           <path d="M83 57 C84 59, 86 60, 88 61" fill="none" stroke="#c5c5c5" strokeWidth="0.5" strokeLinecap="round" />
-
-          {/* Left ear (fully visible — hair tapers above it) */}
-          <ellipse cx="83" cy="52" rx="3" ry="4.5" fill="#d5d5d5" />
-          {/* Inner ear */}
-          <ellipse cx="83.5" cy="52" rx="1.8" ry="3" fill="#ccc" />
-          {/* Ear canal hint */}
-          <ellipse cx="83.8" cy="51.5" rx="0.8" ry="1.5" fill="#c0c0c0" />
-          {/* Earlobe */}
-          <path d="M82 55.5 C82 57, 83 57.5, 84 57 C83.5 57, 82.5 56.5, 82 55.5 Z" fill="#d5d5d5" />
 
           {/* === Hair — Korean male tapered back cut === */}
           {/* Main hair volume on top (longer, swept right) */}
@@ -137,16 +128,12 @@ export default function WorkingPerson() {
           <path d="M89 52 C94 50, 100 50, 106 52" fill="none" stroke="#444" strokeWidth="0.4" />
           <path d="M90 55 C94 54, 100 53, 105 55" fill="none" stroke="#4a4a4a" strokeWidth="0.3" />
 
-          {/* Left side — clean taper above ear */}
+          {/* Left side — covers down to jaw line */}
           <path
-            d="M86 46 C85 44, 85 41, 86 38 C85.5 40, 85 43, 85.5 46
-               C86 48, 86.5 50, 87 51 C86.5 50, 86 48, 86 46 Z"
+            d="M86 46 C85 44, 85 41, 86 38 C85.5 40, 84.5 43, 84 46
+               C83.5 48, 83 50, 83 52 C83.5 54, 84 56, 85 57
+               C84 55, 83.5 52, 84 49 C84.5 47, 85 46, 86 46 Z"
             fill="#3a3a3a"
-          />
-          {/* Sideburn (short, clean) */}
-          <path
-            d="M85 48 C84.5 50, 84.5 51, 85 52 C85.5 51, 85.5 50, 85 48.5 Z"
-            fill="#555"
           />
         </g>
 
