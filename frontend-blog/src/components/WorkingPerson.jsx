@@ -51,88 +51,88 @@ export default function WorkingPerson() {
         />
         <path d="M92 72 C94 73, 97 73, 99 72" fill="none" stroke="#333" strokeWidth="0.8" />
 
-        {/* Neck (skin visible below hairline) */}
-        <path d="M89 66 L102 66 L103 72 L88 72 Z" fill="#ddd" />
+        {/* Neck (short, between head and torso) */}
+        <path d="M90 68 L101 68 L102 72 L89 72 Z" fill="#ddd" />
         {/* Nape center line */}
-        <path d="M96 66 L96 70" fill="none" stroke="#ccc" strokeWidth="0.4" />
+        <path d="M96 68 L96 71" fill="none" stroke="#ccc" strokeWidth="0.4" />
         {/* Neck side shadow */}
-        <path d="M89 66 C88 68, 88 70, 88 72" fill="none" stroke="#c8c8c8" strokeWidth="0.5" />
+        <path d="M90 68 C89 69, 89 71, 89 72" fill="none" stroke="#c8c8c8" strokeWidth="0.5" />
 
         {/* Head */}
         <g className="person-head">
           {/* Base head shape (dark — hair covers most of it) */}
-          <ellipse cx="96" cy="48" rx="14" ry="14" fill="#333" />
+          <ellipse cx="96" cy="54" rx="14" ry="14" fill="#333" />
 
           {/* Left cheek/jaw — small skin area */}
           <path
-            d="M82 48 C81 51, 81 55, 83 58 C84 59, 86 60, 88 61
-               L88 58 C86 56, 84 53, 83 50 Z"
+            d="M82 54 C81 57, 81 61, 83 64 C84 65, 86 66, 88 67
+               L88 64 C86 62, 84 59, 83 56 Z"
             fill="#ddd"
           />
           {/* Jawline */}
-          <path d="M83 57 C84 59, 86 60, 88 61" fill="none" stroke="#c5c5c5" strokeWidth="0.5" strokeLinecap="round" />
+          <path d="M83 63 C84 65, 86 66, 88 67" fill="none" stroke="#c5c5c5" strokeWidth="0.5" strokeLinecap="round" />
 
           {/* === Hair — Korean male tapered back cut === */}
           {/* Main hair volume on top (longer, swept right) */}
           <path
-            d="M86 42 C85 36, 88 30, 96 28 C104 30, 110 36, 110 42
-               C110 46, 109 49, 108 51 C106 48, 102 44, 96 43
-               C92 43, 88 44, 86 46 Z"
+            d="M86 48 C85 42, 88 36, 96 34 C104 36, 110 42, 110 48
+               C110 52, 109 55, 108 57 C106 54, 102 50, 96 49
+               C92 49, 88 50, 86 52 Z"
             fill="#333"
           />
           {/* Top swept layer (direction: left to right) */}
           <path
-            d="M86 38 C88 33, 93 30, 98 29 C96 31, 92 33, 88 37 Z"
+            d="M86 44 C88 39, 93 36, 98 35 C96 37, 92 39, 88 43 Z"
             fill="#3a3a3a"
           />
           <path
-            d="M90 34 C93 31, 98 29, 103 30 C100 32, 96 33, 92 35 Z"
+            d="M90 40 C93 37, 98 35, 103 36 C100 38, 96 39, 92 41 Z"
             fill="#3d3d3d"
           />
 
           {/* Back of head — gradual taper from thick top to thin nape */}
           {/* Upper back (still thick) */}
           <path
-            d="M108 51 C109 48, 110 44, 110 42 C110 46, 110 50, 109 53
-               C108 55, 107 57, 106 58 L106 54 Z"
+            d="M108 57 C109 54, 110 50, 110 48 C110 52, 110 56, 109 59
+               C108 61, 107 63, 106 64 L106 60 Z"
             fill="#333"
           />
           {/* Mid back (medium density) */}
           <path
-            d="M90 54 C89 52, 88 49, 87 46 C87 48, 87.5 51, 88 53
-               L90 56 C91 57, 94 58, 98 58 C102 58, 105 57, 106 55
-               L106 58 C104 60, 100 61, 96 61 C92 61, 89 59, 88 57 Z"
+            d="M90 60 C89 58, 88 55, 87 52 C87 54, 87.5 57, 88 59
+               L90 62 C91 63, 94 64, 98 64 C102 64, 105 63, 106 61
+               L106 64 C104 66, 100 67, 96 67 C92 67, 89 65, 88 63 Z"
             fill="#3a3a3a"
           />
-          {/* Lower back (thin, tapered — skin showing through) */}
+          {/* Lower back (thin, tapered) */}
           <path
-            d="M90 57 C89 56, 88 54, 88 53
-               C88.5 55, 89 56.5, 90 58 C92 60, 94 61, 97 61
-               C100 61, 103 60, 105 58 C106 57, 106 55, 106 54
-               C106 56, 105 58, 104 59 C102 60, 99 60.5, 96 60.5
-               C93 60.5, 91 59, 90 57 Z"
+            d="M90 63 C89 62, 88 60, 88 59
+               C88.5 61, 89 62.5, 90 64 C92 66, 94 67, 97 67
+               C100 67, 103 66, 105 64 C106 63, 106 61, 106 60
+               C106 62, 105 64, 104 65 C102 66, 99 66.5, 96 66.5
+               C93 66.5, 91 65, 90 63 Z"
             fill="#444"
           />
           {/* Nape taper (very short, almost skin) */}
           <path
-            d="M91 59 C93 60.5, 95 61, 97 61 C99 61, 101 60.5, 103 59
-               C102 60, 99 61, 97 61 C95 61, 93 60, 91 59 Z"
+            d="M91 65 C93 66.5, 95 67, 97 67 C99 67, 101 66.5, 103 65
+               C102 66, 99 67, 97 67 C95 67, 93 66, 91 65 Z"
             fill="#555"
           />
 
           {/* Hair flow lines (swept direction: ← to →) */}
-          <path d="M87 40 C90 38, 96 37, 104 38" fill="none" stroke="#3a3a3a" strokeWidth="0.6" />
-          <path d="M87 43 C91 41, 97 40, 106 42" fill="none" stroke="#3d3d3d" strokeWidth="0.5" />
-          <path d="M88 46 C92 44, 98 43, 107 45" fill="none" stroke="#3a3a3a" strokeWidth="0.5" />
-          <path d="M88 49 C93 47, 99 46, 107 48" fill="none" stroke="#444" strokeWidth="0.4" />
-          <path d="M89 52 C94 50, 100 50, 106 52" fill="none" stroke="#444" strokeWidth="0.4" />
-          <path d="M90 55 C94 54, 100 53, 105 55" fill="none" stroke="#4a4a4a" strokeWidth="0.3" />
+          <path d="M87 46 C90 44, 96 43, 104 44" fill="none" stroke="#3a3a3a" strokeWidth="0.6" />
+          <path d="M87 49 C91 47, 97 46, 106 48" fill="none" stroke="#3d3d3d" strokeWidth="0.5" />
+          <path d="M88 52 C92 50, 98 49, 107 51" fill="none" stroke="#3a3a3a" strokeWidth="0.5" />
+          <path d="M88 55 C93 53, 99 52, 107 54" fill="none" stroke="#444" strokeWidth="0.4" />
+          <path d="M89 58 C94 56, 100 56, 106 58" fill="none" stroke="#444" strokeWidth="0.4" />
+          <path d="M90 61 C94 60, 100 59, 105 61" fill="none" stroke="#4a4a4a" strokeWidth="0.3" />
 
           {/* Left side — covers down to jaw line */}
           <path
-            d="M86 46 C85 44, 85 41, 86 38 C85.5 40, 84.5 43, 84 46
-               C83.5 48, 83 50, 83 52 C83.5 54, 84 56, 85 57
-               C84 55, 83.5 52, 84 49 C84.5 47, 85 46, 86 46 Z"
+            d="M86 52 C85 50, 85 47, 86 44 C85.5 46, 84.5 49, 84 52
+               C83.5 54, 83 56, 83 58 C83.5 60, 84 62, 85 63
+               C84 61, 83.5 58, 84 55 C84.5 53, 85 52, 86 52 Z"
             fill="#3a3a3a"
           />
         </g>
