@@ -23,6 +23,7 @@ export const blogAPI = {
   delete: (id) => api.delete(`/blog/${id}`),
   getCategories: () => api.get('/blog/categories'),
   createCategory: (name) => api.post('/blog/categories', { name }),
+  deleteCategory: (id) => api.delete(`/blog/categories/${id}`),
   uploadImage: (file) => {
     const formData = new FormData();
     formData.append('file', file);

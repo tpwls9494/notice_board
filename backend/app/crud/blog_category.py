@@ -19,3 +19,12 @@ def create_blog_category(db: Session, name: str):
     db.commit()
     db.refresh(category)
     return category
+
+
+def delete_blog_category(db: Session, category_id: int):
+    category = db.query(BlogCategory).filter(BlogCategory.id == category_id).first()
+    if not category:
+        return False
+    db.delete(category)
+    db.commit()
+    return True

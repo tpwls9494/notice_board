@@ -60,6 +60,16 @@ export default function BlogEditor() {
     }
   }
 
+  const handleDeleteCategory = async (cat) => {
+    if (!confirm(`"${cat.name}" 카테고리를 삭제할까요?`)) return
+    try {
+      await blogAPI.deleteCategory(cat.id)
+      setCategories((prev) => prev.filter((c) => c.id !== cat.id))
+    } catch (err) {
+      setError(err.response?.data?.detail || '카테고리 삭제에 실패했습니다.')
+    }
+  }
+
   useEffect(() => {
     if (!isEdit) return
     setLoading(true)
@@ -310,18 +320,27 @@ export default function BlogEditor() {
           </label>
           <div className="flex flex-wrap gap-2 items-center">
             {categories.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => toggleTag(cat.name)}
-                className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                  selectedTags.includes(cat.name)
-                    ? 'bg-ink-800 text-white border-ink-800'
-                    : 'bg-white text-ink-500 border-ink-200 hover:border-ink-400'
-                }`}
-              >
-                {cat.name}
-              </button>
+              <span key={cat.id} className="relative group/cat">
+                <button
+                  type="button"
+                  onClick={() => toggleTag(cat.name)}
+                  className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
+                    selectedTags.includes(cat.name)
+                      ? 'bg-ink-800 text-white border-ink-800'
+                      : 'bg-white text-ink-500 border-ink-200 hover:border-ink-400'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(cat)}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] leading-none flex items-center justify-center opacity-0 group-hover/cat:opacity-100 transition-opacity"
+                  title="카테고리 삭제"
+                >
+                  ×
+                </button>
+              </span>
             ))}
             {showNewCategory ? (
               <div className="flex items-center gap-1.5">

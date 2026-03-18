@@ -52,6 +52,16 @@ def create_blog_category(
     return BlogCategoryResponse.model_validate(category)
 
 
+@router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_blog_category(
+    category_id: int,
+    current_user: User = Depends(get_current_active_admin),
+    db: Session = Depends(get_db),
+):
+    if not crud_blog_cat.delete_blog_category(db, category_id):
+        raise HTTPException(status_code=404, detail="카테고리를 찾을 수 없습니다.")
+
+
 @router.get("/", response_model=BlogPostListResponse)
 def get_blog_posts(
     page: int = Query(1, ge=1),
