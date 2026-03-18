@@ -21,6 +21,8 @@ export const blogAPI = {
   create: (data) => api.post('/blog/', data),
   update: (id, data) => api.put(`/blog/${id}`, data),
   delete: (id) => api.delete(`/blog/${id}`),
+  getCategories: () => api.get('/blog/categories'),
+  createCategory: (name) => api.post('/blog/categories', { name }),
   uploadImage: (file) => {
     const formData = new FormData();
     formData.append('file', file);

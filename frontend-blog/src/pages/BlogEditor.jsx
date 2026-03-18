@@ -4,11 +4,9 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { blogAPI } from '../services/api'
-import { CATEGORIES } from '../constants/categories'
 import MarkdownToolbar from '../components/MarkdownToolbar'
 import MermaidBlock from '../components/MermaidBlock'
 
-const TAG_OPTIONS = CATEGORIES.filter((c) => c.key !== 'all')
 const IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 
@@ -34,6 +32,33 @@ export default function BlogEditor() {
   const [viewMode, setViewMode] = useState('write')
   const [uploading, setUploading] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [categories, setCategories] = useState([])
+  const [showNewCategory, setShowNewCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [addingCategory, setAddingCategory] = useState(false)
+
+  useEffect(() => {
+    blogAPI.getCategories()
+      .then((res) => setCategories(res.data))
+      .catch(() => {})
+  }, [])
+
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim()
+    if (!name) return
+    setAddingCategory(true)
+    try {
+      const res = await blogAPI.createCategory(name)
+      setCategories((prev) => [...prev, res.data])
+      setNewCategoryName('')
+      setShowNewCategory(false)
+      toggleTag(name)
+    } catch (err) {
+      setError(err.response?.data?.detail || '카테고리 추가에 실패했습니다.')
+    } finally {
+      setAddingCategory(false)
+    }
+  }
 
   useEffect(() => {
     if (!isEdit) return
@@ -283,21 +308,57 @@ export default function BlogEditor() {
           <label className="block text-sm font-medium text-ink-700 mb-2">
             카테고리
           </label>
-          <div className="flex flex-wrap gap-2">
-            {TAG_OPTIONS.map((tag) => (
+          <div className="flex flex-wrap gap-2 items-center">
+            {categories.map((cat) => (
               <button
-                key={tag.key}
+                key={cat.id}
                 type="button"
-                onClick={() => toggleTag(tag.key)}
+                onClick={() => toggleTag(cat.name)}
                 className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                  selectedTags.includes(tag.key)
+                  selectedTags.includes(cat.name)
                     ? 'bg-ink-800 text-white border-ink-800'
                     : 'bg-white text-ink-500 border-ink-200 hover:border-ink-400'
                 }`}
               >
-                {tag.label}
+                {cat.name}
               </button>
             ))}
+            {showNewCategory ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
+                  placeholder="카테고리 이름"
+                  autoFocus
+                  className="px-2.5 py-1.5 text-sm border border-ink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-28"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCategory}
+                  disabled={addingCategory || !newCategoryName.trim()}
+                  className="px-2.5 py-1.5 text-sm bg-ink-800 text-white rounded-lg disabled:opacity-50"
+                >
+                  {addingCategory ? '...' : '추가'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowNewCategory(false); setNewCategoryName('') }}
+                  className="px-2 py-1.5 text-sm text-ink-400 hover:text-ink-600"
+                >
+                  취소
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowNewCategory(true)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-dashed border-ink-300 text-ink-400 hover:border-ink-500 hover:text-ink-600 transition-colors"
+                title="카테고리 추가"
+              >
+                +
+              </button>
+            )}
           </div>
         </div>
 

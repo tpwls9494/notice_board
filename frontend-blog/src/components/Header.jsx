@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { CATEGORIES } from '../constants/categories'
 import { authAPI } from '../services/api'
 
 export default function Header() {

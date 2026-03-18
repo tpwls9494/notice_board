@@ -21,6 +21,7 @@ from app.models.email_verification_token import EmailVerificationToken
 from app.models.signup_email_verification import SignupEmailVerification
 from app.models.ai_action_log import AiActionLog
 from app.models.blog_post import BlogPost
+from app.models.blog_category import BlogCategory
 
 __all__ = [
     "User", "Post", "Comment", "Category", "Like", "File", "Bookmark", "Notification",
@@ -30,4 +31,5 @@ __all__ = [
     "SignupEmailVerification",
     "AiActionLog",
     "BlogPost",
+    "BlogCategory",
 ]

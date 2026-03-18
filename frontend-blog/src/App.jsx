@@ -6,8 +6,7 @@ import BlogDetail from './pages/BlogDetail'
 import BlogEditor from './pages/BlogEditor'
 import DraftsList from './pages/DraftsList'
 import Login from './pages/Login'
-import { CATEGORIES } from './constants/categories'
-import { authAPI } from './services/api'
+import { authAPI, blogAPI } from './services/api'
 import WorkingPerson from './components/WorkingPerson'
 
 function App() {
@@ -49,6 +48,14 @@ function HeroBanner() {
   const [searchParams] = useSearchParams()
   const currentCategory = searchParams.get('category') || 'all'
   const { user, handleLogout } = useAuth()
+  const [categories, setCategories] = useState([])
+
+  useEffect(() => {
+    blogAPI.getCategories()
+      .then((res) => setCategories(res.data))
+      .catch(() => {})
+  }, [])
+
   return (
     <header className="bg-[#0a0a0a] sticky top-0 z-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -83,17 +90,27 @@ function HeroBanner() {
       </div>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-2">
         <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {CATEGORIES.map((cat) => (
+          <Link
+            to="/"
+            className={`px-3.5 py-1.5 text-sm font-medium no-underline whitespace-nowrap rounded-lg transition-all duration-200 ${
+              currentCategory === 'all'
+                ? 'bg-white text-ink-900'
+                : 'text-white/40 hover:text-white/70 hover:bg-white/8'
+            }`}
+          >
+            전체
+          </Link>
+          {categories.map((cat) => (
             <Link
-              key={cat.key}
-              to={cat.key === 'all' ? '/' : `/?category=${cat.key}`}
+              key={cat.id}
+              to={`/?category=${cat.name}`}
               className={`px-3.5 py-1.5 text-sm font-medium no-underline whitespace-nowrap rounded-lg transition-all duration-200 ${
-                currentCategory === cat.key
+                currentCategory === cat.name
                   ? 'bg-white text-ink-900'
                   : 'text-white/40 hover:text-white/70 hover:bg-white/8'
               }`}
             >
-              {cat.label}
+              {cat.name}
             </Link>
           ))}
         </nav>

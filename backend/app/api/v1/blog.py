@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_admin, get_current_user_optional
 from app.crud import blog_post as crud_blog
+from app.crud import blog_category as crud_blog_cat
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.blog_post import (
@@ -18,6 +19,7 @@ from app.schemas.blog_post import (
     BlogPostResponse,
     BlogPostUpdate,
 )
+from app.schemas.blog_category import BlogCategoryCreate, BlogCategoryResponse
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -27,6 +29,27 @@ os.makedirs(BLOG_UPLOAD_DIR, exist_ok=True)
 
 BLOG_MAX_FILE_SIZE = 10 * 1024 * 1024
 BLOG_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+
+@router.get("/categories", response_model=list[BlogCategoryResponse])
+def get_blog_categories(db: Session = Depends(get_db)):
+    categories = crud_blog_cat.get_blog_categories(db)
+    return [BlogCategoryResponse.model_validate(c) for c in categories]
+
+
+@router.post("/categories", response_model=BlogCategoryResponse, status_code=status.HTTP_201_CREATED)
+def create_blog_category(
+    body: BlogCategoryCreate,
+    current_user: User = Depends(get_current_active_admin),
+    db: Session = Depends(get_db),
+):
+    from app.models.blog_category import BlogCategory
+
+    existing = db.query(BlogCategory).filter(BlogCategory.name == body.name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="이미 존재하는 카테고리입니다.")
+    category = crud_blog_cat.create_blog_category(db, body.name)
+    return BlogCategoryResponse.model_validate(category)
 
 
 @router.get("/", response_model=BlogPostListResponse)
