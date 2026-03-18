@@ -159,12 +159,64 @@
     transition: border-color 0.2s ease-out, box-shadow 0.2s ease-out, background-color 0.2s ease-out;
   }
 
+  .rich-editor.rich-editor--has-toolbar {
+    @apply rounded-t-none border-t-0;
+  }
+
   .rich-editor:focus {
     @apply outline-none border-ink-400 ring-2 ring-ink-200/50;
   }
 
+  .rich-editor:focus-within {
+    @apply border-ink-400;
+  }
+
   .rich-editor.is-drag-over {
     @apply border-ink-500 bg-paper-50;
+  }
+
+  .rich-editor blockquote {
+    @apply my-3 border-l-4 border-ink-300 pl-3 py-1 text-ink-600 italic rounded-r-md bg-paper-100/50;
+  }
+
+  .rich-editor pre {
+    @apply my-3 rounded-lg border border-ink-200 bg-paper-100 p-3 overflow-x-auto text-sm font-mono text-ink-800;
+  }
+
+  .rich-editor code {
+    @apply rounded bg-paper-200 px-1 py-0.5 text-sm font-mono text-ink-800;
+  }
+
+  .rich-editor pre code {
+    @apply bg-transparent p-0 rounded-none;
+  }
+
+  .rich-editor h1 {
+    @apply text-2xl font-bold text-ink-950 mb-3 mt-4;
+  }
+
+  .rich-editor h2 {
+    @apply text-xl font-semibold text-ink-900 mb-2 mt-3;
+  }
+
+  .rich-editor h3 {
+    @apply text-lg font-semibold text-ink-900 mb-2 mt-3;
+  }
+
+  .rich-editor hr {
+    @apply my-4 border-ink-200;
+  }
+
+  .rich-editor ul {
+    @apply list-disc pl-6 my-2;
+  }
+
+  .rich-editor ol {
+    @apply list-decimal pl-6 my-2;
+  }
+
+  .rich-editor li {
+    @apply mb-1;
   }
 
   .rich-editor p {

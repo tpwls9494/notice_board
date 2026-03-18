@@ -6,6 +6,7 @@ import { aiAPI, postsAPI, filesAPI } from '../../services/api'
 import useCategoriesStore from '../../stores/categoriesStore'
 import useAuthStore from '../../stores/authStore'
 import MarkdownContent from '../../components/community/MarkdownContent'
+import EditorToolbar from '../../components/community/EditorToolbar'
 import {
   extractPlainTextFromRichContent,
   isLikelyHtml,
@@ -212,6 +213,10 @@ const extractEditorTextForAi = (html = '') => {
     .trim()
 }
 
+const INLINE_FORMAT_TAGS = new Set(['strong', 'b', 'em', 'i', 's', 'strike', 'del', 'code', 'u'])
+const HEADING_TAGS = { h1: '# ', h2: '## ', h3: '### ' }
+const LIST_TAGS = new Set(['ul', 'ol'])
+
 const extractEditorMarkdownText = (html = '') => {
   const source = String(html || '')
   if (!source.trim()) return ''
@@ -227,7 +232,17 @@ const extractEditorMarkdownText = (html = '') => {
     }
   }
 
-  const walkNode = (node) => {
+  const collectTextContent = (node) => {
+    if (!node) return ''
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent || ''
+    const parts = []
+    Array.from(node.childNodes || []).forEach((child) => {
+      parts.push(collectTextContent(child))
+    })
+    return parts.join('')
+  }
+
+  const walkNode = (node, context = {}) => {
     if (!node) return
     if (node.nodeType === Node.TEXT_NODE) {
       chunks.push(node.textContent || '')
@@ -238,6 +253,12 @@ const extractEditorMarkdownText = (html = '') => {
     const tagName = (node.tagName || '').toLowerCase()
     if (tagName === 'br') {
       chunks.push('\n')
+      return
+    }
+
+    if (tagName === 'hr') {
+      ensureLineBreak()
+      chunks.push('---\n')
       return
     }
 
@@ -262,23 +283,112 @@ const extractEditorMarkdownText = (html = '') => {
       }
     }
 
+    if (tagName === 'pre') {
+      ensureLineBreak()
+      const codeChild = node.querySelector('code')
+      const rawText = collectTextContent(codeChild || node)
+      const langClass = codeChild?.className?.match(/language-(\S+)/)?.[1] || ''
+      const langLabel = (langClass && langClass !== 'text') ? langClass : ''
+      chunks.push(`\`\`\`${langLabel}\n${rawText}\n\`\`\`\n`)
+      return
+    }
+
+    if (tagName === 'code' && !context.insidePre) {
+      const text = collectTextContent(node).replace(/\u200B/g, '')
+      if (text) chunks.push(`\`${text}\``)
+      return
+    }
+
+    if (tagName === 'strong' || tagName === 'b') {
+      const startIdx = chunks.length
+      Array.from(node.childNodes || []).forEach((child) => walkNode(child, context))
+      const innerText = chunks.slice(startIdx).join('')
+      chunks.splice(startIdx, chunks.length - startIdx)
+      if (innerText.trim()) chunks.push(`**${innerText}**`)
+      return
+    }
+
+    if (tagName === 'em' || tagName === 'i') {
+      const startIdx = chunks.length
+      Array.from(node.childNodes || []).forEach((child) => walkNode(child, context))
+      const innerText = chunks.slice(startIdx).join('')
+      chunks.splice(startIdx, chunks.length - startIdx)
+      if (innerText.trim()) chunks.push(`*${innerText}*`)
+      return
+    }
+
+    if (tagName === 's' || tagName === 'strike' || tagName === 'del') {
+      const startIdx = chunks.length
+      Array.from(node.childNodes || []).forEach((child) => walkNode(child, context))
+      const innerText = chunks.slice(startIdx).join('')
+      chunks.splice(startIdx, chunks.length - startIdx)
+      if (innerText.trim()) chunks.push(`~~${innerText}~~`)
+      return
+    }
+
+    if (tagName === 'u') {
+      Array.from(node.childNodes || []).forEach((child) => walkNode(child, context))
+      return
+    }
+
+    if (HEADING_TAGS[tagName]) {
+      ensureLineBreak()
+      chunks.push(HEADING_TAGS[tagName])
+      Array.from(node.childNodes || []).forEach((child) => walkNode(child, context))
+      ensureLineBreak()
+      return
+    }
+
+    if (tagName === 'blockquote') {
+      ensureLineBreak()
+      const startIdx = chunks.length
+      Array.from(node.childNodes || []).forEach((child) => walkNode(child, context))
+      const innerText = chunks.slice(startIdx).join('')
+      chunks.splice(startIdx, chunks.length - startIdx)
+      const quoted = innerText.replace(/\n$/, '').split('\n').map((line) => `> ${line}`).join('\n')
+      chunks.push(quoted)
+      ensureLineBreak()
+      return
+    }
+
+    if (tagName === 'ul' || tagName === 'ol') {
+      ensureLineBreak()
+      const items = Array.from(node.children || []).filter(
+        (child) => (child.tagName || '').toLowerCase() === 'li'
+      )
+      items.forEach((li, idx) => {
+        const prefix = tagName === 'ol' ? `${idx + 1}. ` : '- '
+        chunks.push(prefix)
+        Array.from(li.childNodes || []).forEach((child) => walkNode(child, context))
+        ensureLineBreak()
+      })
+      return
+    }
+
+    if (tagName === 'li') {
+      Array.from(node.childNodes || []).forEach((child) => walkNode(child, context))
+      ensureLineBreak()
+      return
+    }
+
     const isBlock = AI_TEXT_BLOCK_TAGS.has(tagName)
     if (isBlock && chunks.length > 0) {
       ensureLineBreak()
     }
 
-    Array.from(node.childNodes || []).forEach(walkNode)
+    Array.from(node.childNodes || []).forEach((child) => walkNode(child, context))
 
     if (isBlock) {
       ensureLineBreak()
     }
   }
 
-  Array.from(parsed.body.childNodes || []).forEach(walkNode)
+  Array.from(parsed.body.childNodes || []).forEach((child) => walkNode(child))
 
   return chunks
     .join('')
     .replace(/\u00a0/g, ' ')
+    .replace(/\u200B/g, '')
     .replace(/\r/g, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
@@ -898,6 +1008,50 @@ function PostForm() {
         document.execCommand('redo')
       }
       return
+    }
+
+    if (primaryModifierPressed && !unsupportedPrimaryModifier && !event.altKey) {
+      if (key === 'b' && !event.shiftKey) {
+        event.preventDefault()
+        document.execCommand('bold')
+        syncEditorSnapshots()
+        return
+      }
+      if (key === 'i' && !event.shiftKey) {
+        event.preventDefault()
+        document.execCommand('italic')
+        syncEditorSnapshots()
+        return
+      }
+      if (key === 's' && event.shiftKey) {
+        event.preventDefault()
+        document.execCommand('strikethrough')
+        syncEditorSnapshots()
+        return
+      }
+      if (key === 'k' && event.shiftKey) {
+        event.preventDefault()
+        const selection = window.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          const selectedText = range.toString()
+          if (selectedText) {
+            const code = document.createElement('code')
+            range.surroundContents(code)
+          } else {
+            const code = document.createElement('code')
+            code.textContent = '\u200B'
+            range.insertNode(code)
+            const newRange = document.createRange()
+            newRange.setStart(code.firstChild, 1)
+            newRange.collapse(true)
+            selection.removeAllRanges()
+            selection.addRange(newRange)
+          }
+          syncEditorSnapshots()
+        }
+        return
+      }
     }
 
     if (event.key !== 'Backspace' && event.key !== 'Delete') return
@@ -1946,12 +2100,17 @@ function PostForm() {
             </label>
 
             <div className={editorViewMode === 'write' ? 'block' : 'hidden'}>
+              <EditorToolbar
+                editorRef={editorRef}
+                onSync={syncEditorSnapshots}
+                onImageFileSelect={(files) => handleInsertFiles(files)}
+              />
               <div
                 id="rich-editor"
                 ref={editorRef}
                 contentEditable
                 suppressContentEditableWarning
-                className={`rich-editor ${isDragOver ? 'is-drag-over' : ''}`}
+                className={`rich-editor rich-editor--has-toolbar ${isDragOver ? 'is-drag-over' : ''}`}
                 onMouseDown={handleEditorMouseDown}
                 onPointerDown={handleEditorPointerDown}
                 onClick={handleEditorClick}
