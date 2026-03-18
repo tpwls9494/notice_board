@@ -107,15 +107,20 @@ body {
 }
 
 .prose pre {
+  background: #0d1117;
+  color: #e6edf3;
   border-radius: 12px;
   overflow-x: auto;
+  padding: 1em 1.2em;
   margin: 1.8em 0;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .prose pre code {
   background: none;
   padding: 0;
+  color: inherit;
+  font-size: 0.875em;
 }
 
 .prose img {
