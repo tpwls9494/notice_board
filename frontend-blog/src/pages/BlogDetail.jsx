@@ -4,6 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { blogAPI, authAPI } from '../services/api'
+import MermaidBlock from '../components/MermaidBlock'
 
 function useTableOfContents(content) {
   return useMemo(() => {
@@ -258,6 +259,14 @@ export default function BlogDetail() {
             components={{
               h2: ({ children }) => <HeadingRenderer level={2}>{children}</HeadingRenderer>,
               h3: ({ children }) => <HeadingRenderer level={3}>{children}</HeadingRenderer>,
+              code({ className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || '')
+                const lang = match?.[1] || ''
+                if (lang === 'mermaid') {
+                  return <MermaidBlock code={String(children).replace(/\n$/, '')} />
+                }
+                return <code className={className} {...props}>{children}</code>
+              },
             }}
           >
             {post.content}

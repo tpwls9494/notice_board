@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
 import { blogAPI } from '../services/api'
 import { CATEGORIES } from '../constants/categories'
+import MarkdownToolbar from '../components/MarkdownToolbar'
+import MermaidBlock from '../components/MermaidBlock'
 
 const TAG_OPTIONS = CATEGORIES.filter((c) => c.key !== 'all')
 
@@ -9,6 +14,7 @@ export default function BlogEditor() {
   const { slug } = useParams()
   const navigate = useNavigate()
   const isEdit = Boolean(slug)
+  const textareaRef = useRef(null)
 
   const [form, setForm] = useState({
     title: '',
@@ -22,6 +28,7 @@ export default function BlogEditor() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [viewMode, setViewMode] = useState('write')
 
   useEffect(() => {
     if (!isEdit) return
@@ -86,6 +93,12 @@ export default function BlogEditor() {
       setSaving(false)
     }
   }
+
+  const { toolbar, keyDownHandler } = MarkdownToolbar({
+    textareaRef,
+    value: form.content,
+    onChange: (next) => setForm((prev) => ({ ...prev, content: next })),
+  })
 
   if (loading) {
     return (
@@ -181,17 +194,78 @@ export default function BlogEditor() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-ink-700 mb-1">
-            내용 (Markdown)
-          </label>
-          <textarea
-            name="content"
-            value={form.content}
-            onChange={handleChange}
-            required
-            rows={20}
-            className="w-full px-3 py-2 border border-ink-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-          />
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium text-ink-700">
+              내용 (Markdown)
+            </label>
+            <div className="inline-flex rounded-lg border border-ink-100 bg-paper-100 p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('write')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  viewMode === 'write'
+                    ? 'bg-white text-ink-900 shadow-sm'
+                    : 'text-ink-400 hover:text-ink-700'
+                }`}
+              >
+                작성
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('preview')}
+                className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  viewMode === 'preview'
+                    ? 'bg-white text-ink-900 shadow-sm'
+                    : 'text-ink-400 hover:text-ink-700'
+                }`}
+              >
+                미리보기
+              </button>
+            </div>
+          </div>
+
+          {viewMode === 'write' ? (
+            <div>
+              {toolbar}
+              <textarea
+                ref={textareaRef}
+                name="content"
+                value={form.content}
+                onChange={handleChange}
+                onKeyDown={keyDownHandler}
+                required
+                rows={20}
+                className="w-full px-3 py-2 border border-ink-100 rounded-b-lg rounded-t-none border-t-0 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm resize-y"
+              />
+            </div>
+          ) : (
+            <div className="min-h-[480px] px-4 py-3 border border-ink-100 rounded-lg bg-white overflow-y-auto">
+              {form.content ? (
+                <div className="prose prose-preview">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight]}
+                    components={{
+                      code({ className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || '')
+                        const lang = match?.[1] || ''
+                        if (lang === 'mermaid') {
+                          return <MermaidBlock code={String(children).replace(/\n$/, '')} />
+                        }
+                        return <code className={className} {...props}>{children}</code>
+                      },
+                    }}
+                  >
+                    {form.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                <p className="text-ink-300 text-sm py-8 text-center">
+                  미리보기할 내용이 없습니다.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
