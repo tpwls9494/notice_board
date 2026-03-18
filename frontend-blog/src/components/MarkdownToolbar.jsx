@@ -173,18 +173,20 @@ export default function MarkdownToolbar({ textareaRef, value, onChange, onImageU
       }
     }
 
-    /* Tab inside a blockquote line → increase nesting level */
+    /* Tab → indent / Shift+Tab → outdent */
     if (e.key === 'Tab' && ta) {
+      e.preventDefault()
       const pos = ta.selectionStart
+      const end = ta.selectionEnd
       const lineStart = value.lastIndexOf('\n', pos - 1) + 1
-      const currentLine = value.slice(lineStart, pos)
-      const prefixMatch = currentLine.match(/^((?:>\s*)+)/)
-      if (prefixMatch) {
-        e.preventDefault()
+      const currentLine = value.slice(lineStart, end)
+      const isBlockquote = /^((?:>\s*)+)/.test(currentLine)
+
+      if (isBlockquote) {
         if (e.shiftKey) {
-          /* Shift+Tab → decrease nesting (remove one >) */
+          /* Shift+Tab in blockquote → decrease nesting (remove one >) */
           const newLine = currentLine.replace(/^>\s?/, '')
-          const next = value.slice(0, lineStart) + newLine + value.slice(pos)
+          const next = value.slice(0, lineStart) + newLine + value.slice(end)
           onChange(next)
           const diff = currentLine.length - newLine.length
           requestAnimationFrame(() => {
@@ -192,17 +194,38 @@ export default function MarkdownToolbar({ textareaRef, value, onChange, onImageU
             ta.setSelectionRange(pos - diff, pos - diff)
           })
         } else {
-          /* Tab → increase nesting (add >) */
+          /* Tab in blockquote → increase nesting (add >) */
           const insert = '> '
           const next = value.slice(0, lineStart) + insert + value.slice(lineStart)
           onChange(next)
           requestAnimationFrame(() => {
             ta.focus()
-            ta.setSelectionRange(pos + insert.length, pos + insert.length)
+            ta.setSelectionRange(pos + insert.length, end + insert.length)
           })
         }
-        return
+      } else if (e.shiftKey) {
+        /* Shift+Tab on normal line → remove leading spaces (up to 2) */
+        const removed = currentLine.replace(/^  /, '')
+        const diff = currentLine.length - removed.length
+        if (diff > 0) {
+          const next = value.slice(0, lineStart) + removed + value.slice(end)
+          onChange(next)
+          requestAnimationFrame(() => {
+            ta.focus()
+            ta.setSelectionRange(Math.max(lineStart, pos - diff), Math.max(lineStart, end - diff))
+          })
+        }
+      } else {
+        /* Tab on normal line → insert 2 spaces at cursor */
+        const insert = '  '
+        const next = value.slice(0, pos) + insert + value.slice(pos)
+        onChange(next)
+        requestAnimationFrame(() => {
+          ta.focus()
+          ta.setSelectionRange(pos + insert.length, pos + insert.length)
+        })
       }
+      return
     }
 
     const mod = e.ctrlKey || e.metaKey
@@ -326,8 +349,8 @@ export default function MarkdownToolbar({ textareaRef, value, onChange, onImageU
                   <div className="flex justify-between"><span>인라인 코드</span><kbd className="text-ink-500">{mod} + Shift + K</kbd></div>
                   <div className="flex justify-between"><span>링크</span><kbd className="text-ink-500">{mod} + K</kbd></div>
                   <hr className="my-1.5 border-ink-100" />
-                  <div className="flex justify-between"><span>들여쓰기 (인용 중)</span><kbd className="text-ink-500">Tab</kbd></div>
-                  <div className="flex justify-between"><span>내어쓰기 (인용 중)</span><kbd className="text-ink-500">Shift + Tab</kbd></div>
+                  <div className="flex justify-between"><span>들여쓰기</span><kbd className="text-ink-500">Tab</kbd></div>
+                  <div className="flex justify-between"><span>내어쓰기</span><kbd className="text-ink-500">Shift + Tab</kbd></div>
                   <hr className="my-1.5 border-ink-100" />
                   <div className="flex justify-between"><span>실행 취소</span><kbd className="text-ink-500">{mod} + Z</kbd></div>
                   <div className="flex justify-between"><span>다시 실행</span><kbd className="text-ink-500">{mod} + Shift + Z</kbd></div>

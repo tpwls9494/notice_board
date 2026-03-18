@@ -270,8 +270,8 @@ function EditorToolbar({ editorRef, onSync, onImageFileSelect }) {
                 <div className="flex justify-between"><span>취소선</span><kbd className="text-ink-500">{mod} + Shift + S</kbd></div>
                 <div className="flex justify-between"><span>인라인 코드</span><kbd className="text-ink-500">{mod} + Shift + K</kbd></div>
                 <hr className="my-1.5 border-ink-200" />
-                <div className="flex justify-between"><span>들여쓰기 (인용 중)</span><kbd className="text-ink-500">Tab</kbd></div>
-                <div className="flex justify-between"><span>내어쓰기 (인용 중)</span><kbd className="text-ink-500">Shift + Tab</kbd></div>
+                <div className="flex justify-between"><span>들여쓰기</span><kbd className="text-ink-500">Tab</kbd></div>
+                <div className="flex justify-between"><span>내어쓰기</span><kbd className="text-ink-500">Shift + Tab</kbd></div>
                 <hr className="my-1.5 border-ink-200" />
                 <div className="flex justify-between"><span>실행 취소</span><kbd className="text-ink-500">{mod} + Z</kbd></div>
                 <div className="flex justify-between"><span>다시 실행</span><kbd className="text-ink-500">{mod} + Shift + Z</kbd></div>

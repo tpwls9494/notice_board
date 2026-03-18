@@ -1054,14 +1054,15 @@ function PostForm() {
       }
     }
 
-    /* Tab / Shift+Tab inside a blockquote → nest / un-nest */
+    /* Tab / Shift+Tab → indent / outdent */
     if (event.key === 'Tab') {
       const selection = window.getSelection()
-      if (selection && selection.rangeCount > 0) {
+      if (selection && selection.rangeCount > 0 && editorRef.current) {
         let node = selection.getRangeAt(0).startContainer
         if (node.nodeType === Node.TEXT_NODE) node = node.parentElement
         const bq = node?.closest?.('blockquote')
-        if (bq && editorRef.current?.contains(bq)) {
+
+        if (bq && editorRef.current.contains(bq)) {
           event.preventDefault()
           if (event.shiftKey) {
             /* Un-nest: unwrap one blockquote level */
@@ -1079,6 +1080,16 @@ function PostForm() {
           syncEditorSnapshots()
           return
         }
+
+        /* Normal text: indent / outdent via execCommand */
+        event.preventDefault()
+        if (event.shiftKey) {
+          document.execCommand('outdent')
+        } else {
+          document.execCommand('indent')
+        }
+        syncEditorSnapshots()
+        return
       }
     }
 
