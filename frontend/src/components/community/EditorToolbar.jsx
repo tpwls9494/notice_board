@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 const HEADING_OPTIONS = [
   { tag: 'h1', label: 'H1' },
@@ -47,6 +47,9 @@ function insertHtmlAtCursor(html) {
 
 function EditorToolbar({ editorRef, onSync, onImageFileSelect }) {
   const fileInputRef = useRef(null)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
+  const mod = isMac ? '⌘' : 'Ctrl'
 
   const execCmd = (command, value = null) => {
     editorRef.current?.focus()
@@ -243,6 +246,40 @@ function EditorToolbar({ editorRef, onSync, onImageFileSelect }) {
         className="hidden"
         onChange={handleFileChange}
       />
+
+      {separator}
+
+      {/* Shortcut help */}
+      <div className="relative ml-auto">
+        <button
+          type="button"
+          onClick={() => setShowShortcuts((v) => !v)}
+          className={`${btnBase} text-[11px]`}
+          title="단축키 도움말"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </button>
+        {showShortcuts && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowShortcuts(false)} />
+            <div className="absolute right-0 top-full mt-1 z-50 w-64 rounded-lg border border-ink-200 bg-white shadow-lg p-3 text-xs text-ink-700">
+              <p className="font-semibold text-ink-900 mb-2 text-sm">단축키</p>
+              <div className="space-y-1">
+                <div className="flex justify-between"><span>굵게</span><kbd className="text-ink-500">{mod} + B</kbd></div>
+                <div className="flex justify-between"><span>기울임</span><kbd className="text-ink-500">{mod} + I</kbd></div>
+                <div className="flex justify-between"><span>취소선</span><kbd className="text-ink-500">{mod} + Shift + S</kbd></div>
+                <div className="flex justify-between"><span>인라인 코드</span><kbd className="text-ink-500">{mod} + Shift + K</kbd></div>
+                <hr className="my-1.5 border-ink-200" />
+                <div className="flex justify-between"><span>들여쓰기 (인용 중)</span><kbd className="text-ink-500">Tab</kbd></div>
+                <div className="flex justify-between"><span>내어쓰기 (인용 중)</span><kbd className="text-ink-500">Shift + Tab</kbd></div>
+                <hr className="my-1.5 border-ink-200" />
+                <div className="flex justify-between"><span>실행 취소</span><kbd className="text-ink-500">{mod} + Z</kbd></div>
+                <div className="flex justify-between"><span>다시 실행</span><kbd className="text-ink-500">{mod} + Shift + Z</kbd></div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
