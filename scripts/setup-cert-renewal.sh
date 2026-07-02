@@ -41,8 +41,12 @@ if [ ! -d "/etc/letsencrypt/live/jionc.com" ]; then
         -d jionc.com -d www.jionc.com -d blog.jionc.com \
         --email "$EMAIL" --agree-tos --non-interactive
 else
-    echo -e "${GREEN}✅ Existing certificate found for jionc.com, skipping initial issuance.${NC}"
+    echo -e "${YELLOW}🔐 Existing certificate found — renewing now if due or expired...${NC}"
+    certbot renew --cert-name jionc.com --webroot -w "$WEBROOT"
 fi
+
+echo -e "${YELLOW}🔄 Reloading nginx to pick up the current certificate...${NC}"
+eval "$RELOAD_CMD"
 
 CRON_LINE="0 3,15 * * * certbot renew --webroot -w $WEBROOT --deploy-hook \"$RELOAD_CMD\" >> /var/log/certbot-renew.log 2>&1"
 
