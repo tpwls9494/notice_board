@@ -239,11 +239,24 @@ VITE_API_URL=http://your-domain.com
 ./deploy.sh
 ```
 
-### 4. SSL 인증서 설정 (선택사항)
-Let's Encrypt Certbot 사용:
+### 4. SSL 인증서 설정 및 자동 갱신
+nginx가 Docker 컨테이너로 80/443 포트를 직접 점유하므로 `certbot --nginx` 플러그인은 사용할 수 없습니다.
+`certbot/www`를 webroot로 사용하는 방식으로 발급/갱신하고, 갱신 후 nginx 컨테이너를 재시작해야 반영됩니다.
+
+최초 발급 + 자동 갱신 cron 등록을 한 번에 처리하는 스크립트를 제공합니다:
 ```bash
-sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d your-domain.com
+sudo ./scripts/setup-cert-renewal.sh you@example.com
+```
+
+이 스크립트는:
+- `/etc/letsencrypt/live/jionc.com`이 없으면 `certbot certonly --webroot`로 최초 발급 (jionc.com, www.jionc.com, blog.jionc.com)
+- 하루 2회(03:00/15:00) `certbot renew`를 실행하는 cron을 등록
+- 갱신이 실제로 발생하면 `--deploy-hook`으로 `docker compose -f docker-compose.prod.yml restart nginx`를 자동 실행해 새 인증서를 반영
+
+수동 확인:
+```bash
+sudo certbot renew --dry-run   # 갱신 로직 테스트
+sudo certbot certificates      # 만료일 확인
 ```
 
 ## 모니터링
