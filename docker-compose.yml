@@ -40,6 +40,11 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:password@postgres:5432/company_board
       - REDIS_URL=redis://redis:6379/0
+      - AUTH_SESSION_ENABLED=true
+      - AUTH_SESSION_ORIGIN=http://localhost:8000
+      - AUTH_SESSION_ALLOWED_ORIGINS=http://localhost:8000,http://localhost:5173,http://localhost:5174,http://localhost
+      - AUTH_SESSION_SECURE=false
+      - SIGNAL_BOT_TOKEN=${SIGNAL_BOT_TOKEN:-}
       - AI_API_KEY=${AI_API_KEY}
       - AI_BASE_URL=${AI_BASE_URL:-https://api.openai.com/v1}
       - AI_ROUTE_MODEL=${AI_ROUTE_MODEL:-gpt-4.1-mini}
