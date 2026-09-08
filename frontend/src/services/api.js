@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : window.location.origin);
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
@@ -23,59 +23,27 @@ export const resolveApiAssetUrl = (assetPath) => {
   return `${API_BASE_URL}/${assetPath}`;
 };
 
-// Request interceptor to add token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
+// Old browser bearer storage is not migrated implicitly: sign in once to create
+// a shared HttpOnly session. All browser requests use cookies, never this token.
+localStorage.removeItem('token');
+for (const client of [api, aiApi]) {
+  client.defaults.withCredentials = true;
+  client.defaults.headers.common['X-Jion-CSRF'] = '1';
+  client.interceptors.response.use(response => response, error => {
+    if (error.response?.status === 401) window.dispatchEvent(new Event('jion-auth-check'));
     return Promise.reject(error);
-  }
-);
-
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-    }
-    return Promise.reject(error);
-  }
-);
-
-aiApi.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-aiApi.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-    }
-    return Promise.reject(error);
-  }
-);
+  });
+}
 
 // Auth API
 export const authAPI = {
   register: (data) => api.post('/auth/register', data),
-  login: (data) => api.post('/auth/login', data),
+  login: (data) => api.post('/auth/session/login', data),
+  getSession: () => api.get('/auth/session'),
+  logout: () => api.post('/auth/session/logout'),
   getMe: () => api.get('/auth/me'),
   getOAuthProviders: () => api.get('/auth/oauth/providers'),
-  getOAuthStartUrl: (provider, nextPath = '/community') => {
+  getOAuthStartUrl: (provider, nextPath = '/') => {
     const params = new URLSearchParams({
       next: nextPath,
     });
@@ -108,6 +76,45 @@ export const communityAPI = {
     return api.get(url);
   },
   getWeeklySummary: (limit = 5) => api.get(`/community/weekly-summary?limit=${limit}`),
+};
+
+export const signalsAPI = {
+  getSignals: (params = {}) => api.get('/signals/', { params }),
+  getSignal: (slug) => api.get(`/signals/${slug}`),
+  getComments: (slug) => api.get(`/signals/${slug}/comments`),
+  createComment: (slug, data) => api.post(`/signals/${slug}/comments`, data),
+  updateComment: (id, data) => api.patch(`/signals/comments/${id}`, data),
+  getReviewQueue: (params = {}) => api.get('/signals/review-queue', { params }),
+  review: (id, data) => api.patch(`/signals/${id}/review`, data),
+  update: (id, data) => api.patch(`/signals/${id}`, data),
+  deleteComment: (id) => api.delete(`/signals/comments/${id}`),
+  moderateComment: (id, hidden = true) => api.patch(`/signals/comments/${id}/moderation`, { hidden }),
+  recommendSignal: (slug) => api.post(`/signals/${slug}/recommend`),
+  unrecommendSignal: (slug) => api.delete(`/signals/${slug}/recommend`),
+  getInterests: () => api.get('/signals/me/interests'),
+  updateInterests: (keywords) => api.put('/signals/me/interests', { keywords }),
+};
+
+export const socialAPI = {
+  uploadImage: (file) => {
+    const data = new FormData();
+    data.append('file', file);
+    return api.post('/community/images', data, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
+  getSiteActivity: () => api.get('/community/stats'),
+  getPosts: (params = {}) => api.get('/community/posts', { params }),
+  getPost: (id) => api.get(`/community/posts/${id}`),
+  createPost: (data) => api.post('/community/posts', data),
+  updatePost: (id, data) => api.patch(`/community/posts/${id}`, data),
+  deletePost: (id) => api.delete(`/community/posts/${id}`),
+  recommendPost: (id) => api.post(`/community/posts/${id}/recommend`),
+  unrecommendPost: (id) => api.delete(`/community/posts/${id}/recommend`),
+  getComments: (postId) => api.get(`/community/posts/${postId}/comments`),
+  createComment: (postId, data) => api.post(`/community/posts/${postId}/comments`, data),
+  updateComment: (id, data) => api.patch(`/community/comments/${id}`, data),
+  deleteComment: (id) => api.delete(`/community/comments/${id}`),
+  recommendComment: (id) => api.post(`/community/comments/${id}/recommend`),
+  unrecommendComment: (id) => api.delete(`/community/comments/${id}/recommend`),
 };
 
 // Posts API

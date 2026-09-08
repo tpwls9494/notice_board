@@ -6,7 +6,6 @@ from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db.base import Base, engine
 from app.db.session import SessionLocal
-from app.models.category import Category
 from app.models.email_verification_token import EmailVerificationToken
 from app.models.user import User
 
@@ -90,7 +89,7 @@ def test_register_requires_verified_ticket(client):
             "email": "no-ticket@example.com",
             "username": "no-ticket-user",
             "password": "password123",
-            "email_verification_ticket": "invalid-ticket",
+            "email_verification_ticket": "invalid-ticket-value",
         },
     )
 
@@ -98,24 +97,19 @@ def test_register_requires_verified_ticket(client):
     assert "이메일 인증" in register_response.json()["detail"]
 
 
-def test_unverified_user_cannot_create_post(client):
+def test_unverified_user_cannot_write_community_post(client):
     _reset_db()
     user = _create_unverified_user("verify-block@example.com", "verify-block-user")
-    with SessionLocal() as db:
-        db.add(Category(name="일반", slug="general"))
-        db.commit()
-        category = db.query(Category).filter(Category.slug == "general").first()
-        assert category is not None
-        category_id = category.id
 
     access_token = _login_user(client, user.email)
     create_response = client.post(
-        "/api/v1/posts/",
+        "/api/v1/community/posts",
         headers={"Authorization": f"Bearer {access_token}"},
         json={
-            "title": "blocked",
-            "content": "blocked",
-            "category_id": category_id,
+            "title": "인증 전에는 작성할 수 없는 글",
+            "content": "이메일 인증을 마친 사용자만 커뮤니티에 글을 작성할 수 있습니다.",
+            "space": "community",
+            "topic": "story",
         },
     )
 

@@ -13,6 +13,7 @@ build/
 
 # Backend
 backend/.env
+backend/uploads/community/
 
 # Frontend
 frontend/node_modules/
@@ -25,6 +26,20 @@ frontend/.env.local
 
 # Docker
 postgres_data/
+backups/
+/VERIFICATION_REPORT_*.txt
+/.local-preview/
+
+# Private editorial drafts and unpublished experiment manuscripts
+/docs/drafts/
+/examples/docling-native/
+
+# Never upload access credentials
+*.pem
+*.key
+*.p12
+*.pfx
+jionc_pw.txt
 
 # IDE
 .vscode/

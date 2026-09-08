@@ -93,7 +93,7 @@ function Register() {
     const success = await register(email.trim(), username.trim(), password, verificationTicket)
     if (success) {
       toast.success('회원가입이 완료되었습니다. 로그인 후 이용해 주세요.')
-      navigate('/community?login=true')
+      navigate('/?login=true')
     }
   }
 
@@ -259,7 +259,7 @@ function Register() {
             이미 계정이 있나요?{' '}
             <button
               type="button"
-              onClick={() => navigate('/community?login=true')}
+              onClick={() => navigate('/?login=true')}
               className="font-semibold text-ink-800 hover:text-ink-950 underline underline-offset-2 transition-colors duration-200"
             >
               로그인

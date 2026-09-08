@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useId } from 'react'
+import useTheme from '../../hooks/useTheme'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeSanitize from 'rehype-sanitize'
@@ -83,6 +84,7 @@ const parseImageWidthFromTitle = (titleText = '') => {
 }
 
 function MermaidBlock({ code }) {
+  const { resolved: theme } = useTheme()
   const containerRef = useRef(null)
   const idSuffix = useId().replace(/:/g, '')
   const [svg, setSvg] = useState('')
@@ -95,7 +97,7 @@ function MermaidBlock({ code }) {
         const mermaid = (await import('mermaid')).default
         mermaid.initialize({
           startOnLoad: false,
-          theme: 'neutral',
+          theme: theme === 'dark' ? 'dark' : 'neutral',
           securityLevel: 'strict',
           fontFamily: 'Pretendard, Noto Sans KR, sans-serif',
         })
@@ -115,7 +117,7 @@ function MermaidBlock({ code }) {
       renderDiagram()
     }
     return () => { cancelled = true }
-  }, [code, idSuffix])
+  }, [code, idSuffix, theme])
 
   if (error) {
     return (

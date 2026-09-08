@@ -38,8 +38,9 @@ export default {
         },
       },
       fontFamily: {
-        display: ['"Pretendard"', '"Noto Sans KR"', 'system-ui', 'sans-serif'],
-        body: ['"Pretendard"', '"Noto Sans KR"', 'system-ui', 'sans-serif'],
+        display: ['"Pretendard Variable"', '"Pretendard"', '"Malgun Gothic"', 'system-ui', 'sans-serif'],
+        body: ['"Pretendard Variable"', '"Pretendard"', '"Malgun Gothic"', 'system-ui', 'sans-serif'],
+        editorial: ['"Pretendard Variable"', '"Pretendard"', '"Malgun Gothic"', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       boxShadow: {

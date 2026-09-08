@@ -1,0 +1,5 @@
+.theme-control { position: relative; display: inline-flex; flex-shrink: 0; }
+.theme-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 34px; padding: 6px 5px; border: 0; border-radius: 5px; color: var(--theme-control-text, #555f70); background: transparent; cursor: pointer; font: 500 12px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: nowrap; }
+.theme-trigger:hover { background: var(--theme-control-hover, #eef1f5); }
+.theme-control :focus-visible { outline: 2px solid #7198eb; outline-offset: 3px; }
+html.dark { --theme-control-bg: #202732; --theme-control-text: #d2dae6; --theme-control-line: #384352; --theme-control-hover: #2b3645; }

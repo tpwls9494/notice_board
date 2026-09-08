@@ -12,15 +12,10 @@ export default function DraftsList() {
   const pageSize = 10
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      navigate('/login')
-      return
-    }
     authAPI
       .getMe()
       .then((res) => {
-        if (!res.data?.is_admin) {
+        if (res.data?.can_write_blog !== true) {
           navigate('/')
           return
         }
@@ -30,7 +25,9 @@ export default function DraftsList() {
   }, [navigate])
 
   useEffect(() => {
-    if (!user?.is_admin) return
+    if (user?.can_write_blog !== true) return
+    // Loading state intentionally resets for each authenticated draft request.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     blogAPI
       .getDrafts({ page, page_size: pageSize })
@@ -53,7 +50,7 @@ export default function DraftsList() {
     })
   }
 
-  if (!user?.is_admin) return null
+  if (user?.can_write_blog !== true) return null
 
   return (
     <div>

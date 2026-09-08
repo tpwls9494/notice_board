@@ -17,10 +17,10 @@ const OAUTH_ERROR_MESSAGES = {
 
 function normalizeNextPath(rawNext) {
   if (!rawNext || typeof rawNext !== 'string') {
-    return '/community';
+    return '/';
   }
-  if (!rawNext.startsWith('/') || rawNext.startsWith('//')) {
-    return '/community';
+  if (!rawNext.startsWith('/') || rawNext.startsWith('//') || rawNext.includes('\\')) {
+    return '/';
   }
   return rawNext;
 }
@@ -28,7 +28,6 @@ function normalizeNextPath(rawNext) {
 function OAuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const setToken = useAuthStore((state) => state.setToken);
   const fetchUser = useAuthStore((state) => state.fetchUser);
   const [status, setStatus] = useState('processing');
 
@@ -45,11 +44,11 @@ function OAuthCallback() {
       const hashParams = new URLSearchParams(
         typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : ''
       );
-      const token = searchParams.get('token') || hashParams.get('token');
+      const session = searchParams.get('session');
       const nextPath = normalizeNextPath(searchParams.get('next') || hashParams.get('next'));
       const provider = searchParams.get('provider') || hashParams.get('provider') || 'oauth';
 
-      if (!token) {
+      if (session !== '1') {
         if (mounted) {
           setStatus('error');
         }
@@ -57,11 +56,9 @@ function OAuthCallback() {
       }
 
       try {
-        setToken(token);
-        if (typeof window !== 'undefined' && window.location.hash) {
-          window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
-        }
-        await fetchUser();
+        window.history.replaceState(window.history.state, '', window.location.pathname);
+        const user = await fetchUser();
+        if (!user) throw new Error('Session was not established');
         trackAnalyticsEvent('login_success', {
           method: 'oauth',
           provider,
@@ -82,7 +79,7 @@ function OAuthCallback() {
     return () => {
       mounted = false;
     };
-  }, [fetchUser, navigate, searchParams, setToken]);
+  }, [fetchUser, navigate, searchParams]);
 
   if (status === 'processing') {
     return (
@@ -99,7 +96,7 @@ function OAuthCallback() {
     <div className="min-h-screen bg-paper-100 flex items-center justify-center px-6">
       <div className="card p-8 text-center w-full max-w-sm">
         <p className="text-sm text-red-600 mb-4">{errorMessage || '로그인 처리에 실패했습니다.'}</p>
-        <Link to="/community?login=true" className="btn-primary inline-flex">
+        <Link to="/?login=true" className="btn-primary inline-flex">
           다시 로그인
         </Link>
       </div>

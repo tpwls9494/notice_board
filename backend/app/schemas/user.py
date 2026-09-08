@@ -24,6 +24,7 @@ class UserResponse(UserBase):
     email: str
     id: int
     is_admin: bool
+    can_write_blog: bool = False
     has_local_password: bool = True
     email_verified: bool = False
     email_verified_at: Optional[datetime] = None

@@ -31,6 +31,8 @@ from app.schemas.user import (
     Token,
 )
 from app.core.security import create_access_token, verify_password
+from app.services import browser_sessions
+from fastapi import Response
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.crud import user as crud_user
@@ -362,6 +364,8 @@ def _oauth_provider_enabled(provider: str) -> bool:
 
 
 def _build_public_origin(request: Request) -> str:
+    if settings.AUTH_SESSION_ENABLED:
+        return browser_sessions.auth_origin()
     forwarded_proto = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
     forwarded_host = request.headers.get("x-forwarded-host", "").split(",")[0].strip()
     host = forwarded_host or request.headers.get("host", "").strip() or request.url.netloc
@@ -377,7 +381,7 @@ def _sanitize_next_path(raw_next: str | None) -> str:
     if not raw_next:
         return "/community"
     next_path = raw_next.strip()
-    if not next_path.startswith("/") or next_path.startswith("//"):
+    if not next_path.startswith("/") or next_path.startswith("//") or "\\" in next_path or any(ord(char) < 32 for char in next_path):
         return "/community"
     return next_path[:500]
 
@@ -409,11 +413,13 @@ def _append_fragment_params(url: str, params: dict[str, str]) -> str:
     return urlunparse(parsed._replace(fragment=urlencode(fragment)))
 
 
-def _encode_oauth_state(provider: str, next_path: str) -> str:
+def _encode_oauth_state(provider: str, next_path: str, site: str = "main", nonce: str | None = None) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "provider": provider,
         "next": next_path,
+        "site": site,
+        "nonce": nonce,
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(seconds=OAUTH_STATE_TTL_SECONDS)).timestamp()),
     }
@@ -732,6 +738,31 @@ def login(user_credentials: UserLogin, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 
+@router.post('/session/login', response_model=UserResponse)
+def browser_login(user_credentials: UserLogin, request: Request, response: Response, db: Session = Depends(get_db)):
+    browser_sessions.require_auth_host(request)
+    user=crud_user.authenticate_user(db,user_credentials.email,user_credentials.password)
+    if not user:
+        raise HTTPException(401,'Incorrect email or password')
+    browser_sessions.create_session(request,response,user.id)
+    return user
+
+
+@router.post('/session/logout')
+def browser_logout(request: Request, response: Response):
+    browser_sessions.end_session(request,response)
+    return {'logged_out':True}
+
+
+@router.get('/session')
+def browser_session(request: Request, response: Response, db: Session = Depends(get_db)):
+    browser_sessions.require_auth_host(request)
+    response.headers['Cache-Control']='no-store'
+    user_id=browser_sessions.session_user_id(request)
+    user=crud_user.get_user_by_id(db,user_id) if user_id else None
+    return {'user':UserResponse.model_validate(user).model_dump(mode='json') if user else None}
+
+
 @router.post("/verify-email")
 def verify_email(payload: EmailVerificationRequest, db: Session = Depends(get_db)):
     token_hash = _hash_email_verification_token(payload.token.strip())
@@ -816,6 +847,7 @@ def oauth_start(
     provider: str,
     request: Request,
     next: str | None = Query(default="/community", description="Post-login path in frontend"),
+    site: str = Query(default="main", pattern="^(main|blog)$"),
 ):
     if provider not in {"google", "github"}:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unsupported OAuth provider")
@@ -826,14 +858,18 @@ def oauth_start(
     frontend_redirect = _sanitize_frontend_redirect(request)
     next_path = _sanitize_next_path(next)
     redirect_uri = _build_backend_redirect_uri(request, provider)
-    state = _encode_oauth_state(provider, next_path)
+    nonce = browser_sessions.new_oauth_nonce(request) if settings.AUTH_SESSION_ENABLED else None
+    state = _encode_oauth_state(provider, next_path, site, nonce)
 
     if provider == "google":
         authorize_url = f"{GOOGLE_AUTH_URL}?{urlencode({'client_id': settings.GOOGLE_OAUTH_CLIENT_ID, 'redirect_uri': redirect_uri, 'response_type': 'code', 'scope': 'openid email profile', 'state': state, 'prompt': 'select_account'})}"
     else:
         authorize_url = f"{GITHUB_AUTH_URL}?{urlencode({'client_id': settings.GITHUB_OAUTH_CLIENT_ID, 'redirect_uri': redirect_uri, 'scope': 'read:user user:email', 'state': state})}"
 
-    return RedirectResponse(url=authorize_url, status_code=status.HTTP_302_FOUND)
+    response=RedirectResponse(url=authorize_url, status_code=status.HTTP_302_FOUND)
+    if nonce:
+        browser_sessions.bind_oauth_cookie(response,nonce)
+    return response
 
 
 @router.get("/oauth/{provider}/callback", include_in_schema=False)
@@ -846,6 +882,12 @@ async def oauth_callback(
     error: str | None = Query(default=None),
 ):
     fallback_frontend_redirect = _sanitize_frontend_redirect(request)
+    if state:
+        try:
+            if _decode_oauth_state(state).get("site") == "blog":
+                fallback_frontend_redirect = settings.BLOG_PUBLIC_ORIGIN.rstrip("/") + "/oauth/callback"
+        except HTTPException:
+            pass
 
     if provider not in {"google", "github"}:
         return _redirect_oauth_error(fallback_frontend_redirect, "unsupported_provider")
@@ -861,11 +903,14 @@ async def oauth_callback(
     except HTTPException:
         return _redirect_oauth_error(fallback_frontend_redirect, "oauth_invalid_state")
 
-    frontend_redirect = _sanitize_frontend_redirect(request)
+    frontend_redirect = (settings.BLOG_PUBLIC_ORIGIN.rstrip("/") + "/oauth/callback") if state_payload.get("site") == "blog" else _sanitize_frontend_redirect(request)
     next_path = _sanitize_next_path(str(state_payload.get("next") or "/community"))
 
     if state_payload.get("provider") != provider:
         return _redirect_oauth_error(frontend_redirect, "oauth_provider_mismatch")
+
+    if settings.AUTH_SESSION_ENABLED and not browser_sessions.consume_oauth_nonce(request,state_payload.get('nonce')):
+        return _redirect_oauth_error(frontend_redirect,'oauth_invalid_state')
 
     if not _oauth_provider_enabled(provider):
         return _redirect_oauth_error(frontend_redirect, "oauth_not_configured")
@@ -895,12 +940,16 @@ async def oauth_callback(
         logger.exception("OAuth user upsert failed for provider=%s email=%s: %s", provider, email, exc)
         return _redirect_oauth_error(frontend_redirect, "oauth_user_upsert_failed")
 
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": str(user.id)},
-        expires_delta=access_token_expires,
-    )
+    if settings.AUTH_SESSION_ENABLED:
+        # Only routing metadata enters the URL; never a browser credential.
+        success_redirect=_append_query_params(frontend_redirect,{'session':'1','next':next_path,'provider':provider})
+        response=RedirectResponse(url=success_redirect,status_code=status.HTTP_302_FOUND)
+        browser_sessions.create_session(request,response,user.id)
+        browser_sessions.delete_cookie(response,browser_sessions.oauth_cookie_name())
+        return response
 
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(data={"sub": str(user.id)},expires_delta=access_token_expires)
     success_redirect = _append_fragment_params(
         frontend_redirect,
         {
@@ -913,7 +962,8 @@ async def oauth_callback(
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user: User = Depends(get_current_user)):
+def get_me(response: Response, current_user: User = Depends(get_current_user)):
+    response.headers['Cache-Control']='no-store'
     return current_user
 
 

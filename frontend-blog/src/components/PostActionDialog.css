@@ -1,0 +1,10 @@
+.post-action-dialog { width: min(440px, calc(100vw - 32px)); margin: auto; padding: 28px; background: var(--night-page, #fdfdfa); border: 1px solid var(--night-line, #e1e5dd); border-radius: 11px; color: var(--night-fg, #30372b); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.post-action-dialog::backdrop { background: #1b253b50; backdrop-filter: blur(3px); }
+.post-action-dialog h2 { font-size: 21px; font-weight: 700; letter-spacing: -.4px; }
+.post-action-target { font-size: 16px; font-weight: 600; padding: 17px; margin: 20px 0 14px; background: var(--night-tint, #f2f4f8); border-radius: 6px; overflow-wrap: anywhere; }
+.post-action-explanation { font-size: 13px; line-height: 1.85; color: var(--night-muted, #7a8371); }
+.post-action-error { color: var(--night-danger, #a34c3e); margin-top: 12px; font-size: 13px; }
+.post-action-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+.post-action-buttons button { border: 1px solid var(--night-line, #dfe3d8); border-radius: 5px; padding: 9px 16px; font-size: 13px; color: var(--night-muted, #78826d); }
+.post-action-buttons .post-action-delete { background: #a6574b; border-color: var(--night-line, #a6574b); color: white; }
+.post-action-buttons .post-action-confirm { background: #3458d4; border-color: var(--night-accent, #3458d4); color: white; }

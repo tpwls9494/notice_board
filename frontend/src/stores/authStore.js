@@ -1,29 +1,28 @@
 import { create } from 'zustand';
 import { authAPI } from '../services/api';
 
+let revision = 0;
+let pending = null;
+// Compatibility flag for existing UI guards; this is NOT an API credential.
+const sessionState = (user) => ({ user, token: user ? 'cookie-session' : null, isAuthReady: true });
+
 const useAuthStore = create((set) => ({
   user: null,
-  token: localStorage.getItem('token'),
+  token: null,
+  isAuthReady: false,
   isLoading: false,
   error: null,
   setUser: (user) => set({ user }),
-  setToken: (token) => {
-    if (token) {
-      localStorage.setItem('token', token);
-      set({ token });
-      return;
-    }
-    localStorage.removeItem('token');
-    set({ token: null, user: null });
-  },
 
   login: async (email, password) => {
+    ++revision;
     set({ isLoading: true, error: null });
     try {
-      const response = await authAPI.login({ email, password });
-      const { access_token } = response.data;
-      localStorage.setItem('token', access_token);
-      set({ token: access_token, isLoading: false });
+      await authAPI.login({ email, password });
+      const response = await authAPI.getSession();
+      if (!response.data.user) throw new Error('Session was not established');
+      ++revision;
+      set({ ...sessionState(response.data.user), isLoading: false });
       return true;
     } catch (error) {
       let errorMessage = '로그인에 실패했습니다';
@@ -76,22 +75,27 @@ const useAuthStore = create((set) => ({
     }
   },
 
-  logout: () => {
-    localStorage.removeItem('token');
-    set({ user: null, token: null });
+  logout: async () => {
+    ++revision;
+    await authAPI.logout();
+    ++revision;
+    set(sessionState(null));
   },
 
   fetchUser: async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-      const response = await authAPI.getMe();
-      set({ user: response.data });
-    } catch (error) {
-      localStorage.removeItem('token');
-      set({ token: null, user: null });
-    }
+    if (pending?.revision === revision) return pending.promise;
+    const started = revision;
+    const promise = authAPI.getSession().then(({ data }) => {
+      if (started === revision) set(sessionState(data.user));
+      return data.user;
+    }).catch(() => {
+      // A transient network failure must not discard an open editor. The server
+      // still verifies every protected request; only a successful null revokes UI state.
+      if (started === revision) set({ isAuthReady: true });
+      return null;
+    }).finally(() => { if (pending?.promise === promise) pending = null; });
+    pending = { revision: started, promise };
+    return promise;
   },
 
   clearError: () => {

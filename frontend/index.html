@@ -4,52 +4,24 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#fafafa" />
+    <meta name="theme-color" content="#f7f8fa" />
     <meta name="color-scheme" content="light dark" />
+    <script src="/theme-init.js"></script>
     <!-- Search Console verification (fill in after registering) -->
     <meta name="google-site-verification" content="k_VMeeQnBSVaFTZ5eOaPkB_E7cDd2WL_RSuqCjxGz6w" />
     <meta name="naver-site-verification" content="db63a8ac3ca1495983c7c15fe73054eabfabb651" />
-    <meta name="description" content="MCP, 개발, IT 뉴스를 다루는 커뮤니티 게시판" />
+    <meta name="description" content="오늘 놓치면 안 될 AI 정보와 활용법을 발견하고 사람들과 경험을 나누세요." />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="jion community" />
-    <meta property="og:title" content="jion community" />
-    <meta property="og:description" content="MCP, 개발, IT 뉴스를 다루는 커뮤니티 게시판" />
+    <meta property="og:site_name" content="jion" />
+    <meta property="og:title" content="jion — 오늘 놓치면 안 될 AI" />
+    <meta property="og:description" content="AI 소식, 활용법, 논문과 사람들의 이야기를 한곳에서 만나보세요." />
     <meta property="og:image" content="/api/v1/seo/og/default.png" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="jion community" />
-    <meta name="twitter:description" content="MCP, 개발, IT 뉴스를 다루는 커뮤니티 게시판" />
+    <meta name="twitter:title" content="jion — 오늘 놓치면 안 될 AI" />
+    <meta name="twitter:description" content="AI 소식, 활용법, 논문과 사람들의 이야기를 한곳에서 만나보세요." />
     <meta name="twitter:image" content="/api/v1/seo/og/default.png" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <script>
-      (function () {
-        try {
-          var theme = localStorage.getItem('theme');
-          var nextTheme = theme === 'dark' ? 'dark' : 'light';
-          var root = document.documentElement;
-
-          if (nextTheme === 'dark') {
-            root.classList.add('dark');
-          } else {
-            root.classList.remove('dark');
-          }
-
-          root.style.colorScheme = nextTheme;
-
-          var colorSchemeMeta = document.querySelector('meta[name=\"color-scheme\"]');
-          if (colorSchemeMeta) {
-            colorSchemeMeta.setAttribute('content', nextTheme === 'dark' ? 'dark light' : 'light dark');
-          }
-
-          var themeColorMeta = document.querySelector('meta[name=\"theme-color\"]');
-          if (themeColorMeta) {
-            themeColorMeta.setAttribute('content', nextTheme === 'dark' ? '#0b0b0f' : '#fafafa');
-          }
-        } catch (_error) {
-          // Ignore failures and keep default light mode.
-        }
-      })();
-    </script>
-    <title>jion community</title>
+    <title>jion — 오늘 놓치면 안 될 AI</title>
   </head>
   <body>
     <div id="root"></div>

@@ -2,11 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install uv for MCP server subprocess execution (uvx) + fonts for OG image generation
-RUN apt-get update && apt-get install -y curl fonts-noto-cjk && \
-    curl -LsSf https://astral.sh/uv/install.sh | sh && \
+# Fonts are used for Korean Open Graph image generation.
+RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
-ENV PATH="/root/.local/bin:$PATH"
 
 # Install dependencies
 COPY requirements.txt .

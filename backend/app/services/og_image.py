@@ -131,7 +131,20 @@ def _wrap_text(text: str, font: ImageFont.FreeTypeFont | ImageFont.ImageFont, ma
 
 
 # ── Public generators ──────────────────────────────────────────
-def generate_post_og(title: str, category_name: str, site_name: str = "jion community") -> bytes:
+def generate_blog_og() -> bytes:
+    img = Image.new("RGB", (W, H), "#fdfdfa")
+    draw = ImageDraw.Draw(img)
+    draw.text((80, 65), "jion.log", fill="#3458d4", font=_get_font(40, True))
+    draw.line((80, 140, 1120, 140), fill="#e1e5dd", width=2)
+    draw.text((80, 220), "배우고, 만들고,", fill="#242823", font=_get_font(70, True))
+    draw.text((80, 315), "기록합니다.", fill="#242823", font=_get_font(70, True))
+    draw.text((80, 525), "AI와 개발, 그 사이의 생각을 차곡차곡.", fill="#7c8574", font=_get_font(28))
+    output = BytesIO()
+    img.save(output, format="PNG")
+    return output.getvalue()
+
+
+def generate_post_og(title: str, category_name: str, site_name: str = "jion") -> bytes:
     """Generate a 1200x630 PNG OG image for a single post."""
     img = Image.new("RGB", (W, H), BG_TOP)
     draw = ImageDraw.ImageDraw(img)
@@ -184,28 +197,27 @@ def generate_post_og(title: str, category_name: str, site_name: str = "jion comm
     return buf.getvalue()
 
 
-def generate_default_og(site_name: str = "jion community") -> bytes:
+def generate_default_og(site_name: str = "jion") -> bytes:
     """Generate the default OG image (no specific post)."""
-    img = Image.new("RGB", (W, H), BG_TOP)
+    cream = (245, 245, 242)
+    ink = (23, 25, 34)
+    accent_blue = (98, 102, 209)
+    muted = (75, 78, 91)
+    img = Image.new("RGB", (W, H), cream)
     draw = ImageDraw.ImageDraw(img)
+    draw.rectangle([6, 6, W - 7, H - 7], outline=ink, width=6)
+    draw.line([72, 168, W - 72, 168], fill=ink, width=3)
+    draw.rectangle([744, 70, 1100, 438], fill=accent_blue)
+    draw.polygon([(694, 190), (1002, 112), (1080, 420), (770, 500)], outline=ink, width=24)
 
-    _draw_gradient_bg_fast(draw)
-    _draw_decorative_circles(draw)
-
-    # ── "jion" ──
-    big_font = _get_font(88)
-    draw.text((80, 200), "jion", fill=TEXT_PRIMARY, font=big_font)
-
-    # ── "community board" ──
-    sub_font = _get_font(48)
-    draw.text((80, 300), "community board", fill=TEXT_SECONDARY, font=sub_font)
-
-    # ── Accent bar ──
-    draw.rounded_rectangle([80, 460, 500, 472], radius=6, fill=ACCENT2)
-
-    # ── Tagline ──
-    tag_font = _get_font(32)
-    draw.text((80, 510), "MCP and IT discussion space", fill=TEXT_MUTED, font=tag_font)
+    brand_font = _get_font(70, bold=True)
+    draw.text((72, 64), site_name, fill=ink, font=brand_font)
+    title_font = _get_font(64, bold=True)
+    draw.text((72, 258), "오늘 놓치면 안 될 AI", fill=ink, font=title_font)
+    body_font = _get_font(30)
+    draw.text((72, 362), "새로운 정보와 사람들의 이야기를 한곳에서.", fill=muted, font=body_font)
+    label_font = _get_font(22, bold=True)
+    draw.text((72, 526), "TODAY / COMMUNITY / RESEARCH", fill=(75, 78, 176), font=label_font)
 
     buf = BytesIO()
     img.save(buf, format="PNG", optimize=True)

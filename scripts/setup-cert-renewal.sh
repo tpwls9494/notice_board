@@ -1,4 +1,5 @@
 #!/bin/bash
+# Keep LF line endings for execution on Linux deployment hosts.
 # One-time setup: issue/renew Let's Encrypt certs for jionc.com + blog.jionc.com
 # and register a cron job that auto-renews them and reloads the dockerized nginx.
 #

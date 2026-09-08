@@ -1,170 +1,109 @@
-import { useState, useEffect } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { blogAPI } from '../services/api'
+import useBlogActivity from '../hooks/useBlogActivity'
+import ActivityCounts from '../components/ActivityCounts'
+import BlogProfileAvatar from '../components/BlogProfileAvatar'
 
-const CATEGORY_GRADIENTS = {
-  '개발': 'from-slate-800 to-slate-900',
-  'AI': 'from-zinc-800 to-neutral-900',
-  '일상': 'from-stone-800 to-stone-900',
-  '회고': 'from-neutral-800 to-zinc-900',
-}
+const pageSize = 8
+const formatDate = (value) => new Date(value).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
 
-function getPlaceholderGradient(tags) {
-  if (!tags) return 'from-ink-800 to-ink-900'
-  const firstTag = tags.split(',')[0]?.trim()
-  return CATEGORY_GRADIENTS[firstTag] || 'from-ink-800 to-ink-900'
-}
-
-export default function BlogList() {
-  const [searchParams] = useSearchParams()
-  const category = searchParams.get('category') || 'all'
-
-  const [posts, setPosts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [total, setTotal] = useState(0)
-  const pageSize = 6
-
+export default function BlogList({ user }) {
+  const [params, setParams] = useSearchParams()
+  const category = params.get('category') || ''
+  const search = params.get('search') || ''
+  const rawPage = Number(params.get('page'))
+  const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1
+  const [categories, setCategories] = useState([])
+  const [categoryError, setCategoryError] = useState(false)
   useEffect(() => {
-    setPage(1)
-  }, [category])
-
-  useEffect(() => {
-    setLoading(true)
-    const params = { page, page_size: pageSize }
-    if (category !== 'all') {
-      params.tag = category
+    let active = true
+    blogAPI.getCategories().then(({ data }) => { if (active) setCategories(data) })
+      .catch(() => { if (active) setCategoryError(true) })
+    return () => { active = false }
+  }, [])
+  function navigateList(values) {
+    const next = new URLSearchParams(params)
+    for (const [key, value] of Object.entries(values)) {
+      if (value) next.set(key, String(value))
+      else next.delete(key)
     }
-    blogAPI
-      .getPosts(params)
-      .then((res) => {
-        setPosts(res.data.items)
-        setTotal(res.data.total)
-      })
-      .catch(() => setPosts([]))
-      .finally(() => setLoading(false))
-  }, [page, category])
-
-  const totalPages = Math.ceil(total / pageSize)
-
-  const formatDate = (dateStr) => {
-    const d = new Date(dateStr)
-    return d.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
+    setParams(next)
   }
-
   return (
-    <div>
-      {loading ? (
-        <div className="flex justify-center py-24">
-          <div className="w-6 h-6 border-2 border-ink-200 border-t-ink-700 rounded-full animate-spin" />
+    <div className="journal-grid">
+      <aside className="journal-sidebar">
+        <div className="journal-profile">
+          <BlogProfileAvatar canEdit={user?.can_write_blog === true} />
+          <p className="journal-eyebrow">JION’S DEV JOURNAL</p>
+          <h1>배우고, 만들고, <br />기록합니다<span>.</span></h1>
+          <p className="journal-bio">직접 부딪히며 이해한 것들. <br />AI와 개발, 그 사이의 생각을<br /> 차곡차곡 남깁니다.</p>
         </div>
-      ) : posts.length === 0 ? (
-        <div className="text-center py-24 text-ink-400">
-          <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-paper-200 flex items-center justify-center">
-            <svg className="w-6 h-6 text-ink-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12H9.75m3 0H9.75m0 0V18m-6-13.5V21a.75.75 0 00.75.75h10.5a.75.75 0 00.75-.75V6.108c0-.29-.168-.554-.432-.653a11.91 11.91 0 00-3.209-.508" />
-            </svg>
-          </div>
-          <p className="text-base font-medium text-ink-500">아직 작성된 글이 없습니다</p>
-          <p className="text-sm text-ink-300 mt-1">곧 새로운 글이 올라올 거예요.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-7">
-          {posts.map((post) => (
-            <article key={post.id} className="blog-card group">
-              <Link to={`/${post.slug}${category !== 'all' ? `?cat=${category}` : ''}`} className="block no-underline">
-                <div className="aspect-[16/9] overflow-hidden relative">
-                  {post.thumbnail_url ? (
-                    <img
-                      src={post.thumbnail_url}
-                      alt={post.title}
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
-                    />
-                  ) : (
-                    <div className={`w-full h-full bg-gradient-to-br ${getPlaceholderGradient(post.tags)} flex items-center justify-center relative`}>
-                      <span className="text-5xl font-bold text-white/10 select-none">
-                        {post.title.charAt(0)}
-                      </span>
-                      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(255,255,255,0.06),transparent_70%)]" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-5">
-                  {post.tags && (
-                    <div className="flex flex-wrap gap-1.5 mb-2.5">
-                      {post.tags
-                        .split(',')
-                        .map((t) => t.trim())
-                        .filter(Boolean)
-                        .map((tag) => (
-                          <span key={tag} className="tag-chip">
-                            {tag}
-                          </span>
-                        ))}
-                    </div>
-                  )}
-                  <h2 className="text-[1.05rem] font-bold text-ink-900 group-hover:text-ink-600 transition-colors duration-200 mb-2 line-clamp-2 leading-snug tracking-tight">
-                    {post.title}
-                  </h2>
-                  {post.summary && (
-                    <p className="text-ink-400 text-sm mb-3.5 line-clamp-2 leading-relaxed">
-                      {post.summary}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 text-xs text-ink-300">
-                    <span className="font-medium">
-                      {formatDate(post.published_at || post.created_at)}
-                    </span>
-                    <span className="text-ink-200">&middot;</span>
-                    <span>조회 {post.views}</span>
-                  </div>
-                </div>
-              </Link>
-            </article>
-          ))}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-1.5 mt-16">
-          <button
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-sm text-ink-400 hover:bg-paper-200 disabled:opacity-25 transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPage(p)}
-              className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 ${
-                p === page
-                  ? 'bg-ink-900 text-white shadow-sm'
-                  : 'text-ink-400 hover:bg-paper-200 hover:text-ink-700'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-          <button
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-            className="w-9 h-9 flex items-center justify-center rounded-lg text-sm text-ink-400 hover:bg-paper-200 disabled:opacity-25 transition-all"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-            </svg>
-          </button>
-        </div>
-      )}
+        <nav className="journal-topics" aria-label="글 주제">
+          <p className="journal-eyebrow">주제별로 보기</p>
+          <Link to={search ? `/?${new URLSearchParams({ search })}` : '/'} aria-current={!category ? 'page' : undefined}><span>모든 기록</span><span aria-hidden="true">↗</span></Link>
+          {categories.map((item) => <Link key={item.id} to={`/?${new URLSearchParams({ ...(search ? { search } : {}), category: item.name })}`} aria-current={category === item.name ? 'page' : undefined}><span>{item.name}</span><span aria-hidden="true">↗</span></Link>)}
+          {categoryError && <p className="journal-category-error">주제 목록을 불러오지 못했습니다.</p>}
+        </nav>
+        <div className="journal-now"><p className="journal-eyebrow"><span className="journal-status-dot" /> 지금 탐구하는 것</p><p>Small Language Models</p><span>논문을 읽고, 코드로 옮기는 중.</span></div>
+      </aside>
+      <section className="journal-archive" aria-label="글 목록">
+        <div className="journal-archive-heading"><div><p className="journal-eyebrow">개발 노트</p><h2>{category || '모든 기록'}<span className="journal-heading-dot">.</span></h2></div><span className="journal-archive-note">한 편씩 쌓아가는 이해</span></div>
+        <SearchForm key={search} search={search} onSearch={(value) => navigateList({ search: value, page: '' })} />
+        <PostResults key={`${category}:${search}:${page}`} category={category} search={search} page={page} onPage={(value) => navigateList({ page: value === 1 ? '' : value })} onReset={() => setParams({})} />
+      </section>
     </div>
   )
+}
+function SearchForm({ search, onSearch }) {
+  const [value, setValue] = useState(search)
+  return <form className="journal-search" role="search" onSubmit={(event) => { event.preventDefault(); onSearch(value.trim()) }}>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4 4" /></svg>
+    <input aria-label="글 검색" type="search" value={value} onChange={(event) => setValue(event.target.value)} placeholder="궁금한 주제나 키워드를 찾아보세요" />
+    {search && <button type="button" onClick={() => { setValue(''); onSearch('') }}>초기화</button>}
+    <button type="submit">검색 <span aria-hidden="true">↵</span></button>
+  </form>
+}
+function PostResults({ category, search, page, onPage, onReset }) {
+  const [result, setResult] = useState({ status: 'loading', posts: [], total: 0 })
+  const [attempt, setAttempt] = useState(0)
+  const activity = useBlogActivity(result.posts.map((post) => post.id))
+  useEffect(() => {
+    let active = true
+    blogAPI.getPosts({ page, page_size: pageSize, ...(category ? { tag: category } : {}), ...(search ? { search } : {}) })
+      .then(({ data }) => { if (active) setResult({ status: 'success', posts: data.items, total: data.total }) })
+      .catch(() => { if (active) setResult({ status: 'error', posts: [], total: 0 }) })
+    return () => { active = false }
+  }, [category, search, page, attempt])
+  if (result.status === 'loading') return <div className="journal-state" role="status"><span className="journal-loading-dot" />기록을 불러오고 있습니다.</div>
+  if (result.status === 'error') return <div className="journal-state" role="alert"><h3>기록을 불러오지 못했습니다.</h3><p>잠시 후 다시 시도해 주세요.</p><button onClick={() => { setResult({ status: 'loading', posts: [], total: 0 }); setAttempt((n) => n + 1) }}>다시 불러오기 ↗</button></div>
+  const totalPages = Math.ceil(result.total / pageSize)
+  return <>
+    <div className="journal-list-meta"><span>{search ? `“${search}” 검색 결과` : '기록 목록'} <strong>{result.total}</strong></span><span>최신순</span></div>
+    {!result.posts.length ? <div className="journal-state"><span className="journal-empty-symbol" aria-hidden="true">↳</span><h3>{search || category ? '일치하는 기록이 없습니다.' : '첫 번째 기록을 준비하고 있습니다.'}</h3><p>{search || category ? '다른 키워드나 주제로 찾아보세요.' : '직접 배우고 만들어 본 이야기로 채워갈게요.'}</p>{(search || category || page > 1) && <button onClick={onReset}>모든 기록 보기 ↗</button>}</div> : <div className="journal-posts">
+      {result.posts.map((post, index) => {
+        const first = index === 0 && page === 1 && !search && !category
+        const href = `/${post.slug}${category ? `?${new URLSearchParams({ cat: category })}` : ''}`
+        return <article className={`journal-post ${first ? 'journal-post-latest' : ''}`} key={post.id}>
+          {post.thumbnail_url && <PostThumbnail key={post.thumbnail_url} src={post.thumbnail_url} href={href} title={post.title} />}
+          <Link className="journal-post-link" to={href}>
+            <div className="journal-post-copy">
+              <div className="journal-post-meta">{first && <span className="journal-latest-label">최근 기록</span>}<span>{post.tags?.split(',').map((tag) => tag.trim()).filter(Boolean).slice(0, 2).join(' / ') || '기록'}</span></div>
+              <h3>{post.title}</h3>
+              {post.summary && <p className="journal-post-summary">{post.summary}</p>}
+            </div>
+          </Link>
+          <div className="journal-post-footer"><time dateTime={post.published_at || post.created_at}>{formatDate(post.published_at || post.created_at)}</time><Link to={`${href}#comments`} aria-label={`${post.title} 반응 보기`}><ActivityCounts activity={activity.data[post.id]} views={post.views} stale={activity.stale} showLabels /></Link></div>
+        </article>
+      })}
+    </div>}
+    {totalPages > 1 && <nav className="journal-pagination" aria-label="글 목록 페이지"><button disabled={page === 1} onClick={() => onPage(page - 1)}>← 이전</button><span><strong>{page}</strong> / {totalPages}</span><button disabled={page >= totalPages} onClick={() => onPage(page + 1)}>다음 →</button></nav>}
+    <p className="journal-endnote">배운 것이 흩어지지 않도록, 여기에.</p>
+  </>
+}
+
+function PostThumbnail({ src, href, title }) {
+  const [failed, setFailed] = useState(false)
+  if (failed) return null
+  return <Link className="journal-post-media" to={href} aria-label={`${title} 읽기`}><img className="journal-post-image" src={src} alt="" loading="lazy" onError={() => setFailed(true)} /></Link>
 }

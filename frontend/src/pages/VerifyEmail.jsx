@@ -60,7 +60,7 @@ function VerifyEmail() {
             메인으로 이동
           </Link>
           <Link
-            to="/community?login=true"
+            to="/?login=true"
             className="px-4 py-2.5 rounded-lg border border-ink-200 text-ink-700 hover:bg-ink-50 transition-colors"
           >
             로그인 열기

@@ -1,490 +1,79 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
-import useAuthStore from '../stores/authStore';
-import useThemeStore, { THEME_DARK, THEME_LIGHT } from '../stores/themeStore';
-import { analyticsAPI, authAPI, bookmarksAPI } from '../services/api';
-import { getAvatarInitial, resolveProfileImageUrl } from '../utils/userProfile';
+import { authAPI, signalsAPI } from '../services/api'
+import useAuthStore from '../stores/authStore'
+import { useSeo } from '../utils/seo'
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-const TRACKED_EVENTS = [
-  ['weekly_summary_impression', '주간 요약 노출'],
-  ['weekly_summary_click', '주간 요약 클릭'],
-  ['dev_news_post_view', 'IT 뉴스 상세 조회'],
-  ['login_success', '로그인 성공'],
-];
+const SUGGESTED = ['SLM', 'LLM', '에이전트', '프롬프트', '파인튜닝', '추론 최적화', 'RAG', '멀티모달', '오픈소스', '논문']
 
-const getErrorMessage = (error, fallback) => error?.response?.data?.detail || fallback;
+export default function MyPage() {
+  const { user, setUser } = useAuthStore()
+  const [keywords, setKeywords] = useState([])
+  const [customKeyword, setCustomKeyword] = useState('')
+  const [bio, setBio] = useState(user?.bio || '')
 
-function MyPage() {
-  const { user, token, fetchUser, setUser } = useAuthStore();
-  const theme = useThemeStore((state) => state.theme);
-  const setTheme = useThemeStore((state) => state.setTheme);
+  useSeo({ title: '내 관심 정보', description: '관심 있는 AI 키워드와 프로필을 관리합니다.', url: '/mypage', noindex: true })
 
-  const [username, setUsername] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-
-  const [isSavingNickname, setIsSavingNickname] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-
-  const fileInputRef = useRef(null);
+  const interests = useQuery({
+    queryKey: ['my-signal-interests'],
+    queryFn: () => signalsAPI.getInterests(),
+    enabled: Boolean(user?.email_verified),
+  })
 
   useEffect(() => {
-    if (!user) {
-      fetchUser();
-    }
-  }, [user, fetchUser]);
+    if (interests.data?.data?.keywords) setKeywords(interests.data.data.keywords)
+  }, [interests.data])
 
-  useEffect(() => {
-    setUsername(user?.username || '');
-  }, [user?.username]);
+  useEffect(() => setBio(user?.bio || ''), [user?.bio])
 
-  const profileImageUrl = useMemo(
-    () => resolveProfileImageUrl(user?.profile_image_url),
-    [user?.profile_image_url]
-  );
+  const saveInterests = useMutation({
+    mutationFn: () => signalsAPI.updateInterests(keywords),
+    onSuccess: () => toast.success('관심 키워드를 저장했습니다.'),
+    onError: () => toast.error('관심 키워드를 저장하지 못했습니다.'),
+  })
 
-  const { data: bookmarksData, isLoading: bookmarksLoading } = useQuery({
-    queryKey: ['my-bookmarks'],
-    queryFn: () => bookmarksAPI.getMyBookmarks(1, 50),
-    enabled: !!token,
-  });
-  const { data: analyticsSummaryData, isLoading: analyticsSummaryLoading } = useQuery({
-    queryKey: ['analytics-summary', 7],
-    queryFn: () => analyticsAPI.getSummary(7, 20),
-    enabled: !!token && !!user?.is_admin,
-    staleTime: 1000 * 60 * 3,
-  });
-  const canChangePassword = user?.has_local_password !== false;
-  const isDarkMode = theme === THEME_DARK;
-  const analyticsSummary = analyticsSummaryData?.data;
-  const analyticsEventCounts = useMemo(() => {
-    const counts = {};
-    for (const item of analyticsSummary?.by_event || []) {
-      counts[item.event_name] = item.count;
-    }
-    return counts;
-  }, [analyticsSummary?.by_event]);
+  const saveProfile = useMutation({
+    mutationFn: () => authAPI.updateMeProfile({ bio }),
+    onSuccess: (response) => { setUser(response.data); toast.success('소개를 저장했습니다.') },
+    onError: () => toast.error('소개를 저장하지 못했습니다.'),
+  })
 
-  const handleNicknameUpdate = async (event) => {
-    event.preventDefault();
-
-    const nextUsername = username.trim();
-    if (nextUsername.length < 2) {
-      toast.error('닉네임은 2자 이상이어야 합니다.');
-      return;
-    }
-
-    if (nextUsername === user?.username) {
-      toast('변경된 내용이 없습니다.');
-      return;
-    }
-
-    setIsSavingNickname(true);
-
-    try {
-      const response = await authAPI.updateMeProfile({ username: nextUsername });
-      setUser(response.data);
-      toast.success('닉네임을 변경했습니다.');
-    } catch (error) {
-      toast.error(getErrorMessage(error, '닉네임 변경에 실패했습니다.'));
-    } finally {
-      setIsSavingNickname(false);
-    }
-  };
-
-  const handlePasswordUpdate = async (event) => {
-    event.preventDefault();
-
-    if (!canChangePassword) {
-      toast.error('소셜 로그인 계정은 비밀번호 변경을 지원하지 않습니다.');
-      return;
-    }
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error('비밀번호 항목을 모두 입력해 주세요.');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      toast.error('새 비밀번호는 6자 이상이어야 합니다.');
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      toast.error('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
-      return;
-    }
-
-    setIsChangingPassword(true);
-
-    try {
-      await authAPI.updateMePassword({
-        current_password: currentPassword,
-        new_password: newPassword,
-      });
-
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      toast.success('비밀번호를 변경했습니다.');
-    } catch (error) {
-      toast.error(getErrorMessage(error, '비밀번호 변경에 실패했습니다.'));
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
-
-  const handleProfileImageUpload = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-
-    if (!file) return;
-
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error('JPG, PNG, GIF, WEBP 파일만 업로드할 수 있습니다.');
-      return;
-    }
-
-    if (file.size > MAX_IMAGE_SIZE) {
-      toast.error('프로필 이미지는 5MB 이하만 가능합니다.');
-      return;
-    }
-
-    setIsUploadingImage(true);
-
-    try {
-      const response = await authAPI.uploadProfileImage(file);
-      setUser(response.data);
-      toast.success('프로필 사진을 변경했습니다.');
-    } catch (error) {
-      toast.error(getErrorMessage(error, '프로필 사진 변경에 실패했습니다.'));
-    } finally {
-      setIsUploadingImage(false);
-    }
-  };
-
-  if (!user) {
-    return (
-      <section className="max-w-3xl mx-auto">
-        <div className="card p-8 flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-ink-300 border-t-ink-700 rounded-full animate-spin" />
-          <p className="text-sm text-ink-600">마이페이지 정보를 불러오는 중입니다.</p>
-        </div>
-      </section>
-    );
+  const toggleKeyword = (keyword) => {
+    setKeywords((current) => current.includes(keyword) ? current.filter((item) => item !== keyword) : [...current, keyword].slice(0, 20))
   }
 
-  const bookmarks = bookmarksData?.data?.bookmarks || [];
-  const themeButtonBaseClass = 'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200';
-
-  const handleThemeChange = (nextTheme) => {
-    if (nextTheme === theme) return;
-    setTheme(nextTheme);
-  };
+  const addKeyword = () => {
+    const value = customKeyword.trim()
+    if (!value || keywords.some((item) => item.toLowerCase() === value.toLowerCase())) return
+    setKeywords((current) => [...current, value].slice(0, 20))
+    setCustomKeyword('')
+  }
 
   return (
-    <section className="max-w-5xl mx-auto space-y-6">
-      <header className="card p-6 md:p-8 bg-gradient-to-br from-paper-50 via-paper-100 to-paper-200">
-        <p className="text-xs uppercase tracking-[0.2em] text-ink-500 font-semibold">내 계정</p>
-        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink-950">마이페이지</h1>
-        <p className="mt-2 text-sm text-ink-600">
-          {canChangePassword
-            ? '프로필과 비밀번호를 관리하고, 저장한 북마크를 빠르게 다시 볼 수 있습니다.'
-            : '프로필을 관리하고, 저장한 북마크를 빠르게 다시 볼 수 있습니다.'}
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Link
-            to={`/users/${user.id}/followers`}
-            className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-full border border-ink-200 bg-paper-50 text-ink-600 hover:bg-paper-100"
-          >
-            내 팔로우 보기
-          </Link>
+    <div className="mx-auto max-w-3xl">
+      <p className="text-xs font-black tracking-[0.16em] text-ink-300">MY JION</p>
+      <h1 className="mt-2 text-3xl font-black tracking-tight text-ink-950">내가 놓치고 싶지 않은 정보</h1>
+      <p className="mt-3 text-sm leading-7 text-ink-500">관심 키워드는 앞으로 개인 피드와 주간 요약의 기준이 됩니다.</p>
+
+      <section className="mt-8 rounded-[24px] border border-ink-100 bg-paper-50 p-6 sm:p-8">
+        <div className="flex items-center gap-3">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink-950 text-lg font-black text-paper-50">{user?.username?.charAt(0)?.toUpperCase()}</span>
+          <div><h2 className="font-black text-ink-900">{user?.username}</h2><p className="text-xs text-ink-400">{user?.email}</p></div>
         </div>
-      </header>
+        <label className="mt-6 block"><span className="text-sm font-bold text-ink-700">나를 소개하는 한마디</span><textarea value={bio} onChange={(event) => setBio(event.target.value)} maxLength={200} rows={3} className="mt-2 w-full resize-none rounded-xl border border-ink-200 bg-paper-100 p-3 text-sm leading-6 outline-none focus:border-ink-400" placeholder="관심 분야나 직접 해보고 있는 일을 적어보세요." /></label>
+        <div className="mt-3 flex justify-end"><button onClick={() => saveProfile.mutate()} disabled={saveProfile.isPending} className="rounded-full border border-ink-200 px-4 py-2 text-xs font-bold text-ink-700">소개 저장</button></div>
+      </section>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr,1fr]">
-        <article className="card p-6 md:p-7">
-          <h2 className="font-display text-xl font-semibold text-ink-900">프로필 사진</h2>
-          <p className="mt-1 text-sm text-ink-500">댓글과 게시글 작성자 영역에 표시됩니다.</p>
-
-          <div className="mt-6 flex items-center gap-4">
-            <div className="relative w-24 h-24 rounded-2xl border border-ink-200 bg-ink-100 overflow-hidden shadow-soft">
-              {profileImageUrl ? (
-                <img
-                  src={profileImageUrl}
-                  alt={`${user.username} 프로필`}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <span className="font-display text-3xl font-bold text-ink-700">
-                    {getAvatarInitial(user.username)}
-                  </span>
-                </div>
-              )}
-
-              {isUploadingImage && (
-                <div className="absolute inset-0 bg-ink-950/40 flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploadingImage}
-                className="btn-secondary text-sm"
-              >
-                {isUploadingImage ? '업로드 중...' : '사진 업로드'}
-              </button>
-              <p className="text-xs text-ink-400">JPG, PNG, GIF, WEBP / 최대 5MB</p>
-            </div>
-          </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={ALLOWED_IMAGE_TYPES.join(',')}
-            className="hidden"
-            onChange={handleProfileImageUpload}
-          />
-
-          <div className="mt-7 pt-5 border-t border-ink-100">
-            <p className="text-xs uppercase tracking-[0.16em] text-ink-400 font-semibold">현재 이메일</p>
-            <p className="mt-1 text-sm text-ink-700">{user.email}</p>
-          </div>
-        </article>
-
-        <article className="card p-6 md:p-7">
-          <h2 className="font-display text-xl font-semibold text-ink-900">닉네임 변경</h2>
-          <p className="mt-1 text-sm text-ink-500">커뮤니티에 표시될 이름을 수정합니다.</p>
-
-          <form onSubmit={handleNicknameUpdate} className="mt-6 space-y-4">
-            <div>
-              <label htmlFor="nickname" className="block text-sm font-semibold text-ink-700 mb-2">
-                닉네임
-              </label>
-              <input
-                id="nickname"
-                type="text"
-                minLength={2}
-                maxLength={50}
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                className="input-field"
-                placeholder="닉네임을 입력해 주세요"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSavingNickname}
-              className="btn-accent w-full dark:bg-[#283548] dark:text-[#edf2f9] dark:hover:bg-[#32435b]"
-            >
-              {isSavingNickname ? '저장 중...' : '닉네임 저장'}
-            </button>
-          </form>
-        </article>
-      </div>
-
-      <article className="card p-6 md:p-7">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl font-semibold text-ink-900">화면 테마</h2>
-            <p className="mt-1 text-sm text-ink-500">
-              라이트 모드와 다크 모드를 선택할 수 있습니다. 선택한 값은 이 브라우저에 저장됩니다.
-            </p>
-          </div>
-          <span className="badge-default">{isDarkMode ? '다크 모드' : '라이트 모드'}</span>
-        </div>
-
-        <div className="mt-5 inline-flex w-full max-w-xs rounded-xl border border-ink-200 bg-paper-200 p-1">
-          <button
-            type="button"
-            onClick={() => handleThemeChange(THEME_LIGHT)}
-            aria-pressed={!isDarkMode}
-            className={`${themeButtonBaseClass} ${
-              !isDarkMode
-                ? 'bg-paper-50 text-ink-900 shadow-soft'
-                : 'text-ink-500 hover:bg-paper-300 hover:text-ink-800'
-            }`}
-          >
-            라이트
-          </button>
-          <button
-            type="button"
-            onClick={() => handleThemeChange(THEME_DARK)}
-            aria-pressed={isDarkMode}
-            className={`${themeButtonBaseClass} ${
-              isDarkMode
-                ? 'bg-paper-50 text-ink-900 shadow-soft'
-                : 'text-ink-500 hover:bg-paper-300 hover:text-ink-800'
-            }`}
-          >
-            다크
-          </button>
-        </div>
-      </article>
-
-      {canChangePassword && (
-        <article className="card p-6 md:p-7">
-          <h2 className="font-display text-xl font-semibold text-ink-900">비밀번호 변경</h2>
-          <p className="mt-1 text-sm text-ink-500">현재 비밀번호 확인 후 새 비밀번호로 변경합니다.</p>
-
-          <form onSubmit={handlePasswordUpdate} className="mt-6 grid gap-4 md:grid-cols-3">
-            <div>
-              <label htmlFor="current-password" className="block text-sm font-semibold text-ink-700 mb-2">
-                현재 비밀번호
-              </label>
-              <input
-                id="current-password"
-                type="password"
-                autoComplete="current-password"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-                className="input-field"
-                placeholder="현재 비밀번호"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="new-password" className="block text-sm font-semibold text-ink-700 mb-2">
-                새 비밀번호
-              </label>
-              <input
-                id="new-password"
-                type="password"
-                autoComplete="new-password"
-                minLength={6}
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                className="input-field"
-                placeholder="최소 6자"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirm-password" className="block text-sm font-semibold text-ink-700 mb-2">
-                비밀번호 확인
-              </label>
-              <input
-                id="confirm-password"
-                type="password"
-                autoComplete="new-password"
-                minLength={6}
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                className={`input-field ${
-                  confirmPassword && newPassword !== confirmPassword
-                    ? 'border-red-300 focus:border-red-400 focus:ring-red-200/50'
-                    : ''
-                }`}
-                placeholder="새 비밀번호를 다시 입력"
-              />
-            </div>
-
-            <div className="md:col-span-3 flex justify-end pt-2">
-              <button type="submit" disabled={isChangingPassword} className="btn-primary min-w-[180px]">
-                {isChangingPassword ? '변경 중...' : '비밀번호 변경'}
-              </button>
-            </div>
-          </form>
-        </article>
-      )}
-
-      {user?.is_admin && (
-        <article className="card p-6 md:p-7">
-          <h2 className="font-display text-xl font-semibold text-ink-900">운영 지표 (최근 7일)</h2>
-          <p className="mt-1 text-sm text-ink-500">주간 요약, IT 뉴스, 로그인 전환 이벤트를 집계합니다.</p>
-
-          {analyticsSummaryLoading && (
-            <p className="mt-4 text-sm text-ink-400">지표를 불러오는 중입니다.</p>
-          )}
-
-          {!analyticsSummaryLoading && !analyticsSummary && (
-            <p className="mt-4 text-sm text-ink-400">집계 데이터가 없습니다.</p>
-          )}
-
-          {!analyticsSummaryLoading && analyticsSummary && (
-            <>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl border border-ink-100 bg-paper-50 px-4 py-3">
-                  <p className="text-xs text-ink-500">총 이벤트</p>
-                  <p className="mt-1 text-lg font-semibold text-ink-900">
-                    {analyticsSummary.total_events.toLocaleString()}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-ink-100 bg-paper-50 px-4 py-3">
-                  <p className="text-xs text-ink-500">고유 로그인 유저</p>
-                  <p className="mt-1 text-lg font-semibold text-ink-900">
-                    {analyticsSummary.unique_users.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                {TRACKED_EVENTS.map(([eventName, label]) => (
-                  <div
-                    key={eventName}
-                    className="rounded-lg border border-ink-100 bg-paper-50 px-3 py-2 flex items-center justify-between"
-                  >
-                    <p className="text-sm text-ink-600">{label}</p>
-                    <p className="text-sm font-semibold text-ink-900">
-                      {(analyticsEventCounts[eventName] || 0).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </article>
-      )}
-
-      <article className="card p-6 md:p-7">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl font-semibold text-ink-900">북마크</h2>
-          </div>
-          <span className="text-xs text-ink-400">총 {bookmarks.length}개</span>
-        </div>
-
-        <div className="mt-4 space-y-2 max-h-[420px] overflow-auto pr-1">
-          {bookmarksLoading && (
-            <p className="text-sm text-ink-400">북마크를 불러오는 중입니다.</p>
-          )}
-
-          {!bookmarksLoading && bookmarks.length === 0 && (
-            <p className="text-sm text-ink-400">북마크한 게시글이 없습니다.</p>
-          )}
-
-          {bookmarks.map((item) => (
-            <Link
-              key={item.id}
-              to={`/posts/${item.post_id}`}
-              className="block rounded-lg border border-ink-100 hover:border-ink-300 bg-paper-50 hover:bg-paper-100 px-3 py-2.5 transition-colors"
-            >
-              <p className="text-sm font-semibold text-ink-900 truncate">{item.post?.title}</p>
-              <p className="text-xs text-ink-500 mt-1">
-                {item.post?.category_name || '일반'} / {item.post?.author_username || '알 수 없음'}
-              </p>
-              <p className="text-xs text-ink-400 mt-1">
-                조회 {item.post?.views || 0} / 좋아요 {item.post?.likes_count || 0} / 댓글 {item.post?.comment_count || 0}
-              </p>
-            </Link>
-          ))}
-        </div>
-      </article>
-    </section>
-  );
+      <section className="mt-5 rounded-[24px] border border-ink-100 bg-paper-50 p-6 sm:p-8">
+        <div className="flex items-center justify-between"><div><h2 className="text-lg font-black text-ink-900">관심 키워드</h2><p className="mt-1 text-xs text-ink-400">최대 20개 · 현재 {keywords.length}개</p></div></div>
+        {!user?.email_verified && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">이메일 인증 후 관심 키워드를 저장할 수 있습니다.</p>}
+        <div className="mt-5 flex flex-wrap gap-2">{SUGGESTED.map((keyword) => <button key={keyword} type="button" onClick={() => toggleKeyword(keyword)} className={`rounded-full px-4 py-2 text-sm font-bold ${keywords.includes(keyword) ? 'bg-ink-950 text-paper-50' : 'border border-ink-100 bg-paper-100 text-ink-500 hover:border-ink-300'}`}>{keyword}</button>)}</div>
+        <div className="mt-5 flex gap-2"><input value={customKeyword} onChange={(event) => setCustomKeyword(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addKeyword() } }} placeholder="직접 키워드 추가" maxLength={80} className="min-w-0 flex-1 rounded-xl border border-ink-200 bg-paper-100 px-4 py-3 text-sm outline-none focus:border-ink-400" /><button type="button" onClick={addKeyword} className="rounded-xl border border-ink-200 px-4 text-sm font-bold text-ink-600">추가</button></div>
+        {keywords.filter((keyword) => !SUGGESTED.includes(keyword)).length > 0 && <div className="mt-3 flex flex-wrap gap-2">{keywords.filter((keyword) => !SUGGESTED.includes(keyword)).map((keyword) => <button key={keyword} type="button" onClick={() => toggleKeyword(keyword)} className="rounded-full bg-ink-950 px-3 py-1.5 text-xs font-bold text-paper-50">{keyword} ×</button>)}</div>}
+        <button onClick={() => saveInterests.mutate()} disabled={!user?.email_verified || saveInterests.isPending} className="mt-6 w-full rounded-xl bg-ink-950 px-5 py-3.5 text-sm font-black text-paper-50 disabled:opacity-40">관심 키워드 저장</button>
+      </section>
+    </div>
+  )
 }
-
-export default MyPage;

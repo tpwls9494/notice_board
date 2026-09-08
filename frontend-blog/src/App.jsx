@@ -1,180 +1,114 @@
-import { Routes, Route, useLocation, Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+﻿import { Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react'
 import Footer from './components/Footer'
+import { Navigate } from 'react-router-dom'
 import BlogList from './pages/BlogList'
-import BlogDetail from './pages/BlogDetail'
-import BlogEditor from './pages/BlogEditor'
-import DraftsList from './pages/DraftsList'
-import Login from './pages/Login'
-import { authAPI, blogAPI } from './services/api'
-import WorkingPerson from './components/WorkingPerson'
+import AdminOnly from './components/AdminOnly'
+import { authAPI } from './services/api'
+import { applyBlogMetadata } from './utils/seo'
+import './journal.css'
+import './theme-control.css'
+import './dark.css'
+import ThemeToggle from './components/ThemeToggle'
 
-function App() {
+const BlogDetail = lazy(() => import('./pages/BlogDetail'))
+const BlogEditor = lazy(() => import('./pages/BlogEditor'))
+const ManagePosts = lazy(() => import('./pages/ManagePosts'))
+const Login = lazy(() => import('./pages/Login'))
+const OAuthCallback = lazy(() => import('./pages/OAuthCallback'))
+const DesignNotice = lazy(() => import('./components/DesignNotice'))
+
+export default function App() {
   const location = useLocation()
-  const isHome = location.pathname === '/' || location.search.includes('category=')
-
+  const navigate = useNavigate()
+  const [user, setUser] = useState(null)
+  const [authReady, setAuthReady] = useState(false)
+  const [authError, setAuthError] = useState('')
+  const revision = useRef(0)
+  const authenticated = useCallback((account) => {
+    ++revision.current
+    setUser(account)
+    setAuthReady(true)
+  }, [])
+  useEffect(() => {
+    let active = true
+    let pending = false
+    const refresh = async () => {
+      if (pending || document.visibilityState !== 'visible') return
+      pending = true
+      const started = revision.current
+      try {
+        const { data } = await authAPI.getSession()
+        if (active && started === revision.current) setUser(data.user)
+      } catch { /* Preserve unsaved work on network failure; the API still enforces access. */ }
+      finally { pending = false; if (active) setAuthReady(true) }
+    }
+    void refresh()
+    window.addEventListener('focus', refresh)
+    window.addEventListener('blog-auth-check', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    const timer = window.setInterval(refresh, 30000)
+    return () => {
+      active = false
+      clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('blog-auth-check', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [])
+  const isHome = location.pathname === '/'
+  const isEditor = /^\/(write|edit|drafts|admin)(\/|$)/.test(location.pathname)
+  useEffect(() => {
+    if (location.pathname === '/') applyBlogMetadata({ privatePage: Boolean(location.search) })
+    else if (/^\/(login|oauth|write|edit|drafts|admin)(\/|$)/.test(location.pathname)) applyBlogMetadata({ privatePage: true })
+  }, [location.pathname, location.search])
+  useEffect(() => {
+    window.dispatchEvent(new Event('blog-auth-check'))
+  }, [location.pathname])
+  async function logout() {
+    ++revision.current
+    setAuthError('')
+    try {
+      await authAPI.logout()
+      ++revision.current
+      setUser(null)
+      navigate('/')
+    } catch { setAuthError('로그아웃을 완료하지 못했습니다. 다시 시도해 주세요.') }
+  }
   return (
-    <div className={`min-h-screen flex flex-col relative ${!isHome ? 'bg-white' : ''}`}>
-      {/* Background 3D lines - only on home */}
-      {isHome && (
-        <div className="bg-lines" aria-hidden="true">
-          <div className="bg-line bg-line-1" />
-          <div className="bg-line bg-line-2" />
-          <div className="bg-line bg-line-3" />
+    <div className="journal-app">
+      <a className="skip-link" href="#main-content">본문으로 건너뛰기</a>
+      {import.meta.env.DEV && import.meta.env.VITE_DESIGN_PREVIEW === 'true' && <Suspense fallback={null}><DesignNotice /></Suspense>}
+      <header className="journal-header">
+        <div className="journal-header-inner">
+          <Link to="/" className="journal-wordmark" aria-label="jion.log 홈">jion<span>.</span>log</Link>
+          <nav aria-label="주 메뉴" className="journal-nav">
+            <Link to="/" aria-current={isHome ? 'page' : undefined}>기록</Link>
+            <ThemeToggle />
+            {user?.can_write_blog === true && <><Link to="/admin/posts" aria-current={location.pathname === '/admin/posts' ? 'page' : undefined}>기록 관리</Link><Link to="/write">글쓰기</Link></>}
+            {user && <button onClick={logout}>로그아웃</button>}
+            {authReady && !user && <Link to="/login">로그인</Link>}
+            <a href="https://jionc.com" className="journal-main-link">jionc.com <span aria-hidden="true">↗</span></a>
+          </nav>
         </div>
-      )}
-
-      {isHome ? <HeroBanner /> : <SimpleHeader />}
-
-      <main className={`flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 py-10 relative z-10 ${!isHome ? 'bg-white' : ''}`}>
-        <div className="page-enter" key={location.pathname}>
+      </header>
+      <main id="main-content" className={`journal-main ${isHome ? 'journal-home' : isEditor ? 'journal-editor' : 'journal-reading'}`}>
+        {authError && <p role="alert">{authError}</p>}
+        {!isHome && !isEditor && <Link to="/" className="journal-back">← 모든 기록</Link>}
+        <Suspense fallback={<p className="journal-state" role="status">화면을 불러오고 있습니다.</p>}>
           <Routes>
-            <Route path="/" element={<BlogList />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/drafts" element={<DraftsList />} />
-            <Route path="/write" element={<BlogEditor />} />
-            <Route path="/edit/:slug" element={<BlogEditor />} />
-            <Route path="/:slug" element={<BlogDetail />} />
+            <Route path="/" element={<BlogList key={user?.id ?? 'anonymous'} user={user} />} />
+            <Route path="/login" element={<Login onAuthenticated={authenticated} />} />
+            <Route path="/oauth/callback" element={<OAuthCallback onAuthenticated={authenticated} />} />
+            <Route path="/drafts" element={<Navigate to="/admin/posts?status=draft" replace />} />
+            <Route path="/admin/posts" element={<AdminOnly user={user} ready={authReady} key={user?.id}><ManagePosts /></AdminOnly>} />
+            <Route path="/write" element={<AdminOnly user={user} ready={authReady} key={`${location.pathname}:${user?.id}`}><BlogEditor /></AdminOnly>} />
+            <Route path="/edit/:slug" element={<AdminOnly user={user} ready={authReady} key={`${location.pathname}:${user?.id}`}><BlogEditor /></AdminOnly>} />
+            <Route path="/:slug" element={<BlogDetail key={`${location.pathname}:${user?.id}`} user={user} />} />
           </Routes>
-        </div>
+        </Suspense>
       </main>
       <Footer />
-      <WorkingPerson />
     </div>
   )
 }
-
-function HeroBanner() {
-  const [searchParams] = useSearchParams()
-  const currentCategory = searchParams.get('category') || 'all'
-  const { user, handleLogout } = useAuth()
-  const [categories, setCategories] = useState([])
-
-  useEffect(() => {
-    blogAPI.getCategories()
-      .then((res) => setCategories(res.data))
-      .catch(() => {})
-  }, [])
-
-  return (
-    <header className="bg-[#0a0a0a] sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-        <Link to="/" className="text-lg font-bold text-white no-underline tracking-tight">
-          Jion Blog
-        </Link>
-        <nav className="flex items-center gap-3 text-sm">
-          {user?.is_admin && (
-            <>
-              <Link to="/drafts" className="text-white/40 hover:text-white/70 no-underline transition-colors">
-                초안
-              </Link>
-              <Link to="/write" className="px-3.5 py-1.5 bg-white/15 text-white rounded-lg no-underline hover:bg-white/25 transition-colors">
-                글쓰기
-              </Link>
-            </>
-          )}
-          {user && (
-            <button onClick={handleLogout} className="text-white/40 hover:text-white/70 transition-colors">
-              로그아웃
-            </button>
-          )}
-          <a href="https://jionc.com" className="text-white/40 hover:text-white/70 no-underline transition-colors">
-            Community
-          </a>
-        </nav>
-      </div>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <p className="text-[11px] text-white/25 font-medium tracking-widest uppercase pt-0.5 pb-2">
-          Dev · AI · Life
-        </p>
-      </div>
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 pb-2">
-        <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          <Link
-            to="/"
-            className={`px-3.5 py-1.5 text-sm font-medium no-underline whitespace-nowrap rounded-lg transition-all duration-200 ${
-              currentCategory === 'all'
-                ? 'bg-white text-ink-900'
-                : 'text-white/40 hover:text-white/70 hover:bg-white/8'
-            }`}
-          >
-            전체
-          </Link>
-          {categories.map((cat) => (
-            <Link
-              key={cat.id}
-              to={`/?category=${cat.name}`}
-              className={`px-3.5 py-1.5 text-sm font-medium no-underline whitespace-nowrap rounded-lg transition-all duration-200 ${
-                currentCategory === cat.name
-                  ? 'bg-white text-ink-900'
-                  : 'text-white/40 hover:text-white/70 hover:bg-white/8'
-              }`}
-            >
-              {cat.name}
-            </Link>
-          ))}
-        </nav>
-      </div>
-    </header>
-  )
-}
-
-function SimpleHeader() {
-  const { user, handleLogout } = useAuth()
-
-  return (
-    <header className="bg-white border-b border-ink-100 sticky top-0 z-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-        <Link to="/" className="text-lg font-bold text-ink-900 no-underline tracking-tight">
-          Jion Blog
-        </Link>
-        <nav className="flex items-center gap-3 text-sm">
-          {user?.is_admin && (
-            <>
-              <Link to="/drafts" className="text-ink-400 hover:text-ink-700 no-underline transition-colors">
-                초안
-              </Link>
-              <Link to="/write" className="px-3.5 py-1.5 bg-ink-800 text-white rounded-lg no-underline hover:bg-ink-900 transition-colors">
-                글쓰기
-              </Link>
-            </>
-          )}
-          {user && (
-            <button onClick={handleLogout} className="text-ink-400 hover:text-ink-700 transition-colors">
-              로그아웃
-            </button>
-          )}
-          <a href="https://jionc.com" className="text-ink-400 hover:text-ink-700 no-underline transition-colors">
-            Community
-          </a>
-        </nav>
-      </div>
-    </header>
-  )
-}
-
-function useAuth() {
-  const navigate = useNavigate()
-  const [user, setUser] = useState(null)
-
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) return
-    authAPI.getMe()
-      .then((res) => setUser(res.data))
-      .catch(() => {
-        localStorage.removeItem('token')
-        setUser(null)
-      })
-  }, [])
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    setUser(null)
-    navigate('/')
-  }
-
-  return { user, handleLogout }
-}
-
-export default App

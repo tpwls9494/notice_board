@@ -1,6 +1,8 @@
 from typing import Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, model_validator
+from urllib.parse import urlsplit
 
 
 class Settings(BaseSettings):
@@ -12,6 +14,38 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    AUTH_SESSION_ENABLED: bool = False
+    AUTH_SESSION_ORIGIN: str = 'https://jionc.com'
+    AUTH_SESSION_ALLOWED_ORIGINS: str = 'https://jionc.com,https://blog.jionc.com'
+    AUTH_SESSION_SECURE: bool = True
+
+    @model_validator(mode='after')
+    def validate_browser_session_origins(self):
+        if not self.AUTH_SESSION_ENABLED:
+            return self
+        origins=[self.AUTH_SESSION_ORIGIN]+self.AUTH_SESSION_ALLOWED_ORIGINS.split(',')
+        for value in origins:
+            parsed=urlsplit(value.strip().rstrip('/'))
+            local=parsed.hostname in {'localhost','127.0.0.1','::1'}
+            if not parsed.netloc or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment or parsed.scheme not in {'http','https'}:
+                raise ValueError('Browser session origins must be exact origins')
+            if (parsed.scheme!='https' or not self.AUTH_SESSION_SECURE) and not local:
+                raise ValueError('Production browser sessions require HTTPS and Secure cookies')
+        allowed={x.strip().rstrip('/') for x in self.AUTH_SESSION_ALLOWED_ORIGINS.split(',')}
+        if self.AUTH_SESSION_ORIGIN.rstrip('/') not in allowed:
+            raise ValueError('Auth origin must be an allowed browser origin')
+        redirect = (self.OAUTH_FRONTEND_DEFAULT_REDIRECT or '').strip()
+        if redirect and redirect != '/oauth/callback':
+            parsed = urlsplit(redirect)
+            origin = f'{parsed.scheme}://{parsed.netloc}'
+            local_auth = urlsplit(self.AUTH_SESSION_ORIGIN).hostname in {'localhost', '127.0.0.1', '::1'}
+            valid_origin = origin in allowed if local_auth else origin == self.AUTH_SESSION_ORIGIN.rstrip('/')
+            if (not valid_origin or parsed.path != '/oauth/callback' or parsed.query or parsed.fragment
+                    or parsed.username or parsed.password):
+                raise ValueError('OAuth frontend redirect must use the canonical callback on the trusted main frontend')
+        return self
+    SIGNAL_BOT_TOKEN: Optional[str] = None
+    SIGNAL_COMMENT_RATE_LIMIT_PER_MINUTE: int = 20
 
     # CORS settings - comma-separated list of origins
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost"
@@ -39,6 +73,9 @@ class Settings(BaseSettings):
     GITHUB_OAUTH_CLIENT_ID: Optional[str] = None
     GITHUB_OAUTH_CLIENT_SECRET: Optional[str] = None
     OAUTH_FRONTEND_DEFAULT_REDIRECT: str = "http://localhost:5173/oauth/callback"
+    BLOG_PUBLIC_ORIGIN: str = "https://blog.jionc.com"
+    BLOG_OWNER_USER_ID: Optional[int] = Field(default=None, gt=0)
+    BLOG_HTML_TEMPLATE: str = "/app/blog-template/index.html"
     EMAIL_VERIFICATION_FRONTEND_BASE_URL: Optional[str] = None
 
     # Email verification

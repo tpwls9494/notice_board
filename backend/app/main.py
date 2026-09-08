@@ -13,24 +13,18 @@ from app.api import ai as ai_routes
 from app.api import seo as seo_routes
 from app.api.v1 import (
     auth,
-    bookmarks,
-    categories,
-    comments,
-    community,
-    files,
-    follows,
-    likes,
     notifications,
-    posts,
+    signals,
+    social,
 )
-from app.api.v1 import mcp_categories, mcp_playground, mcp_reviews, mcp_servers
+from app.api.v1 import follows
 from app.api.v1 import analytics
 from app.api.v1 import blog
 from app.core.config import settings
+from app.services.browser_sessions import csrf_error
 from app.core.security import get_password_hash, verify_password
 from app.db.session import SessionLocal
 from app.models.user import User
-from app.services.github_sync import sync_all_github_stats
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +33,9 @@ redoc_url = "/redoc" if settings.API_DOCS_ENABLED else None
 openapi_url = "/openapi.json" if settings.API_DOCS_ENABLED else None
 
 app = FastAPI(
-    title="jion MCP Marketplace API",
-    description="MCP Marketplace and community API",
-    version="2.0.0",
+    title="jion AI discovery API",
+    description="AI updates, practical workflows, research, community, and lounge",
+    version="3.0.0",
     docs_url=docs_url,
     redoc_url=redoc_url,
     openapi_url=openapi_url,
@@ -50,6 +44,9 @@ app = FastAPI(
 
 @app.middleware("http")
 async def request_metrics_middleware(request: Request, call_next):
+    denied = csrf_error(request)
+    if denied:
+        return JSONResponse(status_code=403, content={'detail': denied}, headers={'Cache-Control':'no-store'})
     start = time.perf_counter()
     try:
         response = await call_next(request)
@@ -66,6 +63,8 @@ async def request_metrics_middleware(request: Request, call_next):
 
     duration_ms = (time.perf_counter() - start) * 1000
     response.headers["X-Process-Time-Ms"] = f"{duration_ms:.2f}"
+    if getattr(request.state, 'auth_degraded', False):
+        response.headers['Cache-Control'] = 'no-store'
 
     if settings.REQUEST_LOG_ENABLED:
         log_fn = logger.warning if duration_ms >= settings.SLOW_REQUEST_THRESHOLD_MS else logger.info
@@ -127,7 +126,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-origins = settings.CORS_ORIGINS.split(",")
+origins = (settings.AUTH_SESSION_ALLOWED_ORIGINS if settings.AUTH_SESSION_ENABLED else settings.CORS_ORIGINS).split(",")
+origins = [value.strip().rstrip('/') for value in origins if value.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -137,27 +137,14 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
-app.include_router(posts.router, prefix="/api/v1/posts", tags=["posts"])
-app.include_router(comments.router, prefix="/api/v1/comments", tags=["comments"])
-app.include_router(categories.router, prefix="/api/v1/categories", tags=["categories"])
-app.include_router(likes.router, prefix="/api/v1/likes", tags=["likes"])
-app.include_router(bookmarks.router, prefix="/api/v1/bookmarks", tags=["bookmarks"])
-app.include_router(follows.router, prefix="/api/v1/follows", tags=["follows"])
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
-app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
-app.include_router(community.router, prefix="/api/v1/community", tags=["community"])
+app.include_router(signals.router, prefix="/api/v1/signals", tags=["signals"])
+app.include_router(social.router, prefix="/api/v1/community", tags=["community"])
+app.include_router(follows.router, prefix="/api/v1/follows", tags=["follows"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
 app.include_router(ai_routes.router, prefix="/api/ai", tags=["ai"])
 app.include_router(seo_routes.public_router)
 app.include_router(seo_routes.api_router, prefix="/api/v1/seo", tags=["seo"])
-app.include_router(
-    mcp_categories.router, prefix="/api/v1/mcp-categories", tags=["mcp-categories"]
-)
-app.include_router(mcp_servers.router, prefix="/api/v1/mcp-servers", tags=["mcp-servers"])
-app.include_router(mcp_reviews.router, prefix="/api/v1/mcp-reviews", tags=["mcp-reviews"])
-app.include_router(
-    mcp_playground.router, prefix="/api/v1/mcp-playground", tags=["mcp-playground"]
-)
 app.include_router(blog.router, prefix="/api/v1/blog", tags=["blog"])
 
 
@@ -261,24 +248,13 @@ async def startup_sync_github():
             db.rollback()
             logger.warning("Admin bootstrap failed: %s", exc)
 
-        try:
-            await sync_all_github_stats(db)
-        except Exception as exc:
-            logger.warning("GitHub sync on startup failed: %s", exc)
     finally:
         db.close()
 
 
-@app.on_event("shutdown")
-async def shutdown_mcp_connections():
-    from app.services.mcp_client import playground_service
-
-    await playground_service.shutdown()
-
-
 @app.get("/")
 def root():
-    return {"message": "jion MCP Marketplace API", "version": "2.0.0"}
+    return {"message": "jion AI discovery API", "version": "3.0.0"}
 
 
 @app.get("/health")

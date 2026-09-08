@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 
-const SITE_NAME = 'jion community';
-const DEFAULT_TITLE = 'jion community';
-const DEFAULT_DESCRIPTION = 'MCP, 개발, IT 뉴스를 다루는 커뮤니티 게시판';
+const SITE_NAME = 'jion';
+const DEFAULT_TITLE = 'jion — 오늘 놓치면 안 될 AI';
+const DEFAULT_DESCRIPTION = '오늘 놓치면 안 될 AI 정보와 활용법을 발견하고 사람들과 경험을 나누세요.';
 const DEFAULT_OG_IMAGE_PATH = '/api/v1/seo/og/default.png';
 
 const MAX_DESCRIPTION_LENGTH = 170;

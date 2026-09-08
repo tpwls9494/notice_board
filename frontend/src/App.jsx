@@ -1,171 +1,101 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect } from 'react'
+import { Fragment, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import useAuthStore from './stores/authStore'
-import useThemeStore, { THEME_DARK } from './stores/themeStore'
+
 import Layout from './components/Layout'
 import { ConfirmProvider } from './components/ConfirmModal'
+import useAuthStore from './stores/authStore'
+import useTheme from './hooks/useTheme'
+import TodayPage from './pages/TodayPage'
+import SignalDetailPage from './pages/signals/SignalDetailPage'
+import SignalIndexPage from './pages/signals/SignalIndexPage'
+import SignalReviewPage from './pages/signals/SignalReviewPage'
+import SocialFeedPage from './pages/social/SocialFeedPage'
+import SocialPostDetailPage from './pages/social/SocialPostDetailPage'
+import SocialPostFormPage from './pages/social/SocialPostFormPage'
 import Register from './pages/Register'
 import VerifyEmail from './pages/VerifyEmail'
-import MyPage from './pages/MyPage'
 import OAuthCallback from './pages/OAuthCallback'
+import MyPage from './pages/MyPage'
 import TermsPage from './pages/TermsPage'
 import PrivacyPage from './pages/PrivacyPage'
 import ContactPage from './pages/ContactPage'
-// Marketplace
-import McpList from './pages/marketplace/McpList'
-import McpDetail from './pages/marketplace/McpDetail'
-import McpPlayground from './pages/marketplace/McpPlayground'
-// Community
-import CommunityHubPage from './pages/community/CommunityHubPage'
-import CommunityBoardPage from './pages/community/CommunityBoardPage'
-import CommunityPostsPage from './pages/community/CommunityPostsPage'
-import RecruitPostsPage from './pages/community/RecruitPostsPage'
-import FollowingPostsPage from './pages/community/FollowingPostsPage'
-import UserFollowPage from './pages/community/UserFollowPage'
-import PostDetail from './pages/community/PostDetail'
-import PostForm from './pages/community/PostForm'
 
 function ProtectedRoute({ children }) {
   const token = useAuthStore((state) => state.token)
-
-  if (!token) {
-    return <Navigate to="/community?login=true" replace />
-  }
-
-  return children
+  const ready = useAuthStore((state) => state.isAuthReady)
+  const userId = useAuthStore((state) => state.user?.id)
+  const location = useLocation()
+  const next = `${location.pathname}${location.search}`
+  if (!ready) return <p role="status">로그인을 확인하고 있습니다.</p>
+  return token ? <Fragment key={userId}>{children}</Fragment> : <Navigate to={`/?login=true&next=${encodeURIComponent(next)}`} replace />
 }
 
-function MyBlocksRedirect() {
-  const user = useAuthStore((state) => state.user)
-
-  if (!user?.id) {
-    return <Navigate to="/mypage" replace />
+function AdminRoute({ children }) {
+  const { token, user, isAuthReady } = useAuthStore()
+  const location = useLocation()
+  if (!isAuthReady) {
+    return <div className="mx-auto mt-24 h-10 w-10 animate-spin rounded-full border-2 border-ink-200 border-t-ink-700" aria-label="관리자 권한 확인 중" />
   }
-
-  return <Navigate to={`/users/${user.id}/blocks`} replace />
+  if (!token) return <Navigate to={`/?login=true&next=${encodeURIComponent(location.pathname)}`} replace />
+  return user?.is_admin ? <Fragment key={user.id}>{children}</Fragment> : <Navigate to="/" replace />
 }
 
 function App() {
-  const { token, fetchUser } = useAuthStore()
-  const theme = useThemeStore((state) => state.theme)
-  const isDarkTheme = theme === THEME_DARK
+  const { resolved: theme } = useTheme()
+  const { fetchUser } = useAuthStore()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (token) {
-      fetchUser()
+    const refresh = () => { if (document.visibilityState === 'visible') void fetchUser() }
+    void fetchUser()
+    const unsubscribe = useAuthStore.subscribe((state, previous) => {
+      if (state.user?.id !== previous.user?.id) queryClient.clear()
+    })
+    window.addEventListener('focus', refresh)
+    window.addEventListener('jion-auth-check', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    const timer = window.setInterval(refresh, 30000)
+    return () => {
+      unsubscribe()
+      clearInterval(timer)
+      window.removeEventListener('focus', refresh)
+      window.removeEventListener('jion-auth-check', refresh)
+      document.removeEventListener('visibilitychange', refresh)
     }
-  }, [token, fetchUser])
+  }, [fetchUser, queryClient])
 
   return (
     <ConfirmProvider>
-      <Toaster
-        theme={theme === THEME_DARK ? 'dark' : 'light'}
-        position="top-center"
-        toastOptions={{
-          style: {
-            fontFamily: '"Pretendard", "Noto Sans KR", system-ui, sans-serif',
-            borderRadius: '0.875rem',
-            boxShadow: isDarkTheme
-              ? '0 16px 44px -16px rgba(0,0,0,0.75), 0 4px 20px -6px rgba(0,0,0,0.55)'
-              : '0 10px 40px -10px rgba(0,0,0,0.1), 0 4px 25px -5px rgba(0,0,0,0.05)',
-            border: isDarkTheme ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.06)',
-            background: isDarkTheme ? '#191919' : '#ffffff',
-            color: isDarkTheme ? '#f1f1f1' : '#171717',
-            padding: '14px 18px',
-            fontSize: '14px',
-          },
-        }}
-      />
+      <Toaster theme={theme} position="top-center" />
       <Routes>
-        {/* Standalone auth pages */}
-        <Route path="/login" element={<Navigate to="/community?login=true" replace />} />
         <Route path="/register" element={<Register />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
+        <Route path="/login" element={<Navigate to="/?login=true" replace />} />
 
-        {/* Main app with public Layout */}
         <Route path="/" element={<Layout />}>
-          {/* Community (public - anyone can view) */}
-          <Route index element={<Navigate to="community" replace />} />
-          <Route path="community" element={<CommunityHubPage />} />
-          <Route path="community/posts" element={<CommunityPostsPage />} />
-          <Route path="community/recruits" element={<RecruitPostsPage />} />
-          <Route path="community/team-recruit" element={<Navigate to="/community/recruits" replace />} />
-          <Route
-            path="community/following"
-            element={(
-              <ProtectedRoute>
-                <FollowingPostsPage />
-              </ProtectedRoute>
-            )}
-          />
-          <Route path="users/:userId/followers" element={<UserFollowPage />} />
-          <Route path="users/:userId/following" element={<UserFollowPage />} />
-          <Route path="users/:userId/blocks" element={<UserFollowPage />} />
-          <Route path="community/:slug" element={<CommunityBoardPage />} />
-          <Route path="posts/:id" element={<PostDetail />} />
+          <Route index element={<TodayPage />} />
+          <Route path="ai" element={<SignalIndexPage />} />
+          <Route path="how-to" element={<SignalIndexPage kind="workflow" />} />
+          <Route path="papers" element={<SignalIndexPage kind="research" />} />
+          <Route path="signals/:slug" element={<SignalDetailPage />} />
+          <Route path="community" element={<SocialFeedPage />} />
+          <Route path="lounge" element={<SocialFeedPage space="lounge" />} />
+          <Route path="community/write" element={<ProtectedRoute><SocialPostFormPage /></ProtectedRoute>} />
+          <Route path="community/:postId/edit" element={<ProtectedRoute><SocialPostFormPage /></ProtectedRoute>} />
+          <Route path="community/:postId" element={<SocialPostDetailPage />} />
+          <Route path="submit" element={<Navigate to="/community/write" replace />} />
+          <Route path="review" element={<AdminRoute><SignalReviewPage /></AdminRoute>} />
+          <Route path="mypage" element={<ProtectedRoute><MyPage /></ProtectedRoute>} />
           <Route path="terms" element={<TermsPage />} />
           <Route path="privacy" element={<PrivacyPage />} />
           <Route path="contact" element={<ContactPage />} />
 
-          {/* Account (protected) */}
-          <Route
-            path="mypage"
-            element={
-              <ProtectedRoute>
-                <MyPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="mypage/blocks"
-            element={
-              <ProtectedRoute>
-                <MyBlocksRedirect />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Community (protected - login required) */}
-          <Route
-            path="posts/new"
-            element={
-              <ProtectedRoute>
-                <PostForm />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="posts/:id/edit"
-            element={
-              <ProtectedRoute>
-                <PostForm />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* Marketplace (public - anyone can view) */}
-          <Route path="marketplace" element={<McpList />} />
-          <Route path="marketplace/servers/:id" element={<McpDetail />} />
-
-          {/* Marketplace (protected - login required) */}
-          <Route
-            path="marketplace/playground"
-            element={
-              <ProtectedRoute>
-                <McpPlayground />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="marketplace/playground/:serverId"
-            element={
-              <ProtectedRoute>
-                <McpPlayground />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="marketplace/*" element={<Navigate to="/" replace />} />
+          <Route path="posts/*" element={<Navigate to="/community" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </ConfirmProvider>

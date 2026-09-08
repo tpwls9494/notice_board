@@ -17,7 +17,6 @@ export default function MarkdownToolbar({ textareaRef, value, onChange, onImageU
 
   /* ── helpers ── */
   const getTextarea = () => textareaRef?.current
-  const focus = () => getTextarea()?.focus()
 
   /** Replace the current selection (or insert at cursor) and update value. */
   const replaceSelection = (before, after = '', placeholder = '') => {
@@ -33,7 +32,6 @@ export default function MarkdownToolbar({ textareaRef, value, onChange, onImageU
     // Restore cursor after React re-render
     requestAnimationFrame(() => {
       ta.focus()
-      const cursorPos = start + before.length + insert.length
       if (selected) {
         ta.setSelectionRange(
           start + before.length,
@@ -195,7 +193,7 @@ export default function MarkdownToolbar({ textareaRef, value, onChange, onImageU
           if (isQuote) {
             newLine = line.replace(/^>\s?/, '')
           } else {
-            newLine = line.replace(/^  /, '')
+            newLine = line.replace(/^ {2}/, '')
           }
           delta = newLine.length - line.length
         } else {

@@ -11,7 +11,7 @@ services:
     expose:
       - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -34,14 +34,23 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     container_name: company_board_backend
+    # deploy.sh applies migrations once, while public services are stopped.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
     volumes:
       - uploads_data:/app/uploads
+      - blog_template:/app/blog-template:ro
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - REDIS_URL=${REDIS_URL}
       - SECRET_KEY=${SECRET_KEY}
       - ALGORITHM=${ALGORITHM}
       - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - AUTH_SESSION_ENABLED=true
+      - AUTH_SESSION_ORIGIN=${AUTH_SESSION_ORIGIN:-https://jionc.com}
+      - AUTH_SESSION_ALLOWED_ORIGINS=${AUTH_SESSION_ALLOWED_ORIGINS:-https://jionc.com,https://blog.jionc.com}
+      - AUTH_SESSION_SECURE=true
+      - SIGNAL_BOT_TOKEN=${SIGNAL_BOT_TOKEN}
+      - SIGNAL_COMMENT_RATE_LIMIT_PER_MINUTE=${SIGNAL_COMMENT_RATE_LIMIT_PER_MINUTE:-20}
       - BOOTSTRAP_ADMIN_EMAIL=${BOOTSTRAP_ADMIN_EMAIL}
       - BOOTSTRAP_ADMIN_USERNAME=${BOOTSTRAP_ADMIN_USERNAME}
       - BOOTSTRAP_ADMIN_PASSWORD=${BOOTSTRAP_ADMIN_PASSWORD}
@@ -52,6 +61,8 @@ services:
       - GITHUB_OAUTH_CLIENT_ID=${GITHUB_OAUTH_CLIENT_ID}
       - GITHUB_OAUTH_CLIENT_SECRET=${GITHUB_OAUTH_CLIENT_SECRET}
       - OAUTH_FRONTEND_DEFAULT_REDIRECT=${OAUTH_FRONTEND_DEFAULT_REDIRECT}
+      - BLOG_PUBLIC_ORIGIN=${BLOG_PUBLIC_ORIGIN:-https://blog.jionc.com}
+      - BLOG_OWNER_USER_ID=${BLOG_OWNER_USER_ID:?Set the verified blog owner user ID}
       - EMAIL_VERIFICATION_FRONTEND_BASE_URL=${EMAIL_VERIFICATION_FRONTEND_BASE_URL}
       - EMAIL_VERIFICATION_TOKEN_TTL_HOURS=${EMAIL_VERIFICATION_TOKEN_TTL_HOURS}
       - EMAIL_VERIFICATION_RESEND_WINDOW_SECONDS=${EMAIL_VERIFICATION_RESEND_WINDOW_SECONDS}
@@ -101,10 +112,12 @@ services:
       dockerfile: Dockerfile.nginx
       args:
         - VITE_API_URL=${VITE_API_URL}
+        - VITE_AUTH_ORIGIN=${AUTH_SESSION_ORIGIN:-https://jionc.com}
     container_name: company_board_nginx
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot
+      - blog_template:/var/run/blog-template
     ports:
       - "80:80"
       - "443:443"
@@ -115,3 +128,4 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+  blog_template:

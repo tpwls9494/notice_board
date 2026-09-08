@@ -23,7 +23,8 @@ def _build_comment_preview(content: str, limit: int = COMMENT_NOTIFICATION_PREVI
         return ""
     if len(normalized) <= limit:
         return normalized
-    return f"{normalized[:limit]}..."
+    # The visible preview limit includes one character reserved for truncation.
+    return f"{normalized[: max(1, limit - 1)]}..."
 
 
 @router.get("/post/{post_id}", response_model=List[CommentResponse])

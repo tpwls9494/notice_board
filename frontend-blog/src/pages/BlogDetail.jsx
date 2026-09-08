@@ -3,8 +3,11 @@ import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
-import { blogAPI, authAPI } from '../services/api'
+import { blogAPI } from '../services/api'
+import { applyBlogMetadata } from '../utils/seo'
 import MermaidBlock from '../components/MermaidBlock'
+import BlogDiscussion from '../components/BlogDiscussion'
+import PostActionDialog from '../components/PostActionDialog'
 
 function useTableOfContents(content) {
   return useMemo(() => {
@@ -54,13 +57,12 @@ function useActiveHeading(headings) {
   return activeId
 }
 
-function TableOfContents({ headings, activeId }) {
+function TableOfContents({ headings, activeId, mobile = false }) {
   if (headings.length < 3) return null
 
-  return (
-    <aside className="hidden xl:block w-56 shrink-0">
-      <nav className="toc">
-        <p className="toc-title">목차</p>
+  const contents = (
+      <nav className={mobile ? 'article-mobile-toc-links' : 'toc'} aria-label="이 글의 목차">
+        {!mobile && <p className="toc-title">목차</p>}
         <ul className="toc-list">
           {headings.map((h) => (
             <li key={h.id} className="toc-item">
@@ -70,7 +72,8 @@ function TableOfContents({ headings, activeId }) {
                 data-depth={h.level}
                 onClick={(e) => {
                   e.preventDefault()
-                  document.getElementById(h.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  if (mobile) e.currentTarget.closest('details')?.removeAttribute('open')
+                  requestAnimationFrame(() => document.getElementById(h.id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }))
                 }}
               >
                 {h.text}
@@ -79,8 +82,10 @@ function TableOfContents({ headings, activeId }) {
           ))}
         </ul>
       </nav>
-    </aside>
   )
+  return mobile
+    ? <details className="article-mobile-toc"><summary>이 글의 목차 <span>{headings.length}개 항목</span></summary>{contents}</details>
+    : <aside className="hidden xl:block w-56 shrink-0">{contents}</aside>
 }
 
 function HeadingRenderer({ level, children }) {
@@ -97,7 +102,7 @@ function HeadingRenderer({ level, children }) {
   return <Tag id={id}>{children}</Tag>
 }
 
-export default function BlogDetail() {
+export default function BlogDetail({ user }) {
   const { slug } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -105,18 +110,17 @@ export default function BlogDetail() {
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [user, setUser] = useState(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [adjacentPosts, setAdjacentPosts] = useState({ prev: null, next: null })
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) return
-    authAPI.getMe()
-      .then((res) => setUser(res.data))
-      .catch(() => {})
-  }, [])
+    if (post) applyBlogMetadata({ post })
+    else if (error) applyBlogMetadata({ privatePage: true, title: '기록을 찾을 수 없습니다 · jion.log' })
+  }, [post, error])
 
   useEffect(() => {
+    // Loading state intentionally resets when the route slug changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     setError(null)
     blogAPI
@@ -153,6 +157,15 @@ export default function BlogDetail() {
 
   const headings = useTableOfContents(post?.content)
   const activeHeadingId = useActiveHeading(headings)
+
+  useEffect(() => {
+    if (!post) return
+    const frame = requestAnimationFrame(() => {
+      if (window.location.hash === '#comments') document.getElementById('comments')?.scrollIntoView()
+      else if (!window.location.hash) window.scrollTo(0, 0)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [post])
 
   const formatDate = useCallback((dateStr) => {
     const d = new Date(dateStr)
@@ -200,17 +213,17 @@ export default function BlogDetail() {
         {post.thumbnail_url && (
           <div className="article-hero">
             <img src={post.thumbnail_url} alt={post.title} />
-            <div className="article-hero-overlay" />
           </div>
         )}
 
         {/* Header */}
         <header className="mb-10">
-          <div className="flex items-start justify-between gap-4">
+          {!post.is_published && <p className="mb-4 rounded-md bg-paper-100 px-3 py-2 text-xs text-ink-400">초안 미리보기 · 작성자에게만 보입니다.</p>}
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-ink-900 leading-tight tracking-tight">
               {post.title}
             </h1>
-            {user?.is_admin && (
+            {user?.can_write_blog === true && (
               <div className="flex items-center gap-2 shrink-0 mt-1">
                 <Link
                   to={`/edit/${post.slug}`}
@@ -219,15 +232,7 @@ export default function BlogDetail() {
                   수정
                 </Link>
                 <button
-                  onClick={async () => {
-                    if (!confirm('정말 삭제하시겠습니까?')) return
-                    try {
-                      await blogAPI.delete(post.id)
-                      navigate('/')
-                    } catch {
-                      alert('삭제에 실패했습니다.')
-                    }
-                  }}
+                  onClick={() => setDeleteOpen(true)}
                   className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
                   삭제
@@ -251,12 +256,15 @@ export default function BlogDetail() {
           )}
         </header>
 
+        <TableOfContents headings={headings} activeId={activeHeadingId} mobile />
+
         {/* Content */}
         <div className="prose">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeHighlight]}
             components={{
+              table: ({ children }) => <div className="article-table-scroll" tabIndex={0} role="region" aria-label="표, 가로로 스크롤할 수 있습니다"><table>{children}</table></div>,
               h2: ({ children }) => <HeadingRenderer level={2}>{children}</HeadingRenderer>,
               h3: ({ children }) => <HeadingRenderer level={3}>{children}</HeadingRenderer>,
               code({ className, children, ...props }) {
@@ -272,6 +280,8 @@ export default function BlogDetail() {
             {post.content}
           </ReactMarkdown>
         </div>
+
+        {post.is_published && <BlogDiscussion key={post.id} postId={post.id} user={user} slug={post.slug} />}
 
         {/* Post navigation */}
         <div className="mt-16 pt-8 border-t border-ink-100">
@@ -317,6 +327,7 @@ export default function BlogDetail() {
 
       {/* Table of Contents sidebar */}
       <TableOfContents headings={headings} activeId={activeHeadingId} />
+      {deleteOpen && <PostActionDialog post={post} onClose={() => setDeleteOpen(false)} onComplete={() => navigate('/admin/posts')} />}
     </div>
   )
 }

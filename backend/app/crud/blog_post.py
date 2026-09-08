@@ -50,6 +50,7 @@ def get_blog_posts(
     tag: Optional[str] = None,
     published_only: bool = True,
     drafts_only: bool = False,
+    sort_by_updated: bool = False,
 ) -> tuple[List[BlogPost], int]:
     query = db.query(BlogPost)
 
@@ -69,8 +70,9 @@ def get_blog_posts(
 
     total = query.count()
 
+    order = func.coalesce(BlogPost.updated_at, BlogPost.created_at) if sort_by_updated else BlogPost.created_at
     posts = (
-        query.order_by(BlogPost.created_at.desc())
+        query.order_by(order.desc(), BlogPost.id.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
@@ -137,6 +139,6 @@ def delete_blog_post(db: Session, post_id: int) -> bool:
 
 def increment_views(db: Session, post_id: int) -> None:
     db.query(BlogPost).filter(BlogPost.id == post_id).update(
-        {BlogPost.views: BlogPost.views + 1}
+        {BlogPost.views: BlogPost.views + 1, BlogPost.updated_at: BlogPost.updated_at}
     )
     db.commit()

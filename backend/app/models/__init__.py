@@ -22,6 +22,8 @@ from app.models.signup_email_verification import SignupEmailVerification
 from app.models.ai_action_log import AiActionLog
 from app.models.blog_post import BlogPost
 from app.models.blog_category import BlogCategory
+from app.models.signal import Signal, SignalComment, SignalReview, UserInterest, SignalRecommendation
+from app.models.social import SocialPost, SocialComment, SocialPostRecommendation, SocialCommentRecommendation
 
 __all__ = [
     "User", "Post", "Comment", "Category", "Like", "File", "Bookmark", "Notification",
@@ -32,4 +34,13 @@ __all__ = [
     "AiActionLog",
     "BlogPost",
     "BlogCategory",
+    "Signal",
+    "SignalComment",
+    "SignalReview",
+    "UserInterest",
+    "SignalRecommendation",
+    "SocialPost",
+    "SocialComment",
+    "SocialPostRecommendation",
+    "SocialCommentRecommendation",
 ]

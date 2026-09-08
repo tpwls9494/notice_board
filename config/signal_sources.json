@@ -1,0 +1,16 @@
+{
+  "github_repositories": [
+    { "name": "LLaMA-Factory", "repository": "hiyouga/LLaMA-Factory", "kind": "research" },
+    { "name": "llama.cpp", "repository": "ggml-org/llama.cpp", "kind": "research" },
+    { "name": "Transformers", "repository": "huggingface/transformers", "kind": "research" },
+    { "name": "Unsloth", "repository": "unslothai/unsloth", "kind": "workflow" }
+  ],
+  "feeds": [
+    { "name": "Hugging Face Blog", "url": "https://huggingface.co/blog/feed.xml", "kind": "research", "official": true },
+    { "name": "Google DeepMind", "url": "https://deepmind.google/blog/rss.xml", "kind": "release", "official": true }
+  ],
+  "arxiv_queries": [
+    { "name": "arXiv · Small Language Models", "query": "all:\"small language model\"", "kind": "research" },
+    { "name": "arXiv · Efficient LLM", "query": "all:\"efficient language model\"", "kind": "research" }
+  ]
+}

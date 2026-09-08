@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import useAuthStore from '../stores/authStore'
 import SocialLoginButtons from './SocialLoginButtons'
 import { trackAnalyticsEvent } from '../utils/analytics'
@@ -6,6 +7,8 @@ import { trackAnalyticsEvent } from '../utils/analytics'
 function LoginModal({ isOpen, onClose, onSuccess }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const backdropPointerId = useRef(null)
+  const releasedOnBackdrop = useRef(false)
   const { login, isLoading, error } = useAuthStore()
 
   useEffect(() => {
@@ -16,6 +19,8 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
     }
 
     if (isOpen) {
+      backdropPointerId.current = null
+      releasedOnBackdrop.current = false
       document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden'
     }
@@ -40,10 +45,29 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
     }
   }
 
+  const handleBackdropPointerDown = (event) => {
+    backdropPointerId.current = event.isPrimary && event.button === 0 && event.target === event.currentTarget
+      ? event.pointerId : null
+    releasedOnBackdrop.current = false
+  }
+
+  const handleBackdropPointerUp = (event) => {
+    // A drag may generate a click on the common ancestor of its start and end.
+    // Check both ends; hit-testing also handles touch's implicit pointer capture.
+    releasedOnBackdrop.current = backdropPointerId.current === event.pointerId
+      && event.target === event.currentTarget
+      && document.elementFromPoint(event.clientX, event.clientY) === event.currentTarget
+  }
+
+  const resetBackdropPointer = () => {
+    backdropPointerId.current = null
+    releasedOnBackdrop.current = false
+  }
+
   const handleBackdropClick = (event) => {
-    if (event.target === event.currentTarget) {
-      onClose()
-    }
+    const shouldClose = releasedOnBackdrop.current && event.button === 0 && event.target === event.currentTarget
+    resetBackdropPointer()
+    if (shouldClose) onClose()
   }
 
   if (!isOpen) return null
@@ -51,12 +75,15 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
+      onPointerDownCapture={handleBackdropPointerDown}
+      onPointerUpCapture={handleBackdropPointerUp}
+      onPointerCancelCapture={resetBackdropPointer}
       onClick={handleBackdropClick}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-fade-up">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-ink-100">
+      <div className="mx-4 w-full max-w-md border border-ink-950 bg-paper-100 shadow-[8px_8px_0_#1c1e2a] animate-fade-up">
+        <div className="flex items-center justify-between border-b border-ink-950 px-6 py-5">
           <div>
-            <h2 className="font-display text-xl font-bold text-ink-950">로그인</h2>
+            <h2 className="font-editorial text-3xl font-semibold text-ink-950">로그인</h2>
             <p className="text-xs text-ink-500 mt-0.5">
               계정으로 로그인하면 커뮤니티 기능을 사용할 수 있습니다.
             </p>
@@ -74,7 +101,7 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
 
         <form className="px-6 py-6 space-y-4" onSubmit={handleSubmit}>
           {error && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-200 rounded-xl animate-scale-in" role="alert">
+            <div className="flex items-center gap-2 border border-red-700 bg-red-50 px-4 py-3 animate-scale-in" role="alert">
               <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
               </svg>
@@ -93,7 +120,7 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="input-field"
+              className="w-full border-b border-ink-600 bg-transparent px-0 py-3 outline-none focus:border-accent"
               placeholder="name@company.com"
             />
           </div>
@@ -109,7 +136,7 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="input-field"
+              className="w-full border-b border-ink-600 bg-transparent px-0 py-3 outline-none focus:border-accent"
               placeholder="비밀번호를 입력하세요..."
             />
           </div>
@@ -119,7 +146,7 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
           <button
             type="submit"
             disabled={isLoading}
-            className="btn-accent w-full mt-6 py-3"
+            className="mt-6 w-full border border-ink-950 bg-ink-950 py-3 font-bold text-paper-100 disabled:opacity-40"
           >
             {isLoading ? (
               <span className="flex items-center justify-center gap-2">
@@ -130,6 +157,7 @@ function LoginModal({ isOpen, onClose, onSuccess }) {
               '로그인'
             )}
           </button>
+          <p className="border-t border-ink-300 pt-4 text-center text-xs text-ink-600">처음 오셨나요? <Link to="/register" onClick={onClose} className="font-bold underline underline-offset-4">회원가입</Link></p>
         </form>
       </div>
     </div>

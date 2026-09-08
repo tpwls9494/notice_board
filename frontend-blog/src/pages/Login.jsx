@@ -1,13 +1,17 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { authAPI } from '../services/api'
+import { safeNextPath } from '../utils/auth'
 
-export default function Login() {
+export default function Login({ onAuthenticated }) {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [providers, setProviders] = useState({})
+  useEffect(() => { authAPI.getProviders().then(({ data }) => setProviders(data)).catch(() => {}) }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -15,11 +19,14 @@ export default function Login() {
     setError(null)
 
     try {
-      const res = await authAPI.login({ email, password })
-      localStorage.setItem('token', res.data.access_token)
-      navigate('/')
+      await authAPI.login({ email, password })
+      const { data } = await authAPI.getSession()
+      if (!data.user) throw new Error('Session was not established')
+      onAuthenticated(data.user)
+      navigate(safeNextPath(params.get('next')))
     } catch (err) {
-      setError(err.response?.data?.detail || '로그인에 실패했습니다.')
+      const detail = err.response?.data?.detail
+      setError(typeof detail === 'string' ? detail : '로그인에 실패했습니다.')
     } finally {
       setLoading(false)
     }
@@ -28,7 +35,8 @@ export default function Login() {
   return (
     <div className="max-w-sm mx-auto py-20">
       <h1 className="text-2xl font-bold text-ink-900 mb-2">로그인</h1>
-      <p className="text-sm text-ink-400 mb-8">관리자 계정으로 로그인하세요</p>
+      <p className="text-sm text-ink-400 mb-8">jion 계정으로 로그인하고 생각을 나눠보세요.</p>
+      {(providers.google || providers.github) && <div className="blog-social-login">{[['google', 'Google'], ['github', 'GitHub']].filter(([key]) => providers[key]).map(([key, label]) => <a key={key} href={authAPI.oauthURL(key, safeNextPath(params.get('next')))}>{label}로 계속하기</a>)}<p>또는 이메일로 로그인</p></div>}
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-lg">
@@ -38,11 +46,13 @@ export default function Login() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-ink-700 mb-1">
+          <label htmlFor="login-email" className="block text-sm font-medium text-ink-700 mb-1">
             이메일
           </label>
           <input
             type="email"
+            id="login-email"
+            autoComplete="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -51,11 +61,13 @@ export default function Login() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-ink-700 mb-1">
+          <label htmlFor="login-password" className="block text-sm font-medium text-ink-700 mb-1">
             비밀번호
           </label>
           <input
             type="password"
+            id="login-password"
+            autoComplete="current-password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}

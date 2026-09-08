@@ -1,0 +1,53 @@
+/* Semantic overrides; each original light color remains the CSS fallback. */
+html.dark {
+  --night-page: #151a22;
+  --night-surface: #1c232e;
+  --night-soft: #232c38;
+  --night-tint: #233149;
+  --night-warm: #373027;
+  --night-fg: #e0e6ef;
+  --night-muted: #a9b6c8;
+  --night-line: #364253;
+  --night-accent: #a2bfff;
+  --night-danger: #eda8a1;
+  --color-ink-900: #eef2f7;
+  --color-ink-800: #dce3ed;
+  --color-ink-700: #cbd5e3;
+  --color-ink-600: #b9c6d8;
+  --color-ink-500: #acb9cb;
+  --color-ink-400: #9baac0;
+  --color-ink-300: #8494aa;
+  --color-ink-200: #3c4a5d;
+  --color-ink-100: #303b4a;
+  --color-paper-50: #151a22;
+  --color-paper-100: #1c232e;
+  --color-paper-200: #263141;
+  color-scheme: dark;
+}
+html.dark .journal-app { --journal-accent: #a2bfff; --journal-muted: #a9b6c8; --journal-line: #364253; }
+html.dark :is(.writing-primary, .avatar-apply, .journal-comment-form > button, .journal-inline-comment-actions > button):not(.journal-comment-cancel) { background: #385fbe; border-color: #385fbe; color: #fff; }
+html.dark .journal-inline-comment-actions .journal-comment-cancel { background: transparent; }
+html.dark .bg-white { background-color: var(--night-surface); }
+html.dark .bg-ink-800.text-white { color: #151a22; }
+html.dark .bg-red-50 { background-color: #39252b; }
+html.dark :is(.text-red-600, .text-red-700) { color: #f0a4ab; }
+html.dark .skip-link { background: var(--night-surface); color: var(--night-fg); }
+html.dark .prose :is(pre, .hljs), html.dark .rich-editor-content pre { background: #10151d; color: #dce3ed; }
+html.dark input::placeholder, html.dark textarea::placeholder { opacity: 1; }
+html.dark select { color: var(--night-fg); background-color: var(--night-surface); }
+html.dark input, html.dark textarea { color-scheme: dark; }
+html.dark .writing-drop-overlay { background: var(--night-tint); }
+html.dark .writing-cover > button { background: var(--night-surface); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+@media (max-width: 720px) {
+  .journal-header-inner { height: auto; min-height: 74px; align-items: center; padding-top: 15px; padding-bottom: 15px; }
+  .journal-nav { justify-content: flex-end; gap: 10px 14px; }
+}
+@media (max-width: 380px) {
+  .journal-nav { gap: 10px; }
+  .journal-main-link { font-size: 0; padding-left: 10px; }
+  .journal-main-link span { font-size: 14px; margin-left: 0; }
+  .journal-nav .theme-trigger { padding-inline: 3px; }
+}

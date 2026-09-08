@@ -6,11 +6,12 @@ Create Date: 2026-02-27 00:01:00
 """
 
 from typing import Sequence, Union
+from pathlib import Path
+from runpy import run_path
 
 from alembic import op
 
-from app.db.base import Base
-import app.models  # noqa: F401
+_snapshot = run_path(str(Path(__file__).resolve().parents[1] / "initial_schema_snapshot.py"))
 
 # revision identifiers, used by Alembic.
 revision: str = "202602270001"
@@ -20,10 +21,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    Base.metadata.create_all(bind=bind)
+    for statement in _snapshot["SCHEMA_STATEMENTS"]:
+        op.execute(statement)
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
-    Base.metadata.drop_all(bind=bind)
+    for table_name in reversed(_snapshot["TABLE_NAMES"]):
+        op.drop_table(table_name)

@@ -1,0 +1,84 @@
+.journal-editor { max-width: 1320px; padding-top: 38px; }
+.writing-topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 26px; margin-bottom: 26px; border-bottom: 1px solid var(--journal-line); }
+.writing-topbar h1 { font-size: 25px; font-weight: 700; letter-spacing: -.7px; margin-top: 5px; }
+.writing-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.writing-save-status { color: var(--night-muted, #788077); font-size: 11px; margin-right: 10px; }
+.writing-save-status.is-error { color: var(--night-danger, #a34c3e); }
+.writing-primary, .writing-secondary { border-radius: 6px; font-size: 13px; font-weight: 600; padding: 10px 17px; min-height: 40px; }
+.writing-primary { background: var(--journal-accent); color: white; border: 1px solid var(--journal-accent); }
+.writing-primary > span { margin-left: 10px; }
+.writing-secondary { background: var(--night-surface, white); color: var(--night-muted, #626960); border: 1px solid var(--night-line, #dce1d8); }
+.writing-layout { display: grid; grid-template-columns: minmax(0, 1fr) 294px; gap: 34px; min-width: 0; border: 0; margin: 0; padding: 0; }
+.writing-document { min-width: 0; }
+.writing-title { width: 100%; background: none; border: 0; border-radius: 0; font-size: 32px; font-weight: 700; letter-spacing: -1px; padding: 16px 0 28px; color: var(--night-fg, #242823); }
+.writing-title::placeholder { color: var(--night-muted, #b0b5ac); }
+.journal-app .writing-title:focus-visible { outline: none; box-shadow: inset 0 -1px 0 #d7deea; }
+.writing-modebar { display: flex; align-items: center; justify-content: space-between; margin: 0 0 14px; color: var(--night-muted, #72796c); font-size: 12px; }
+.writing-modebar > div { display: flex; padding: 3px; background: var(--night-soft, #f0f2ed); border-radius: 6px; }
+.writing-modebar button { padding: 5px 11px; font-size: 12px; border-radius: 4px; }
+.writing-modebar button[aria-pressed="true"] { background: var(--night-surface, white); color: var(--night-accent, #3458d4); box-shadow: 0 1px 3px #00000008; }
+.writing-panes { display: grid; grid-template-columns: minmax(0, 1fr); }
+.writing-panes-split { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.writing-input-pane { min-width: 0; }
+.writing-input-pane > div:first-child:not(.rich-editor) { background: var(--night-soft, #f6f7f3); }
+.writing-textarea-wrap { position: relative; }
+.writing-textarea-wrap textarea { width: 100%; min-height: 510px; display: block; resize: vertical; border: 1px solid var(--night-line, #e1e5dd); border-top: 0; border-radius: 0 0 7px 7px; background: var(--night-surface, white); padding: 24px; font-family: inherit; font-size: 16px; line-height: 1.9; color: var(--night-fg, #40483c); }
+.writing-textarea-wrap textarea::placeholder { color: var(--night-muted, #a0a797); }
+.writing-textarea-wrap.is-dragging textarea { background: var(--night-tint, #f2f4fa); }
+.writing-drop-overlay { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; background: #edf1fbd9; border: 2px dashed var(--night-accent, #7d93d2); color: var(--night-accent, #3458d4); pointer-events: none; }
+.writing-upload-status { position: absolute; bottom: 12px; right: 12px; padding: 7px 12px; background: #303b52; color: white; border-radius: 5px; font-size: 12px; }
+.writing-document-footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--night-muted, #8a9183); font-size: 11px; margin-top: 12px; }
+.writing-local-note { color: var(--night-muted, #8a9183); font-size: 11px; margin-top: 22px; }
+.writing-preview { min-width: 0; min-height: 550px; border: 1px solid var(--night-line, #e1e5dd); border-radius: 7px; padding: 28px; background: var(--night-surface, white); overflow-wrap: anywhere; }
+.writing-preview .prose { font-size: 16px; }
+.writing-preview .prose > h1:first-child { margin-top: 0; }
+.writing-preview-empty { font-size: 14px; color: var(--night-muted, #929b88); padding-top: 100px; text-align: center; }
+.writing-settings { align-self: start; padding: 24px; background: var(--night-soft, #f4f5f0); border: 1px solid var(--night-line, #e5e7df); border-radius: 9px; min-width: 0; }
+.writing-settings-heading h2 { font-size: 17px; font-weight: 700; }
+.writing-settings-heading > p { font-size: 11px; color: var(--night-muted, #7c8574); margin-top: 4px; }
+.writing-label { display: flex; align-items: baseline; gap: 8px; margin-top: 25px; margin-bottom: 9px; font-size: 12px; font-weight: 600; color: var(--night-fg, #535e4b); }
+.writing-label > span { color: var(--night-muted, #929b88); font-size: 10px; font-weight: 400; }
+.writing-settings textarea, .writing-settings input:not([type="file"]) { width: 100%; min-width: 0; border: 1px solid var(--night-line, #dce1d5); border-radius: 5px; padding: 11px; font-size: 13px; line-height: 1.7; background: var(--night-surface, white); color: var(--night-fg, #535e4b); }
+.writing-settings textarea { resize: vertical; }
+.writing-settings textarea::placeholder, .writing-settings input::placeholder { color: var(--night-muted, #9ca591); }
+.writing-field-hint { font-size: 10px; color: var(--night-muted, #89947e); margin-top: 5px; display: flex; justify-content: space-between; gap: 8px; }
+.writing-image-picker { width: 100%; min-height: 140px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; border: 1px dashed var(--night-line, #c9d1be); border-radius: 6px; background: var(--night-soft, #fafbf8); color: var(--night-muted, #89957c); font-size: 12px; }
+.writing-image-picker small { font-size: 9px; color: var(--night-muted, #97a18c); }
+.writing-cover { position: relative; }
+.writing-cover > img { width: 100%; height: 144px; object-fit: cover; border-radius: 6px; }
+.writing-cover > button { position: absolute; right: 8px; bottom: 8px; background: #ffffffed; color: var(--night-fg, #535e4b); padding: 3px 8px; border-radius: 4px; font-size: 10px; }
+.writing-text-button { color: var(--journal-accent); font-size: 11px; margin-top: 7px; }
+.writing-image-url { font-size: 11px; color: var(--night-muted, #87917c); margin-top: 10px; }
+.writing-image-url summary { cursor: pointer; }
+.writing-image-url input { margin-top: 8px; }
+.writing-topics { display: flex; gap: 6px; flex-wrap: wrap; }
+.writing-topics button { border: 1px solid var(--night-line, #dde2d5); border-radius: 5px; padding: 6px 9px; background: var(--night-soft, #fafbf8); font-size: 11px; color: var(--night-muted, #7b8770); }
+.writing-topics button[aria-pressed="true"] { color: var(--night-accent, #3458d4); background: var(--night-tint, #eef1fa); border-color: var(--night-accent, #cbd5ef); }
+.writing-new-topic { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.writing-new-topic button { flex-shrink: 0; font-size: 12px; color: var(--journal-accent); }
+.writing-card-preview { border-top: 1px solid var(--night-line, #dfe4d6); margin-top: 27px; }
+.writing-card-preview > div { display: flex; align-items: start; gap: 10px; background: var(--night-surface, #fff); border-radius: 5px; padding: 13px; }
+.writing-card-preview > div > img { width: 58px; height: 62px; object-fit: cover; border-radius: 3px; }
+.writing-card-preview > div > div { min-width: 0; }
+.writing-card-preview span { font-size: 9px; color: var(--night-muted, #8c9780); }
+.writing-card-preview h3 { font-size: 12px; font-weight: 650; line-height: 1.6; margin-top: 3px; overflow-wrap: anywhere; }
+.writing-card-preview p:not(.writing-label) { font-size: 11px; color: var(--night-muted, #8b957f); margin-top: 4px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.writing-error { color: var(--night-danger, #aa5147); font-size: 13px; background: var(--night-warm, #fff2ed); padding: 12px 16px; border-radius: 6px; margin-bottom: 18px; }
+.writing-recovery { display: flex; align-items: center; justify-content: space-between; gap: 16px; background: var(--night-warm, #f5f1e7); color: var(--night-muted, #786641); padding: 16px 20px; border: 1px solid var(--night-line, #e6decb); border-radius: 7px; margin-bottom: 22px; }
+.writing-recovery strong { font-size: 13px; }
+.writing-recovery p { font-size: 11px; margin-top: 3px; }
+.writing-recovery > div:last-child { display: flex; gap: 12px; flex-shrink: 0; }
+.writing-recovery button { font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.writing-publish-dialog { width: min(540px, calc(100vw - 32px)); border: 1px solid var(--night-line, #e0e4dc); border-radius: 12px; padding: 30px; margin: auto; background: var(--night-page, #fdfdfa); color: var(--night-fg, #242823); max-height: calc(100dvh - 40px); overflow-y: auto; }
+.writing-publish-dialog::backdrop { background: #1b253b50; backdrop-filter: blur(3px); }
+.writing-publish-dialog h2 { font-size: 23px; font-weight: 700; margin: 10px 0; }
+.writing-publish-help { color: var(--night-muted, #7a846e); font-size: 13px; }
+.writing-publish-card { display: flex; gap: 18px; align-items: center; background: var(--night-tint, #f2f4f8); border: 1px solid var(--night-line, #e1e5ee); border-radius: 7px; padding: 20px; margin: 26px 0; }
+.writing-publish-card img { width: 96px; height: 100px; object-fit: cover; border-radius: 4px; }
+.writing-publish-card > div { min-width: 0; }
+.writing-publish-card span { font-size: 11px; color: var(--night-muted, #839071); }
+.writing-publish-card h3 { font-size: 18px; font-weight: 650; margin-top: 5px; overflow-wrap: anywhere; }
+.writing-publish-card p { font-size: 13px; color: var(--night-muted, #839071); margin-top: 7px; overflow-wrap: anywhere; }
+.writing-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
+@media (max-width: 1100px) { .writing-layout { grid-template-columns: minmax(0, 1fr) 260px; gap: 24px; } .writing-settings { padding: 20px; } .writing-save-status { width: 100%; text-align: right; } .writing-panes-split { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 760px) { .writing-topbar { align-items: start; gap: 12px; } .writing-topbar h1 { font-size: 20px; } .writing-actions { max-width: 210px; gap: 7px; } .writing-save-status { font-size: 10px; margin-right: 0; } .writing-primary, .writing-secondary { padding: 8px 10px; font-size: 12px; } .writing-layout { display: flex; flex-direction: column; gap: 28px; } .writing-settings { width: 100%; } .writing-title { font-size: 26px; } .writing-textarea-wrap textarea { padding: 18px; font-size: 16px; } .writing-recovery { align-items: start; flex-direction: column; } .writing-preview { padding: 20px; } .writing-publish-dialog { padding: 24px; } .writing-publish-card { padding: 15px; } .writing-publish-card img { width: 72px; height: 80px; } }

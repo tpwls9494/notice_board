@@ -1,0 +1,10 @@
+# All attachments (community, blog and legacy) are runtime data, never image input.
+uploads/
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+**/__pycache__/
+**/*.pyc

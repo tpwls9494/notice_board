@@ -7,6 +7,13 @@ from app.db.base import Base
 class User(Base):
     __tablename__ = "users"
 
+    @property
+    def can_write_blog(self) -> bool:
+        from app.core.config import settings
+        return bool(settings.BLOG_OWNER_USER_ID is not None
+                    and self.id == settings.BLOG_OWNER_USER_ID
+                    and self.is_admin and self.email_verified)
+
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=False)
     username = Column(String(50), unique=True, index=True, nullable=False)

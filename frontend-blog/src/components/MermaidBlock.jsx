@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useId } from 'react'
+import useTheme from '../hooks/useTheme'
 
 export default function MermaidBlock({ code }) {
+  const { resolved: theme } = useTheme()
   const containerRef = useRef(null)
   const idSuffix = useId().replace(/:/g, '')
   const [svg, setSvg] = useState('')
@@ -14,7 +16,7 @@ export default function MermaidBlock({ code }) {
         const mermaid = (await import('mermaid')).default
         mermaid.initialize({
           startOnLoad: false,
-          theme: 'neutral',
+          theme: theme === 'dark' ? 'dark' : 'neutral',
           securityLevel: 'strict',
           fontFamily: "'Pretendard', 'Noto Sans KR', sans-serif",
         })
@@ -36,7 +38,7 @@ export default function MermaidBlock({ code }) {
 
     if (code.trim()) render()
     return () => { cancelled = true }
-  }, [code, idSuffix])
+  }, [code, idSuffix, theme])
 
   if (error) {
     return (

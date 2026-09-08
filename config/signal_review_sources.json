@@ -1,0 +1,11 @@
+{
+  "github_repositories": [
+    {"name":"Claude Code","repository":"anthropics/claude-code","kind":"workflow"},
+    {"name":"GitHub Agentic Workflows","repository":"github/gh-aw","kind":"workflow"},
+    {"name":"LangGraph","repository":"langchain-ai/langgraph","kind":"workflow"}
+  ],
+  "arxiv_queries": [
+    {"name":"arXiv · AI Agents","query":"(cat:cs.AI OR cat:cs.CL) AND (all:agent OR all:\"tool use\")","kind":"research"},
+    {"name":"arXiv · Efficient LLM","query":"all:\"efficient language model\"","kind":"research"}
+  ]
+}

@@ -53,8 +53,8 @@ function SocialLoginButtons({ className = '' }) {
   }, []);
 
   const nextPath = useMemo(() => {
-    if (typeof window === 'undefined') return '/community';
-    return `${window.location.pathname}${window.location.search}${window.location.hash}` || '/community';
+    if (typeof window === 'undefined') return '/';
+    return `${window.location.pathname}${window.location.search}${window.location.hash}` || '/';
   }, []);
 
   const startOAuth = (provider) => {
@@ -82,7 +82,7 @@ function SocialLoginButtons({ className = '' }) {
           type="button"
           onClick={() => startOAuth('google')}
           disabled={!providers.google}
-          className="group inline-flex items-center justify-center gap-2 rounded-xl border border-[#DADCE0] bg-[#ffffff] px-3 py-2.5 text-sm font-semibold text-[#3C4043] shadow-sm transition hover:bg-[#F8F9FA] disabled:cursor-not-allowed disabled:opacity-40"
+          className="group inline-flex items-center justify-center gap-2 rounded-xl border border-ink-200 bg-paper-50 px-3 py-2.5 text-sm font-semibold text-ink-800 shadow-sm transition hover:bg-paper-200 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[#E6E8EB] bg-[#ffffff]">
             <GoogleIcon />
