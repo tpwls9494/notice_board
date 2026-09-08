@@ -28,6 +28,9 @@ jobs:
           pip install -r backend/requirements.txt
           pip install pytest==8.3.5
 
+      - name: Prepare test upload directory
+        run: sudo install -d -o "$(id -u)" -g "$(id -g)" /app/uploads
+
       - name: Run backend tests
         run: python -m pytest backend/tests -q
 
